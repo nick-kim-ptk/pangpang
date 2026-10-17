@@ -32,7 +32,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v36';
+  var APP_VERSION = 'v37';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -493,8 +493,8 @@
     var st = streak();
 
     var nick = nickname();
-    var head = '<div class="home-greet"><h1>' + (nick ? '<span class="nick">' + esc(nick) + '님,</span><br>' : '') + '오늘도 화이팅하세요!</h1>' +
-      (st > 0 ? '<span class="chip y">' + st + '일 연속 학습</span>' : '') + '</div>';
+    var head = '<div class="home-greet"><h1>팽팽, 느려도 좋아,<br>너만의 속도로.' +
+      (st > 0 ? ' <span class="chip y streak-chip">' + st + '일 연속</span>' : '') + '</h1></div>';
 
     var ans = todayAnswers(), goal = state.profile.goal;
     var goalPct = Math.min(100, Math.round(ans / goal * 100));
@@ -516,10 +516,9 @@
         '<button class="btn" data-act="open-lesson" data-id="' + next.id + '">학습하기</button></div>';
     }
 
-    var reviewCard = '<div class="review-card"><div class="lead">' + mascot(due > 0 ? 'laptop' : 'sleep') +
-      '<div><b>' + (due > 0 ? '복습할 문제 ' + due + '개' : '오늘 복습은 끝!') + '</b>' +
-      '<div class="s">' + (due > 0 ? '잊기 전에 한 번 더 말해요' : '더 하려면 랜덤 복습을 해보세요') + '</div></div></div>' +
-      '<button class="btn sm ' + (due > 0 ? '' : 'soft') + '" data-act="' + (due > 0 ? 'review-start' : 'review-random') + '">' + (due > 0 ? '복습' : '랜덤') + '</button></div>';
+    var reviewCard = due > 0 ? '<div class="review-card"><div class="lead">' + mascot('laptop') +
+      '<div><b>복습할 문제 ' + due + '개</b><div class="s">잊기 전에 한 번 더 말해요</div></div></div>' +
+      '<button class="btn sm" data-act="review-start">복습</button></div>' : '';
 
     var ph = todayPhrase();
     var phraseCard = ph ? '<div class="phrase-card"><div class="lab">오늘의 한 문장</div>' +
@@ -542,7 +541,7 @@
         '</button></li>';
     }).join('');
     return '<div class="screen"><div class="scroll with-nav" style="padding-top:28px">' +
-      '<h1 class="big-title">레슨</h1>' +
+      '<h1 class="big-title">전체 레슨</h1>' +
       '<p class="sub-title">원하는 레슨을 골라 미리 배우거나 다시 연습할 수 있어요.</p>' +
       '<div class="lesson-progress"><div class="row"><b>' + n + ' / ' + LESSONS.length + '</b><span>레슨 완료</span></div>' +
       '<div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + pct + '"><i style="width:' + pct + '%"></i></div></div>' +
@@ -583,7 +582,7 @@
     }).join('');
 
     return '<div class="screen"><div class="scroll with-nav" style="padding-top:28px">' +
-      '<h1 class="big-title">복습</h1>' +
+      '<h1 class="big-title">복습하기</h1>' +
       '<p class="sub-title">배운 문장을 다시 말하면서 오래 기억해요.</p>' +
       '<div class="today' + (due > 0 ? '' : ' done') + '" style="margin-top:0">' +
         '<div class="today-top"><span class="chip ' + (due > 0 ? 'y' : 'green') + '">' + (due > 0 ? '지금 복습할 문제' : '오늘 복습 완료') + '</span>' +
@@ -928,7 +927,7 @@
     }
     var solved = Object.keys(state.progress).filter(function (k) { return QMAP[k] && state.progress[k].box >= 4; }).length;
     return '<div class="screen"><div class="scroll with-nav">' +
-      '<div class="tab-head"><div><h1 class="big-title">마이페이지</h1>' +
+      '<div class="tab-head"><div><h1 class="big-title">' + (nickname() ? esc(nickname()) + '님, ' : '') + '오늘도 화이팅!</h1>' +
       '<p class="sub-title" style="margin-bottom:0">내 학습 기록이에요.</p></div>' + mascot('wink') + '</div>' +
       meCard(initial, email) +
       '<div class="stats">' +
