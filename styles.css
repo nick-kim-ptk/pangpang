@@ -786,3 +786,4 @@ u.miss { text-decoration: underline wavy #ef5350; text-underline-offset: 4px; co
 
 /* v37 홈 인사말 옆 연속 학습 칩 */
 .home-greet h1 .streak-chip { display: inline-block; vertical-align: 3px; margin-left: 4px; font-size: 13px; line-height: 1; padding: 6px 10px; letter-spacing: 0; white-space: nowrap; }
+.sp-tag { padding: 0 20px; word-break: keep-all; }
