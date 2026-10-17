@@ -146,3 +146,6 @@ Supabase 로그인을 연결한 뒤에만 동작해요. 아직 실제 기기에�
 
 ## v35
 - 마이페이지에 '의견 보내기'가 생겼어요. 보낸 의견은 Supabase `feedback` 테이블에 쌓이고(supabase.sql 맨 아래 블록을 SQL Editor에서 한 번 실행), 운영자만 대시보드 Table Editor에서 볼 수 있어요.
+
+## v36
+- 안드로이드 홈 화면 아이콘(maskable) 아래쪽이 잘려 보이던 것을 고쳤어요. 달팽이 몸이 아이콘 끝까지 이어지도록 다시 만들었어요. (img/icon-maskable-512.png)
