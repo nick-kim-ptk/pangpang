@@ -174,6 +174,55 @@
     toast('저장하지 못했어요. 네트워크를 확인하고 다시 시도해 주세요');
   }
 
+  /* ---------- 서버에서 최신 기록 가져오기 ---------- */
+  async function fetchRemote() {
+    var res = await Promise.all([
+      sb.from('progress').select('*'),
+      sb.from('lesson_done').select('*'),
+      sb.from('daily_log').select('*').order('day', { ascending: false }).limit(120)
+    ]);
+    return { res: res, err: res[0].error || res[1].error || res[2].error };
+  }
+  function applyRemote(d, keepProfile) {
+    var res = d.res;
+    state.progress = {}; state.done = {}; state.daily = {};
+    if (!keepProfile) {
+      var meta = (state.user && state.user.user_metadata) || {};
+      state.profile = normProfile({ nickname: meta.nickname, goal: meta.goal, theme: meta.theme, remind: meta.remind, remindOn: meta.remindOn });
+      applyTheme();
+    }
+    (res[0].data || []).forEach(function (r) { state.progress[r.qid] = r; });
+    (res[1].data || []).forEach(function (r) { state.done[r.lesson_id] = r; });
+    (res[2].data || []).forEach(function (r) { state.daily[r.day] = r; });
+  }
+  // 저장이 진행 중일 때 새로 가져오면 방금 한 기록이 덮어써질 수 있어서, 저장 횟수를 세어 둬요.
+  var pendingSaves = 0, saveGen = 0, lastRefresh = 0;
+  function tracked(fn) {
+    return async function () {
+      pendingSaves++; saveGen++;
+      try { return await fn.apply(null, arguments); } finally { pendingSaves--; saveGen++; }
+    };
+  }
+  // 하단 탭을 누를 때 조용히 최신 기록으로 맞춰요. 달라진 게 있을 때만 화면을 다시 그려서 깜빡이지 않아요.
+  async function refreshQuiet() {
+    if (!sb || !state.user || state.user.id === 'local' || pendingSaves > 0) return;
+    if (Date.now() - lastRefresh < 4000) return;
+    lastRefresh = Date.now();
+    var gen = saveGen;
+    try {
+      var d = await fetchRemote();
+      if (d.err || pendingSaves > 0 || gen !== saveGen || state.screen !== 'tab') return;
+      var before = JSON.stringify([state.progress, state.done, state.daily]);
+      applyRemote(d, true);
+      if (JSON.stringify([state.progress, state.done, state.daily]) === before) return;
+      var sc = document.querySelector ? document.querySelector('.scroll') : null;
+      var top = sc ? sc.scrollTop : 0;
+      render();
+      var sc2 = document.querySelector ? document.querySelector('.scroll') : null;
+      if (sc2) sc2.scrollTop = top;
+    } catch (e) { /* 네트워크가 안 되면 조용히 넘어가요 */ }
+  }
+
   var store = {
     load: async function () {
       if (!sb) {
@@ -187,48 +236,36 @@
         applyTheme();
         return;
       }
-      var res = await Promise.all([
-        sb.from('progress').select('*'),
-        sb.from('lesson_done').select('*'),
-        sb.from('daily_log').select('*').order('day', { ascending: false }).limit(120)
-      ]);
-      if (res[0].error || res[1].error || res[2].error) {
-        saveFailed(res[0].error || res[1].error || res[2].error);
-      }
-      state.progress = {}; state.done = {}; state.daily = {};
-      var meta = (state.user && state.user.user_metadata) || {};
-      state.profile = normProfile({ nickname: meta.nickname, goal: meta.goal, theme: meta.theme, remind: meta.remind, remindOn: meta.remindOn });
-      applyTheme();
-      (res[0].data || []).forEach(function (r) { state.progress[r.qid] = r; });
-      (res[1].data || []).forEach(function (r) { state.done[r.lesson_id] = r; });
-      (res[2].data || []).forEach(function (r) { state.daily[r.day] = r; });
+      var d = await fetchRemote();
+      if (d.err) saveFailed(d.err);
+      applyRemote(d);
     },
-    saveProgress: async function (rows) {
+    saveProgress: tracked(async function (rows) {
       persistLocal();
       if (!sb || !rows.length) return;
       var out = rows.map(function (r) { return Object.assign({ user_id: state.user.id }, r); });
       var res = await sb.from('progress').upsert(out, { onConflict: 'user_id,qid' });
       if (res.error) saveFailed(res.error);
-    },
-    saveDone: async function (row) {
+    }),
+    saveDone: tracked(async function (row) {
       persistLocal();
       if (!sb) return;
       var res = await sb.from('lesson_done').upsert(Object.assign({ user_id: state.user.id }, row), { onConflict: 'user_id,lesson_id' });
       if (res.error) saveFailed(res.error);
-    },
-    saveProfile: async function () {
+    }),
+    saveProfile: tracked(async function () {
       persistLocal();
       if (!sb) return;
       var p = state.profile;
       var res = await sb.auth.updateUser({ data: { nickname: p.nickname, goal: p.goal, theme: p.theme, remind: p.remind, remindOn: p.remindOn } });
-      if (res.error) saveFailed(res.error);
-    },
-    saveDaily: async function (row) {
+      if (res.error) saveFailed(res.error); else if (res.data && res.data.user) state.user = res.data.user;
+    }),
+    saveDaily: tracked(async function (row) {
       persistLocal();
       if (!sb) return;
       var res = await sb.from('daily_log').upsert(Object.assign({ user_id: state.user.id }, row), { onConflict: 'user_id,day' });
       if (res.error) saveFailed(res.error);
-    }
+    })
   };
 
   /* ---------- 학습 상태 계산 ---------- */
@@ -925,7 +962,10 @@
         state.user = { id: 'local', email: '' };
         store.load().then(function () { go('tab', { tab: 'home' }); });
         break;
-      case 'tab': state.editNick = false; state.tab = id; render(); window.scrollTo(0, 0); break;
+      case 'tab':
+        state.editNick = false; state.tab = id; render(); window.scrollTo(0, 0);
+        refreshQuiet();
+        break;
       case 'logout':
         stopSpeak();
         sb.auth.signOut().then(function () { state.user = null; state.progress = {}; state.done = {}; state.daily = {}; state.profile = normProfile({}); applyTheme(); go('login'); });

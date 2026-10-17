@@ -551,3 +551,7 @@ img, svg { -webkit-user-drag: none; user-drag: none; }
 .login .brand { position: relative; margin-top: 0; }
 .done-screen .stage { width: min(280px, 72vw); height: min(250px, 31dvh); margin: 0 auto 14px; }
 .done-screen .stage .mascot { width: auto; height: 100%; max-width: 100%; object-fit: contain; }
+
+/* 아래로 당겨서 새로고침 막기 */
+html, body { overscroll-behavior-y: none; }
+.scroll { overscroll-behavior-y: contain; }
