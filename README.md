@@ -143,3 +143,6 @@ Supabase 로그인을 연결한 뒤에만 동작해요. 아직 실제 기기에�
 
 ## v33
 - 홈의 '오늘의 중국어' 카드 달팽이를 책 읽는 모션(img/snail-reading.webp, 4초 루프)으로 바꿨어요.
+
+## v35
+- 마이페이지에 '의견 보내기'가 생겼어요. 보낸 의견은 Supabase `feedback` 테이블에 쌓이고(supabase.sql 맨 아래 블록을 SQL Editor에서 한 번 실행), 운영자만 대시보드 Table Editor에서 볼 수 있어요.

@@ -773,3 +773,13 @@ u.miss { text-decoration: underline wavy #ef5350; text-underline-offset: 4px; co
 
 /* v33 홈: 책 읽는 달팽이 (360×340 애니메이션, 위쪽 여백에 글자가 떠올라요) */
 .today.hero .hero-m.reading { width: min(176px, 50%); aspect-ratio: 360 / 340; height: auto; margin: -8px 0 -2px; }
+
+/* v34 */
+.sheet .m { z-index: 1; }
+.sheet .combo { position: relative; z-index: 2; }
+.live.wait { font-family: inherit; font-size: 20px; font-weight: 600; letter-spacing: -0.02em; }
+
+/* v35 의견 보내기 */
+.fb-text { display: block; width: 100%; min-height: 180px; margin-top: 14px; padding: 14px 16px; border: 0; border-radius: 20px; resize: none; background: var(--card); color: var(--ink); font: inherit; font-size: 16px; line-height: 1.6; outline: none; box-shadow: inset 0 0 0 1.5px var(--line); }
+.fb-text:focus { box-shadow: inset 0 0 0 2px var(--navy); }
+.fb-meta { display: flex; justify-content: space-between; gap: 8px; margin: 8px 4px 16px; font-size: 12.5px; color: var(--ink-3); }

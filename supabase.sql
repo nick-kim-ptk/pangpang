@@ -98,3 +98,20 @@ drop policy if exists "insert own errors" on app_errors;
 create policy "insert own errors" on app_errors for insert to authenticated
   with check ((select auth.uid()) = user_id);
 -- 조회 정책은 일부러 없음: Supabase 대시보드 > Table Editor 에서만 볼 수 있어요.
+
+
+-- ===== 의견 보내기 (v35) =====
+create table if not exists feedback (
+  id bigint generated always as identity primary key,
+  user_id uuid default auth.uid() references auth.users on delete set null,
+  category text check (category in ('idea','bug','praise','etc')),
+  message text not null check (char_length(message) between 5 and 1000),
+  nickname text, email text, version text,
+  created_at timestamptz default now()
+);
+alter table feedback enable row level security;
+drop policy if exists "insert own feedback" on feedback;
+create policy "insert own feedback" on feedback for insert to authenticated
+  with check ((select auth.uid()) = user_id);
+-- 조회 정책은 일부러 없음: 앱 사용자는 남의 의견도, 자기 의견도 읽을 수 없고
+-- 운영자(나)만 Supabase 대시보드 > Table Editor > feedback 에서 볼 수 있어요.

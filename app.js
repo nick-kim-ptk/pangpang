@@ -32,7 +32,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v33';
+  var APP_VERSION = 'v35';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -353,7 +353,7 @@
 
   /* ---------- 화면 이동 ---------- */
   // 뒤로 가기: 폰의 뒤로 제스처·버튼(기록)과 화면 왼쪽 가장자리에서 오른쪽으로 미는 동작을 같이 처리해요
-  var SUBSCREEN = { intro: 1, practice: 1, quiz: 1, stats: 1, done: 1, hsk: 1, hskstudy: 1 };
+  var SUBSCREEN = { intro: 1, practice: 1, quiz: 1, stats: 1, done: 1, hsk: 1, hskstudy: 1, feedback: 1 };
   var inSub = false, ignorePop = 0, backAnim = false;
   function syncHistory(screen) {
     try {
@@ -374,7 +374,7 @@
     else if (sc === 'hskstudy') { stopSpeak(); clearTimeout(hskTimer); store.saveProfile(); go('hsk'); }
     else if (sc === 'hsk') go('tab');
     else if (sc === 'done') go('tab', { tab: 'home' });
-    else if (sc === 'intro' || sc === 'stats') go('tab');
+    else if (sc === 'intro' || sc === 'stats' || sc === 'feedback') go('tab');
   }
   window.addEventListener('popstate', function () {
     if (ignorePop > 0) { ignorePop--; return; }
@@ -718,7 +718,7 @@
         (window.SpeechRecognition || window.webkitSpeechRecognition ? '<button class="link-btn" data-act="voice-mode">음성으로 답하기</button>' : '') + '</div>';
     }
     return '<div class="mic-area">' +
-      '<div id="live" class="live' + (s.listening && s.live ? '' : ' hint') + '">' + esc(s.listening ? (s.live || '듣고 있어요…') : hint) + '</div>' +
+      '<div id="live" class="live' + (s.listening ? (s.live ? '' : ' wait') : ' hint') + '">' + esc(s.listening ? (s.live || '듣고 있어요…') : hint) + '</div>' +
       '<button id="mic" class="mic' + (s.listening ? ' on' : '') + '" data-hold="mic" aria-label="누른 채로 말하기">' + I.mic + '</button></div>';
   }
 
@@ -942,6 +942,7 @@
         '<div class="stat"><b>' + dueRows().length + '</b><span>복습할 문제</span></div>' +
       '</div>' +
       '<button class="btn soft quiz-btn" data-act="open-stats">학습 통계 · 약점 분석 보기</button>' +
+      '<button class="btn gray quiz-btn" data-act="open-feedback">의견 보내기</button>' +
       settingsCard() +
       '<div class="me-actions">' +
         (sb ? '<button class="btn gray" data-act="logout">로그아웃</button>'
@@ -1032,6 +1033,7 @@
     else if (state.screen === 'quiz') html = viewQuiz();
     else if (state.screen === 'stats') html = viewStats();
     else if (state.screen === 'hsk') html = viewHsk();
+    else if (state.screen === 'feedback') html = viewFeedback();
     else if (state.screen === 'hskstudy') html = viewHskStudy();
     else if (state.screen === 'done') html = viewDone();
     $app.innerHTML = html + modalHtml();
@@ -1145,6 +1147,59 @@
       '<div class="section-title" style="margin-top:24px">약점 분석</div>' + tagHtml + worstHtml + lessonHtml +
       '<div style="height:24px"></div></div></div>';
   }
+
+  /* ---------- 의견 보내기 (Supabase feedback — 관리자는 대시보드에서만 확인) ---------- */
+  var FB_CATS = [['idea', '아이디어'], ['bug', '불편·오류'], ['praise', '칭찬'], ['etc', '기타']];
+  var FB_MAX = 1000, fbLast = 0;
+  function viewFeedback() {
+    var f = state.fb || (state.fb = { cat: 'idea', text: '', sending: false, sent: false });
+    var top = '<div class="topbar"><button class="icon-btn" data-act="back" aria-label="뒤로">' + I.back + '</button></div>';
+    if (f.sent) {
+      return '<div class="screen">' + top + '<div class="scroll" style="padding-top:4px">' +
+        emptyState('empty', { title: '의견 고마워요!', desc: '보내 주신 이야기를 꼼꼼히 읽고\\n앱에 반영해 볼게요.', badge: null, cta: { act: 'fb-done', label: '확인' } }) +
+        '</div></div>';
+    }
+    var can = !!sb && !f.sending && f.text.trim().length >= 5;
+    return '<div class="screen">' + top + '<div class="scroll" style="padding-top:4px">' +
+      '<h1 class="big-title" style="margin-top:0">의견 보내기</h1>' +
+      '<p class="sub-title">불편한 점이나 바라는 점을 편하게 남겨 주세요.</p>' +
+      (sb ? '' : '<div class="notice" style="margin-bottom:12px">미리보기 모드에서는 의견을 보낼 수 없어요. Google 로그인 후 이용해 주세요.</div>') +
+      seg('fb-cat', f.cat, FB_CATS) +
+      '<textarea id="fb-text" class="fb-text" maxlength="' + FB_MAX + '" placeholder="예: 이런 레슨이 있으면 좋겠어요 / 이 화면에서 이런 점이 불편했어요" aria-label="의견 내용">' + esc(f.text) + '</textarea>' +
+      '<div class="fb-meta"><span id="fb-count">' + f.text.length + '/' + FB_MAX + '</span><span>앱 버전 ' + APP_VERSION + '이 함께 전달돼요</span></div>' +
+      '<button id="fb-send" class="btn" data-act="fb-send"' + (can ? '' : ' disabled') + '>' + (f.sending ? '보내는 중…' : '보내기') + '</button>' +
+      '<p style="margin:10px 4px 0;font-size:13px;color:var(--ink-3)">계정 이메일과 닉네임이 함께 저장되며, 운영자만 볼 수 있어요.</p>' +
+      '<div style="height:24px"></div></div></div>';
+  }
+  async function sendFeedback() {
+    var f = state.fb;
+    if (!f || f.sending || !sb || !state.user) return;
+    var msg = f.text.trim();
+    if (msg.length < 5) { toast('조금만 더 자세히 적어 주세요'); return; }
+    if (Date.now() - fbLast < 20000) { toast('잠시 후 다시 보내 주세요'); return; }
+    f.sending = true; render();
+    try {
+      var res = await sb.from('feedback').insert({
+        category: f.cat, message: msg.slice(0, FB_MAX), nickname: nickname() || null,
+        email: state.user.email || null, version: APP_VERSION
+      });
+      if (res && res.error) throw res.error;
+      fbLast = Date.now(); f.sending = false; f.sent = true; f.text = '';
+      render();
+    } catch (err) {
+      f.sending = false; render();
+      toast('보내지 못했어요. 네트워크를 확인하고 다시 시도해 주세요');
+      reportError('feedback: ' + (err && err.message), err && err.stack);
+    }
+  }
+  document.addEventListener('input', function (e) {
+    var t = e.target;
+    if (!t || t.id !== 'fb-text' || !state.fb) return;
+    state.fb.text = String(t.value || '');
+    var c = document.getElementById('fb-count'), b = document.getElementById('fb-send');
+    if (c) c.textContent = state.fb.text.length + '/' + FB_MAX;
+    if (b) b.disabled = !(sb && !state.fb.sending && state.fb.text.trim().length >= 5);
+  });
 
   /* ---------- HSK 1~4급 단어 ---------- */
   var HSKW = window.HSK || {};
@@ -1567,7 +1622,7 @@
       // 손가락이 눌려 있는 동안 화면을 다시 그리면 버튼이 바뀌어 끊기므로, 필요한 부분만 바꿔요
       var m = document.getElementById('mic'), lv = document.getElementById('live');
       if (m) m.classList.add('on');
-      if (lv) { lv.textContent = '듣고 있어요…'; lv.classList.remove('hint'); }
+      if (lv) { lv.textContent = '듣고 있어요…'; lv.classList.remove('hint'); lv.classList.add('wait'); }
       if (!holding) { try { r.stop(); } catch (e) { /* noop */ } }
     };
     r.onresult = function (e) {
@@ -1575,7 +1630,7 @@
       lastInterim = res[0].transcript;
       s.live = lastInterim;
       var el = document.getElementById('live');
-      if (el) { el.textContent = lastInterim; el.classList.remove('hint'); }
+      if (el) { el.textContent = lastInterim; el.classList.remove('hint'); el.classList.remove('wait'); }
       if (res.isFinal) {
         finals = [];
         for (var i = 0; i < res.length; i++) finals.push(res[i].transcript);
@@ -1815,6 +1870,10 @@
       case 'review-weak': startWeak(); break;
       case 'dialog-start': startDialog(id); break;
       case 'open-stats': go('stats'); break;
+      case 'open-feedback': go('feedback', { fb: { cat: 'idea', text: '', sending: false, sent: false } }); break;
+      case 'fb-cat': if (state.fb) { state.fb.cat = el.getAttribute('data-v'); render(); } break;
+      case 'fb-send': sendFeedback(); break;
+      case 'fb-done': go('tab'); break;
       case 'focus-tag': startFocus(id); break;
       case 'review-lesson': startLessonSession('review', id); break;
 
