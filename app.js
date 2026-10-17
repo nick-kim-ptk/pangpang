@@ -536,12 +536,11 @@
       return '<div class="mic-area">' +
         '<div class="type-row"><input id="typed" class="zh" lang="zh-CN" inputmode="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="중국어로 입력" aria-label="중국어로 답 입력">' +
         '<button class="btn" data-act="submit-typed">확인</button></div>' +
-        '<button class="link-btn" data-act="voice-mode">음성으로 답하기</button></div>';
+        (window.SpeechRecognition || window.webkitSpeechRecognition ? '<button class="link-btn" data-act="voice-mode">음성으로 답하기</button>' : '') + '</div>';
     }
     return '<div class="mic-area">' +
       '<div id="live" class="live' + (s.listening && s.live ? '' : ' hint') + '">' + esc(s.listening ? (s.live || '듣고 있어요…') : hint) + '</div>' +
-      '<button id="mic" class="mic' + (s.listening ? ' on' : '') + '" data-act="mic" aria-label="' + (s.listening ? '듣는 중. 누르면 멈춰요' : '눌러서 말하기') + '">' + I.mic + '</button>' +
-      '<button class="link-btn" data-act="type-mode">키보드로 입력할래요</button></div>';
+      '<button id="mic" class="mic' + (s.listening ? ' on' : '') + '" data-act="mic" aria-label="' + (s.listening ? '듣는 중. 누르면 멈춰요' : '눌러서 말하기') + '">' + I.mic + '</button></div>';
   }
 
   function resultSheet(q) {
@@ -782,9 +781,9 @@
       var list = finals.length ? finals : (lastInterim ? [lastInterim] : []);
       if (list.length) { submit(list); return; }
       if (errCode === 'not-allowed' || errCode === 'service-not-allowed') {
-        s.msg = '마이크 권한을 허용해 주세요. 허용이 어렵다면 키보드로 입력할 수 있어요';
+        s.msg = '마이크 권한을 허용해 주세요. 브라우저·폰 설정에서 마이크를 켜면 돼요';
       } else if (errCode === 'audio-capture') {
-        s.msg = '마이크를 찾지 못했어요. 키보드로 입력할 수 있어요';
+        s.msg = '마이크를 찾지 못했어요. 마이크 연결을 확인해 주세요';
       } else if (errCode === 'network') {
         s.msg = '음성 인식 서버에 연결하지 못했어요. 잠시 뒤 다시 해 보세요';
       } else if (errCode === 'aborted') {
@@ -1016,6 +1015,12 @@
 
   document.addEventListener('change', function (e) {
     if (e.target && e.target.classList && e.target.classList.contains('time-in') && /^\d\d:\d\d$/.test(e.target.value)) updateReminderTime(e.target.value);
+  });
+
+  // 화면 안에서 이미지·글자를 끌거나 길게 눌러 고르는 동작을 막아요
+  document.addEventListener('dragstart', function (e) { e.preventDefault(); });
+  document.addEventListener('contextmenu', function (e) {
+    if (!(e.target && e.target.closest && e.target.closest('input, textarea'))) e.preventDefault();
   });
 
   window.addEventListener('pagehide', function () { stopRec(); stopSpeak(); });

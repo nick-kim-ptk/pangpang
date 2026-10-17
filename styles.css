@@ -538,3 +538,16 @@ button { font: inherit; color: inherit; letter-spacing: inherit; cursor: pointer
 .btn.danger { background: var(--red); color: #fff; }
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .dialog, .scrim.modal { animation: none; } }
+
+/* ---------- 드래그·선택 막기 / 로그인 화면 겹침 ---------- */
+html, body { overscroll-behavior: none; }
+body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+input, textarea { -webkit-user-select: text; user-select: text; }
+img, svg { -webkit-user-drag: none; user-drag: none; }
+.mascot { -webkit-user-drag: none; pointer-events: none; }
+.login .hero { padding-top: 6dvh; }
+.login .stage { width: min(264px, 70vw); height: min(250px, 30dvh); margin: 0 auto 18px; }
+.login .stage .mascot { width: auto; height: 100%; max-width: 100%; object-fit: contain; }
+.login .brand { position: relative; margin-top: 0; }
+.done-screen .stage { width: min(280px, 72vw); height: min(250px, 31dvh); margin: 0 auto 14px; }
+.done-screen .stage .mascot { width: auto; height: 100%; max-width: 100%; object-fit: contain; }
