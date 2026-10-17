@@ -32,7 +32,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v27';
+  var APP_VERSION = 'v33';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -42,6 +42,15 @@
   var PRACTICE_SIZE = 50; // 레슨 연습 한 번에 푸는 문제 수 (레슨의 문장을 섞어 반복)
 
   var GOALS = [20, 50, 100];
+  // HSK 단어별 '알아요' 표시: 급마다 0/1 문자열 (예: '0110…')
+  function normHsk(h) {
+    var out = {};
+    [1, 2, 3, 4].forEach(function (lv) {
+      var s = h && typeof h[lv] === 'string' ? h[lv] : '';
+      out[lv] = /^[01]*$/.test(s) ? s.slice(0, 1100) : '';
+    });
+    return out;
+  }
   function normProfile(p) {
     p = p || {};
     var g = parseInt(p.goal, 10);
@@ -52,6 +61,7 @@
       remind: /^\d\d:\d\d$/.test(p.remind || '') ? p.remind : '20:00',
       remindOn: !!p.remindOn,
       sound: p.sound !== false,
+      hsk3: normHsk(p.hsk3),
       dlg: (Array.isArray(p.dlg) ? p.dlg : []).filter(function (x) { return typeof x === 'string'; }).slice(0, 50),
       favs: (Array.isArray(p.favs) ? p.favs : []).filter(function (x) { return typeof x === 'string'; }).slice(0, 100)
     };
@@ -194,7 +204,7 @@
     state.progress = {}; state.done = {}; state.daily = {};
     if (!keepProfile) {
       var meta = (state.user && state.user.user_metadata) || {};
-      state.profile = normProfile({ nickname: meta.nickname, goal: meta.goal, theme: meta.theme, remind: meta.remind, remindOn: meta.remindOn, sound: meta.sound, favs: meta.favs, dlg: meta.dlg });
+      state.profile = normProfile({ nickname: meta.nickname, goal: meta.goal, theme: meta.theme, remind: meta.remind, remindOn: meta.remindOn, sound: meta.sound, favs: meta.favs, dlg: meta.dlg, hsk3: meta.hsk3 });
       applyTheme();
     }
     (res[0].data || []).forEach(function (r) { state.progress[r.qid] = r; });
@@ -263,7 +273,7 @@
       persistLocal();
       if (!sb) return;
       var p = state.profile;
-      var res = await sb.auth.updateUser({ data: { nickname: p.nickname, goal: p.goal, theme: p.theme, remind: p.remind, remindOn: p.remindOn, sound: p.sound, favs: p.favs, dlg: p.dlg } });
+      var res = await sb.auth.updateUser({ data: { nickname: p.nickname, goal: p.goal, theme: p.theme, remind: p.remind, remindOn: p.remindOn, sound: p.sound, favs: p.favs, dlg: p.dlg, hsk3: p.hsk3 } });
       if (res.error) saveFailed(res.error); else if (res.data && res.data.user) state.user = res.data.user;
     }),
     saveDaily: tracked(async function (row) {
@@ -343,7 +353,7 @@
 
   /* ---------- 화면 이동 ---------- */
   // 뒤로 가기: 폰의 뒤로 제스처·버튼(기록)과 화면 왼쪽 가장자리에서 오른쪽으로 미는 동작을 같이 처리해요
-  var SUBSCREEN = { intro: 1, practice: 1, quiz: 1, stats: 1, done: 1 };
+  var SUBSCREEN = { intro: 1, practice: 1, quiz: 1, stats: 1, done: 1, hsk: 1, hskstudy: 1 };
   var inSub = false, ignorePop = 0, backAnim = false;
   function syncHistory(screen) {
     try {
@@ -360,14 +370,16 @@
     if (state.modal) { closeModal(); return; }
     var sc = state.screen;
     if (sc === 'practice') quitPractice();
-    else if (sc === 'quiz') { stopSpeak(); go('tab'); }
+    else if (sc === 'quiz') { stopSpeak(); go(state.z && state.z.hsk ? 'hsk' : 'tab'); }
+    else if (sc === 'hskstudy') { stopSpeak(); clearTimeout(hskTimer); store.saveProfile(); go('hsk'); }
+    else if (sc === 'hsk') go('tab');
     else if (sc === 'done') go('tab', { tab: 'home' });
     else if (sc === 'intro' || sc === 'stats') go('tab');
   }
   window.addEventListener('popstate', function () {
     if (ignorePop > 0) { ignorePop--; return; }
     if (!inSub) return;
-    if (state.modal || state.screen === 'practice' || state.screen === 'quiz') {
+    if (state.modal || state.screen === 'practice' || state.screen === 'quiz' || state.screen === 'hskstudy') {
       try { history.pushState({ pp: 1 }, ''); } catch (e) { /* 무시 */ }   // 그 자리에 머물며 확인 창만 보여요
       goBack();
       return;
@@ -410,6 +422,7 @@
     if (extra) Object.keys(extra).forEach(function (k) { state[k] = extra[k]; });
     render();
     window.scrollTo(0, 0);
+    if (screen === 'done') maybeCelebrate(); else if (celEl) closeCelebration(true);
   }
 
   /* ---------- 캐릭터 ---------- */
@@ -453,7 +466,9 @@
         '<p>천천히, 그래도 매일.<br>말하면서 익히는 중국어예요.</p>' +
       '</div>' +
       '<div class="actions">' +
-        (local
+        (!local && navigator.onLine === false
+          ? emptyState('offline', { small: true, cta: { act: 'pp-retry', label: '다시 시도' } })
+          : local
           ? '<div class="notice">Supabase 설정 전이라 미리보기 모드예요. 학습 기록은 이 기기에만 저장돼요.</div>' +
             '<button class="btn" data-act="start-local">미리보기로 시작하기</button>'
           : '<button class="btn g-btn" data-act="google">' + I.google + 'Google로 시작하기</button>') +
@@ -496,7 +511,7 @@
         '<h2>오늘 분량 끝!</h2><p class="explain">다음 레슨은 “' + esc(next.title) + '”이에요. 더 하고 싶다면 미리 배워 봐도 좋아요.</p>' +
         '<button class="btn soft" data-act="open-lesson" data-id="' + next.id + '">한 과 더 배우기</button></div>';
     } else {
-      todayCard = '<div class="today hero">' + mascot('book', 'hero-m') + '<span class="chip y">오늘의 중국어</span>' +
+      todayCard = '<div class="today hero">' + mascot('snail-reading', 'hero-m reading') + '<span class="chip y">오늘의 중국어</span>' +
         '<h2>' + esc(next.title) + '</h2><p class="explain">' + esc(firstSentence(next.intro)) + '</p>' +
         '<button class="btn" data-act="open-lesson" data-id="' + next.id + '">학습하기</button></div>';
     }
@@ -583,7 +598,7 @@
       listenCard() +
       dialogSection() +
       '<div class="section-title">레슨별로 복습하기</div>' +
-      (learned.length ? '<ul class="list">' + rows + '</ul>' : '<div class="empty">' + mascot('sleep') + '첫 레슨을 끝내면 여기서 복습할 수 있어요</div>') +
+      (learned.length ? '<ul class="list">' + rows + '</ul>' : emptyState('empty', { title: '아직 복습할 게 없어요', desc: '첫 레슨을 끝내면\n여기서 복습할 수 있어요', cta: { act: 'tab', id: 'lessons', label: '레슨 보러 가기' } })) +
       '</div>' + navHtml() + '</div>';
   }
 
@@ -613,8 +628,9 @@
         '<div class="stat"><b>' + streak() + '일</b><span>연속 학습</span></div>' +
       '</div>' +
       (wordCount >= 4 ? '<button class="btn quiz-btn" data-act="quiz-word">단어 퀴즈 풀기</button>' : '') +
+      hskSection() +
       phraseSections() +
-      (learned.length ? body : '<div class="empty">' + mascot('sleep') + '첫 레슨을 끝내면 단어가 여기에 쌓여요</div>') +
+      (learned.length ? body : emptyState('empty', { title: '아직 쌓인 단어가 없어요', desc: '첫 레슨을 끝내면\n단어가 여기에 쌓여요', cta: { act: 'tab', id: 'lessons', label: '레슨 보러 가기' } })) +
       '</div>' + navHtml() + '</div>';
   }
 
@@ -753,6 +769,105 @@
     }
     return '<div class="confetti" aria-hidden="true">' + h + '</div>';
   }
+  /* ---------- 축하 모먼트 · 빈 화면 (팽팽 UI) ---------- */
+  function ppImg(n) { return (window.MASCOT && window.MASCOT['pp-' + n]) || 'img/pp-' + n + '.webp'; }
+  var EMPTY_PRESETS = {
+    empty:   { title: '아직 아무것도 없어요', desc: '달팽이가 기다리다 잠들었어요.\n첫 기록을 남겨서 깨워볼까요?', badge: null },
+    search:  { title: '찾는 결과가 없어요', desc: '다른 방법으로 천천히 다시 찾아볼까요?', badge: { text: '0건', dot: '#9aa3c0' } },
+    offline: { title: '인터넷이 끊겼어요', desc: '연결되면 바로 이어서 갈게요.\n잠깐 쉬어가도 괜찮아요.', badge: { text: '오프라인', dot: '#ff8f8f' } },
+    error:   { title: '잠깐 길을 잃었어요', desc: '일시적인 문제가 생겼어요.\n잠시 후 다시 시도해 주세요.', badge: { text: '오류', dot: '#f4b23e' } }
+  };
+  // 빈 화면: 졸고 있는 달팽이를 누르면 깨어나요. o = {title, desc, badge, cta:{act,id,v,label}, small}
+  function emptyState(variant, o) {
+    o = o || {};
+    var p = EMPTY_PRESETS[variant] || EMPTY_PRESETS.empty, b = o.badge !== undefined ? o.badge : p.badge;
+    var desc = String(o.desc || p.desc).split('\n').map(esc).join('<br>');
+    var c = o.cta;
+    return '<div class="pp-empty' + (o.small ? ' sm' : '') + '"><div class="pp-empty__art">' +
+      '<div class="pp-empty__halo"></div><div class="pp-empty__floor"></div>' +
+      '<div class="pp-empty__snail"><img data-act="pp-wake" src="' + ppImg('calm') + '" alt="" draggable="false"></div>' +
+      '<span class="pp-z" style="left:150px;top:46px;font-size:18px;--d:0s">z</span><span class="pp-z" style="left:162px;top:30px;font-size:24px;--d:1.2s">Z</span><span class="pp-z" style="left:140px;top:40px;font-size:14px;--d:2.4s">z</span>' +
+      (b ? '<div class="pp-empty__badge" style="--dot:' + b.dot + '"><i></i>' + esc(b.text) + '</div>' : '') +
+      '</div><div class="pp-empty__swap"><div class="pp-empty__title">' + esc(o.title || p.title) + '</div><div class="pp-empty__desc">' + desc + '</div>' +
+      (c ? '<div class="pp-empty__actions"><button class="btn sm" data-act="' + c.act + '"' + (c.id != null ? ' data-id="' + c.id + '"' : '') + (c.v ? ' data-v="' + c.v + '"' : '') + '>' + esc(c.label) + '</button></div>' : '') +
+      '</div></div>';
+  }
+  function ppWake(img) {
+    var host = img.closest ? img.closest('.pp-empty') : null;
+    if (!host) return;
+    buzz(8);
+    img.src = ppImg('wink');
+    host.classList.add('is-awake');
+    var fx = document.createElement('span');
+    fx.className = 'pp-sfx pp-tapfx'; fx.textContent = '팽!';
+    fx.style.cssText = 'left:60px;top:40px;font-size:26px;--rot:-12deg';
+    var art = host.querySelector('.pp-empty__art'); if (art) art.appendChild(fx);
+    setTimeout(function () { if (fx.parentNode) fx.parentNode.removeChild(fx); }, 900);
+    clearTimeout(host._pt);
+    host._pt = setTimeout(function () { host.classList.remove('is-awake'); img.src = ppImg('calm'); }, 2600);
+  }
+
+  var celEl = null;
+  function closeCelebration(now) {
+    var el = celEl; celEl = null;
+    if (!el) return;
+    if (now || !el.classList) { if (el.parentNode) el.parentNode.removeChild(el); return; }
+    el.classList.add('is-leaving');
+    setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 280);
+  }
+  // o = {kind:'complete'|'streak', title, sub, chip(html)}
+  function showCelebration(o) {
+    try {
+      closeCelebration(true);
+      var rays = '', conf = '', cols = ['#FFD45E', '#FF8FA3', '#7FD8C6', '#FFFFFF', '#B9A4FF', '#FFB24A'], i;
+      for (i = 0; i < 12; i++) rays += '<div class="pp-cel__ray" style="--a:' + (i * 30 + 15) + 'deg"></div>';
+      for (i = 0; i < 24; i++) {
+        var ang = (i / 24) * Math.PI * 2 + (i % 3) * 0.21, dist = 110 + (i * 37) % 100;
+        conf += '<div class="pp-cel__conf" style="--dx:' + Math.round(Math.cos(ang) * dist) + 'px;--dy:' + Math.round(Math.sin(ang) * dist + 40) + 'px;--s:' + (6 + (i * 5) % 7) + 'px;--r:' + (i % 3 === 0 ? '50%' : '2px') + ';--c:' + cols[i % 6] + ';--rot:' + (((i * 83) % 540) - 270) + 'deg"></div>';
+      }
+      var sfx = o.kind === 'streak' ? '팽팽!' : '팽!';
+      var el = document.createElement('div');
+      el.className = 'pp-cel'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', o.title);
+      el.innerHTML = '<div class="pp-cel__dim"></div><div class="pp-cel__content">' +
+        '<div class="pp-cel__stage" aria-hidden="true"><div class="pp-cel__glow"></div><div class="pp-cel__burst"></div>' +
+        '<div class="pp-cel__ring" style="--d:.44s;--sz:260px"></div><div class="pp-cel__ring" style="--d:.54s;--sz:400px"></div><div class="pp-cel__ring" style="--d:.66s;--sz:560px"></div>' +
+        rays + conf + '<div class="pp-cel__ball"></div>' +
+        '<div class="pp-cel__snail"><div class="pp-cel__snail-pop"><div class="pp-cel__snail-bob"><img src="' + ppImg('cheer') + '" alt="" draggable="false"></div></div></div>' +
+        '<div class="pp-sfx pp-cel__sfx" style="left:-150px;top:-150px;font-size:40px;--rot:-14deg;--d:.6s">' + sfx + '</div>' +
+        '<div class="pp-sfx pp-cel__sfx" style="left:96px;top:-96px;font-size:30px;--rot:12deg;--d:.72s">' + sfx + '</div></div>' +
+        '<div class="pp-cel__text"><div class="pp-cel__title">' + esc(o.title) + '</div><div class="pp-cel__sub">' + esc(o.sub) + '</div>' +
+        '<div class="pp-cel__chip">' + o.chip + '</div></div>' +
+        '<div class="pp-cel__actions"><button class="btn" type="button" data-pp="close">계속하기</button></div></div>';
+      el.addEventListener('click', function (e) {
+        var t = e.target;
+        if (t.getAttribute && t.getAttribute('data-pp') === 'close') { closeCelebration(); return; }
+        if (t.tagName === 'IMG') {
+          buzz(8);
+          t.classList.remove('is-boing'); void t.offsetWidth; t.classList.add('is-boing');
+          var fx = document.createElement('div'), r = el.getBoundingClientRect();
+          fx.className = 'pp-sfx pp-tapfx'; fx.textContent = sfx;
+          fx.style.cssText = 'left:' + Math.round(e.clientX - r.left + (Math.random() * 60 - 30)) + 'px;top:' + Math.round(e.clientY - r.top - 40) + 'px;--rot:' + Math.round(Math.random() * 30 - 15) + 'deg';
+          el.appendChild(fx);
+          setTimeout(function () { if (fx.parentNode) fx.parentNode.removeChild(fx); }, 900);
+          return;
+        }
+        if (t.className && String(t.className).indexOf('pp-cel__dim') >= 0) closeCelebration();
+      });
+      document.body.appendChild(el);
+      celEl = el;
+      buzz([12, 40, 18]);
+    } catch (e) { celEl = null; if (window.console) console.error(e); }
+  }
+  document.addEventListener('keydown', function (e) { if (celEl && e.key === 'Escape') closeCelebration(); });
+  function netChanged() { if (state.screen === 'login') render(); }
+  window.addEventListener('online', netChanged); window.addEventListener('offline', netChanged);
+  function maybeCelebrate() {
+    var r = state.result;
+    if (state.screen !== 'done' || !r) { if (celEl) closeCelebration(true); return; }
+    if (r.milestone) showCelebration({ kind: 'streak', title: r.milestone + '일 연속 달성!', sub: '한 걸음씩 꾸준히, 정말 멋져요', chip: '<b>' + r.milestone + '일</b> 연속 기록 중' });
+    else if (r.goalHit) showCelebration({ kind: 'complete', title: '오늘 목표 달성!', sub: '천천히, 그래도 끝까지 왔어요', chip: '오늘 푼 문제 <b>' + r.goal + '</b>개' });
+  }
+
   function viewDone() {
     var r = state.result;
     var st = streak();
@@ -916,6 +1031,8 @@
     else if (state.screen === 'practice') html = viewPractice();
     else if (state.screen === 'quiz') html = viewQuiz();
     else if (state.screen === 'stats') html = viewStats();
+    else if (state.screen === 'hsk') html = viewHsk();
+    else if (state.screen === 'hskstudy') html = viewHskStudy();
     else if (state.screen === 'done') html = viewDone();
     $app.innerHTML = html + modalHtml();
     if (backAnim) {
@@ -994,7 +1111,7 @@
     var goalPos = max ? Math.round(goal / max * 100) : 0;
     var tagHtml;
     if (ins.total < 10 || !ins.tags.length) {
-      tagHtml = '<div class="empty" style="padding:18px 0">' + mascot('ask') + (ins.total < 10 ? '조금 더 연습하면 약한 유형을 알려 드려요' : '아직 눈에 띄게 약한 유형이 없어요. 잘하고 있어요!') + '</div>';
+      tagHtml = emptyState('empty', { small: true, title: ins.total < 10 ? '조금 더 연습해 볼까요?' : '약한 유형이 없어요', desc: ins.total < 10 ? '문제를 10개 이상 풀면\n약한 유형을 알려 드려요' : '아직 눈에 띄게 약한 유형이 없어요.\n잘하고 있어요!' });
     } else {
       tagHtml = '<div class="ins">' + ins.tags.map(function (t) {
         var pct = Math.round(t.rate * 100);
@@ -1027,6 +1144,123 @@
       '<div class="chart"><div class="goalline" style="bottom:calc(' + goalPos + '% * 0.62 + 40px)"><span>목표 ' + goal + '</span></div><div class="bars">' + bars + '</div></div>' +
       '<div class="section-title" style="margin-top:24px">약점 분석</div>' + tagHtml + worstHtml + lessonHtml +
       '<div style="height:24px"></div></div></div>';
+  }
+
+  /* ---------- HSK 1~4급 단어 ---------- */
+  var HSKW = window.HSK || {};
+  var HSK_STUDY = 20;
+  var HSK_NOTE = '신(新) HSK 3.0 기준 단어 (26년 12월 13일부로 전면 개편)';
+  function hskList(lv) { return HSKW[lv] || []; }
+  function hskKnown(lv, i) { return (state.profile.hsk3[lv] || '').charAt(i) === '1'; }
+  function hskCount(lv) {
+    var s = state.profile.hsk3[lv] || '', n = 0;
+    for (var i = 0; i < s.length; i++) if (s.charAt(i) === '1') n++;
+    return n;
+  }
+  var hskTimer = null;
+  function setHskKnown(lv, i, on) {
+    var s = state.profile.hsk3[lv] || '';
+    while (s.length < hskList(lv).length) s += '0';
+    state.profile.hsk3[lv] = s.slice(0, i) + (on ? '1' : '0') + s.slice(i + 1);
+    clearTimeout(hskTimer);
+    hskTimer = setTimeout(function () { store.saveProfile(); }, 900);   // 연달아 누를 땐 한 번만 저장
+  }
+  function bumpAnswer() {
+    var day = dayStr(new Date());
+    var d0 = state.daily[day] || { day: day, lessons: 0, answers: 0 };
+    var d = { day: day, lessons: d0.lessons, answers: d0.answers + 1 };
+    state.daily[day] = d; store.saveDaily(d);
+  }
+  function hskSection() {
+    if (!Object.keys(HSKW).length) return '';
+    return '<div class="section-title" style="margin-top:24px">HSK 단어</div><p class="hsk-note under-title">' + HSK_NOTE + '</p><ul class="list">' + [1, 2, 3, 4].map(function (lv) {
+      var n = hskList(lv).length, k = hskCount(lv), pct = n ? Math.round(k / n * 100) : 0;
+      return '<li><button class="item" data-act="hsk-open" data-id="' + lv + '"><span class="num">' + lv + '</span><span class="txt"><div class="t">HSK ' + lv + '급</div>' +
+        '<div class="s">단어 ' + n + '개 · 익힌 ' + k + '개</div><div class="meter g" style="margin-top:6px"><i style="width:' + pct + '%"></i></div></span></button></li>';
+    }).join('') + '</ul>';
+  }
+  function hskRow(lv, w, i) {
+    var on = hskKnown(lv, i);
+    return '<div class="wrow' + (on ? ' on' : '') + '" data-i="' + i + '"><button class="wmain" data-act="say" data-text="' + esc(w[0]) + '">' +
+      '<span class="zh w-zh">' + esc(w[0]) + '</span><span class="py">' + esc(w[1]) + '</span> <span class="kr">' + esc(kr(w[1])) + '</span><div class="ko">' + esc(w[2]) + '</div></button>' +
+      '<button class="chk' + (on ? ' on' : '') + '" data-act="hsk-toggle" data-id="' + i + '" aria-pressed="' + (on ? 'true' : 'false') + '" aria-label="알아요 표시">' + I.check + '</button></div>';
+  }
+  function viewHsk() {
+    var h = state.hsk, lv = h.lv, list = hskList(lv), k = hskCount(lv);
+    var rows = list.map(function (w, i) { return !h.unknownOnly || !hskKnown(lv, i) ? hskRow(lv, w, i) : ''; }).join('');
+    return '<div class="screen"><div class="topbar"><button class="icon-btn" data-act="back" aria-label="뒤로">' + I.back + '</button></div>' +
+      '<div class="scroll" style="padding-top:4px">' +
+      '<h1 class="big-title" style="margin-top:0">HSK ' + lv + '급 단어</h1>' +
+      '<p class="sub-title" id="hsk-prog">' + list.length + '개 중 ' + k + '개 익혔어요</p>' +
+      '<div class="hsk-btns"><button class="btn" data-act="hsk-study" data-id="' + lv + '">카드 학습</button>' +
+      '<button class="btn gray" data-act="hsk-quiz" data-id="' + lv + '">퀴즈</button></div>' +
+      '<div class="seg-row"><button class="seg-b' + (!h.unknownOnly ? ' on' : '') + '" data-act="hsk-filter" data-v="all">전체</button>' +
+      '<button class="seg-b' + (h.unknownOnly ? ' on' : '') + '" data-act="hsk-filter" data-v="unknown">모르는 단어만</button></div>' +
+      '<div class="words">' + (rows || emptyState('search', { title: '모르는 단어가 없어요', desc: '전부 익혔어요. 대단해요!', badge: { text: '0개', dot: '#0e9f63' }, cta: { act: 'hsk-filter', v: 'all', label: '전체 보기' } })) + '</div>' +
+      '<div style="height:24px"></div></div></div>';
+  }
+  function startHskStudy(lv) {
+    var list = hskList(lv);
+    if (!list.length) return;
+    var idx = list.map(function (w, i) { return i; });
+    var unk = idx.filter(function (i) { return !hskKnown(lv, i); });
+    var pool = unk.length ? unk : idx;
+    state.hc = { lv: lv, queue: shuffle(pool).slice(0, HSK_STUDY), i: 0, flip: false, known: 0, before: todayAnswers() };
+    go('hskstudy');
+    speakCard();
+  }
+  function speakCard() {
+    var c = state.hc;
+    setTimeout(function () { if (state.screen === 'hskstudy' && state.hc === c) speak(hskList(c.lv)[c.queue[c.i]][0]); }, 300);
+  }
+  function viewHskStudy() {
+    var c = state.hc, w = hskList(c.lv)[c.queue[c.i]], pct = Math.round(c.i / c.queue.length * 100);
+    var top = '<div class="topbar"><button class="icon-btn" data-act="back" aria-label="그만하기">' + I.close + '</button>' +
+      '<div class="progress"><i style="width:' + pct + '%"></i></div><span class="chip" style="min-width:48px;justify-content:center">' + c.i + '/' + c.queue.length + '</span></div>';
+    var card = '<button class="fc" data-act="hsk-flip" aria-label="카드 뒤집기"><div class="fc-lv">HSK ' + c.lv + '급</div><div class="fc-zh">' + esc(w[0]) + '</div>' +
+      (c.flip ? '<div class="fc-py">' + esc(w[1]) + '</div><div class="fc-kr">' + esc(kr(w[1])) + '</div><div class="fc-ko">' + esc(w[2]) + '</div>' : '<div class="fc-hint">눌러서 뜻 보기</div>') + '</button>' +
+      '<div class="fc-spk"><button class="round-btn" data-act="say" data-text="' + esc(w[0]) + '" aria-label="듣기">' + I.spk + '</button></div>';
+    var foot = c.flip
+      ? '<div class="footer fc-foot"><button class="btn gray" data-act="hsk-mark" data-v="no">몰라요</button><button class="btn green" data-act="hsk-mark" data-v="yes">알아요</button></div>'
+      : '<div class="footer"><button class="btn" data-act="hsk-flip">뜻 보기</button></div>';
+    return '<div class="screen">' + top + '<div class="qz-wrap">' + card + '</div>' + foot + '</div>';
+  }
+  function hskMark(yes) {
+    var c = state.hc;
+    if (!c.flip) return;
+    var i = c.queue[c.i];
+    setHskKnown(c.lv, i, yes);
+    if (yes) { c.known++; sfx('right', c.known); } else sfx('tap');
+    bumpAnswer();
+    c.i++; c.flip = false;
+    if (c.i >= c.queue.length) { finishHskStudy(); return; }
+    render(); speakCard();
+  }
+  function finishHskStudy() {
+    var c = state.hc, goal = state.profile.goal, now = todayAnswers();
+    var hit = c.before < goal && now >= goal;
+    clearTimeout(hskTimer); store.saveProfile();
+    stopSpeak(); sfx(hit ? 'goal' : 'done');
+    go('done', { result: {
+      kind: 'quiz', title: 'HSK ' + c.lv + '급 카드 학습 끝!',
+      line: c.queue.length + '개 중 ' + c.known + '개를 알아요. 지금까지 ' + hskCount(c.lv) + '/' + hskList(c.lv).length + '개 익혔어요.',
+      answers: now, goal: goal, goalHit: hit, milestone: 0,
+      again: { act: 'hsk-study', id: String(c.lv), label: '다음 카드 학습' }
+    } });
+  }
+  function startHskQuiz(lv) {
+    var list = hskList(lv);
+    var idx = list.map(function (w, i) { return i; });
+    var unk = idx.filter(function (i) { return !hskKnown(lv, i); });
+    var pool = unk.length >= QUIZ_SIZE ? unk : idx;
+    var kos = list.map(function (w) { return w[2]; });
+    var items = shuffle(pool).slice(0, QUIZ_SIZE).map(function (i) {
+      var w = list[i];
+      return { id: null, lessonId: null, zh: w[0], py: w[1], ko: w[2], hi: i, options: quizOptions(w[2], kos) };
+    });
+    state.z = { kind: 'word', hsk: lv, items: items, i: 0, right: 0, combo: 0, picked: null, before: todayAnswers() };
+    go('quiz');
+    speakQuiz();
   }
 
   /* ---------- 퀴즈: 듣기 · 단어 ---------- */
@@ -1076,10 +1310,8 @@
     var ok = it.options[idx].ok;
     if (ok) { z.right++; z.combo++; sfx('right', z.combo); } else { z.combo = 0; sfx('wrong'); }
     // 풀자마자 오늘 푼 문제 수에 더하고, 틀린 듣기 문제는 약한 문제로 보내요
-    var day = dayStr(new Date());
-    var d0 = state.daily[day] || { day: day, lessons: 0, answers: 0 };
-    var d = { day: day, lessons: d0.lessons, answers: d0.answers + 1 };
-    state.daily[day] = d; store.saveDaily(d);
+    bumpAnswer();
+    if (z.hsk && it.hi != null) setHskKnown(z.hsk, it.hi, ok);
     if (!ok && it.id && state.progress[it.id]) {
       var prev = state.progress[it.id];
       var row = { qid: it.id, lesson_id: it.lessonId, box: 1, due_at: dueISO(1), correct: prev.correct, wrong: prev.wrong + 1, updated_at: new Date().toISOString() };
@@ -1098,7 +1330,7 @@
   function finishQuiz() {
     var z = state.z, goal = state.profile.goal, now = todayAnswers();
     var hit = z.before < goal && now >= goal;
-    var label = z.kind === 'listen' ? '듣기 연습' : '단어 퀴즈';
+    var label = z.kind === 'listen' ? '듣기 연습' : (z.hsk ? 'HSK ' + z.hsk + '급 퀴즈' : '단어 퀴즈');
     var perfect = z.right === z.items.length;
     stopSpeak();
     sfx(hit ? 'goal' : 'done');
@@ -1106,7 +1338,7 @@
       kind: 'quiz', title: label + ' 끝!',
       line: z.items.length + '문제 중 ' + z.right + '개 맞혔어요' + (perfect ? '. 전부 정답이에요!' : '.'),
       answers: now, goal: goal, goalHit: hit, milestone: 0,
-      again: { act: z.kind === 'listen' ? 'quiz-listen' : 'quiz-word', label: '한 번 더 풀기' }
+      again: z.hsk ? { act: 'hsk-quiz', id: String(z.hsk), label: '한 번 더 풀기' } : { act: z.kind === 'listen' ? 'quiz-listen' : 'quiz-word', label: '한 번 더 풀기' }
     } });
   }
   function viewQuiz() {
@@ -1548,6 +1780,12 @@
 
     switch (act) {
       case 'splash-tap': splashTap(el); break;
+      case 'pp-wake': ppWake(el); break;
+      case 'pp-retry':
+        ppWake(el.closest('.pp-empty').querySelector('img'));
+        el.disabled = true; el.textContent = '연결 중…';
+        setTimeout(function () { if (navigator.onLine === false) { el.disabled = false; el.textContent = '다시 시도'; toast('아직 연결되지 않았어요'); } else render(); }, 1400);
+        break;
       case 'google': signIn(); break;
       case 'start-local':
         state.user = { id: 'local', email: '' };
@@ -1568,7 +1806,7 @@
         });
         break;
       case 'open-lesson': go('intro', { lessonId: id }); break;
-      case 'back': go('tab'); break;
+      case 'back': goBack(); break;
       case 'home': go('tab', { tab: 'home' }); break;
       case 'say': speak(el.getAttribute('data-text'), 0.8); break;
       case 'practice-lesson': startLessonSession('lesson', id); break;
@@ -1596,11 +1834,26 @@
         if (installEvt) { installEvt.prompt(); installEvt.userChoice.then(function () { installEvt = null; render(); }); }
         break;
       case 'remind-toggle': if (pushOn) disableReminder(); else enableReminder(); break;
+      case 'hsk-open': state.hsk = { lv: parseInt(id, 10), unknownOnly: false }; go('hsk'); break;
+      case 'hsk-study': startHskStudy(parseInt(id, 10)); break;
+      case 'hsk-quiz': startHskQuiz(parseInt(id, 10)); break;
+      case 'hsk-flip': if (state.hc && !state.hc.flip) { state.hc.flip = true; sfx('tap'); render(); } break;
+      case 'hsk-mark': hskMark(el.getAttribute('data-v') === 'yes'); break;
+      case 'hsk-filter': state.hsk.unknownOnly = el.getAttribute('data-v') === 'unknown'; render(); break;
+      case 'hsk-toggle':
+        var hi = parseInt(id, 10), hv = state.hsk.lv, nowOn = !hskKnown(hv, hi);
+        setHskKnown(hv, hi, nowOn); sfx(nowOn ? 'pop' : 'tap');
+        if (state.hsk.unknownOnly) { render(); break; }
+        var rowEl = el.closest ? el.closest('.wrow') : null;
+        if (rowEl && rowEl.classList) { rowEl.classList.toggle('on', nowOn); el.classList.toggle('on', nowOn); el.setAttribute('aria-pressed', nowOn ? 'true' : 'false'); }
+        var pg = document.getElementById('hsk-prog');
+        if (pg) pg.textContent = hskList(hv).length + '개 중 ' + hskCount(hv) + '개 익혔어요';
+        break;
       case 'quiz-listen': startQuiz('listen'); break;
       case 'quiz-word': startQuiz('word'); break;
       case 'quiz-pick': quizPick(parseInt(id, 10)); break;
       case 'quiz-next': quizNext(); break;
-      case 'quiz-quit': stopSpeak(); go('tab'); break;
+      case 'quiz-quit': stopSpeak(); go(state.z && state.z.hsk ? 'hsk' : 'tab'); break;
       case 'fav': toggleFav(el.getAttribute('data-text')); break;
       case 'set-sound': setProfile({ sound: el.getAttribute('data-v') === 'on' }); sfx('pop'); break;
       case 'set-goal': setProfile({ goal: parseInt(el.getAttribute('data-v'), 10) }); break;
