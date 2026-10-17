@@ -73,7 +73,8 @@
     s: null,           // 연습 세션
     result: null,      // 완료 화면 정보
     profile: normProfile({}),
-    editNick: false
+    editNick: false,
+    modal: null
   };
 
   /* ---------- 유틸 ---------- */
@@ -652,6 +653,21 @@
   }
 
   /* ---------- 렌더 ---------- */
+  /* ---------- 확인 팝업 (앱 화면과 같은 시트 디자인) ---------- */
+  function askConfirm(opts, onOk) {
+    state.modal = { title: opts.title, body: opts.body, ok: opts.ok || '확인', cancel: opts.cancel || '취소', danger: !!opts.danger, m: opts.m || 'ask', onOk: onOk };
+    render();
+  }
+  function closeModal() { state.modal = null; render(); }
+  function modalHtml() {
+    var m = state.modal;
+    if (!m) return '';
+    return '<div class="scrim modal" data-act="modal-cancel" aria-hidden="true"></div>' +
+      '<div class="dialog" role="alertdialog" aria-modal="true" aria-label="' + esc(m.title) + '">' + mascot(m.m, 'm') +
+      '<h3>' + esc(m.title) + '</h3><p>' + esc(m.body) + '</p>' +
+      '<div class="btns"><button class="btn' + (m.danger ? ' danger' : '') + '" data-act="modal-ok">' + esc(m.ok) + '</button>' +
+      '<button class="btn gray" data-act="modal-cancel">' + esc(m.cancel) + '</button></div></div>';
+  }
   function render() {
     var html = '';
     if (state.screen === 'loading') html = viewLoading();
@@ -660,7 +676,7 @@
     else if (state.screen === 'intro') html = viewIntro();
     else if (state.screen === 'practice') html = viewPractice();
     else if (state.screen === 'done') html = viewDone();
-    $app.innerHTML = html;
+    $app.innerHTML = html + modalHtml();
     if (state.screen === 'tab' && state.tab === 'me' && state.editNick) {
       var ni = document.getElementById('nick');
       if (ni) { ni.focus(); try { ni.setSelectionRange(ni.value.length, ni.value.length); } catch (e) { /* 무시 */ } }
@@ -916,10 +932,10 @@
         sb.auth.signOut().then(function () { state.user = null; state.progress = {}; state.done = {}; state.daily = {}; state.profile = normProfile({}); applyTheme(); go('login'); });
         break;
       case 'reset-local':
-        if (window.confirm('이 기기의 학습 기록을 모두 지울까요?')) {
+        askConfirm({ title: '학습 기록을 모두 지울까요?', body: '이 기기에 저장된 진도와 복습 기록이 사라지고, 되돌릴 수 없어요.', ok: '모두 지우기', cancel: '취소', danger: true, m: 'shy' }, function () {
           state.progress = {}; state.done = {}; state.daily = {}; persistLocal();
           go('tab', { tab: 'home' });
-        }
+        });
         break;
       case 'open-lesson': go('intro', { lessonId: id }); break;
       case 'back': go('tab'); break;
@@ -935,11 +951,17 @@
         var pool0 = s.lessonId ? lessonById(s.lessonId).qs : [];
         var covered = pool0.length > 0 && pool0.every(function (x) { return s.first[x.id] !== undefined; });
         if (covered) {
-          if (window.confirm('여기까지 하고 끝낼까요? 지금까지의 기록은 저장돼요.')) { stopRec(); finishSession(); }
-        } else if (window.confirm('연습을 그만할까요? 지금까지의 진행은 저장되지 않아요.')) {
-          stopRec(); stopSpeak(); go('tab');
+          askConfirm({ title: '여기까지 하고 끝낼까요?', body: '지금까지의 기록은 저장돼요.', ok: '끝내고 저장', cancel: '계속하기', m: 'thumbs' }, function () { stopRec(); finishSession(); });
+        } else {
+          askConfirm({ title: '연습을 그만할까요?', body: '지금까지의 진행은 저장되지 않아요.', ok: '그만하기', cancel: '계속하기', danger: true, m: 'ask' }, function () { stopRec(); stopSpeak(); go('tab'); });
         }
         break;
+      case 'modal-ok':
+        var fn = state.modal && state.modal.onOk;
+        state.modal = null;
+        if (fn) fn(); else render();
+        break;
+      case 'modal-cancel': closeModal(); break;
       case 'install':
         if (installEvt) { installEvt.prompt(); installEvt.userChoice.then(function () { installEvt = null; render(); }); }
         break;
@@ -983,6 +1005,7 @@
   }
 
   document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && state.modal) { closeModal(); return; }
     if (e.key === 'Enter' && e.target && e.target.id === 'nick') { e.preventDefault(); saveNick(); return; }
     if (e.key === 'Enter' && e.target && e.target.id === 'typed') {
       e.preventDefault();

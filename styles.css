@@ -525,3 +525,16 @@ button { font: inherit; color: inherit; letter-spacing: inherit; cursor: pointer
   .sp-snailpop, .sp-snailidle, .sp-sfx, .sp-ch, .sp-sub, .sp-tag, .sp-glow, .sp-spiral, .sp-floor { animation: sp-fade .3s .1s forwards; transform: none; }
   .sp-snailpop { transform: none; }
 }
+
+/* ---------- 확인 팝업 (시트) ---------- */
+.scrim.modal { z-index: 40; align-items: stretch; animation: fade-in .18s ease-out; }
+.dialog { position: fixed; left: 0; right: 0; bottom: 0; margin: 0 auto; width: 100%; max-width: 480px; z-index: 41; background: var(--card);
+  border-radius: 32px 32px 0 0; padding: 28px 22px calc(20px + var(--safe-b)); box-shadow: 0 -8px 32px rgba(26,33,57,.18); animation: up .22s ease-out; }
+.dialog .mascot { position: absolute; right: 18px; top: -62px; width: 112px; pointer-events: none; }
+.dialog h3 { margin: 0 0 6px; font-size: 20px; font-weight: 800; letter-spacing: -0.03em; padding-right: 96px; word-break: keep-all; }
+.dialog p { margin: 0 0 20px; color: var(--ink-3); font-size: 15px; line-height: 1.55; word-break: keep-all; }
+.dialog .btns { display: grid; gap: 8px; }
+.dialog .btn.gray { background: var(--soft); }
+.btn.danger { background: var(--red); color: #fff; }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .dialog, .scrim.modal { animation: none; } }
