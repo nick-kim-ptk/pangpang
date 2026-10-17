@@ -32,6 +32,8 @@
     }, wait);
   }
 
+  var APP_VERSION = 'v27';
+
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
 
@@ -340,8 +342,71 @@
   }
 
   /* ---------- 화면 이동 ---------- */
+  // 뒤로 가기: 폰의 뒤로 제스처·버튼(기록)과 화면 왼쪽 가장자리에서 오른쪽으로 미는 동작을 같이 처리해요
+  var SUBSCREEN = { intro: 1, practice: 1, quiz: 1, stats: 1, done: 1 };
+  var inSub = false, ignorePop = 0, backAnim = false;
+  function syncHistory(screen) {
+    try {
+      if (SUBSCREEN[screen] && !inSub) { history.pushState({ pp: 1 }, ''); inSub = true; }
+      else if (!SUBSCREEN[screen] && inSub) {
+        inSub = false; ignorePop++;
+        history.back();
+        setTimeout(function () { ignorePop = 0; }, 600);
+      }
+    } catch (e) { /* 무시 */ }
+  }
+  function canGoBack() { return !!state.modal || !!SUBSCREEN[state.screen]; }
+  function goBack() {
+    if (state.modal) { closeModal(); return; }
+    var sc = state.screen;
+    if (sc === 'practice') quitPractice();
+    else if (sc === 'quiz') { stopSpeak(); go('tab'); }
+    else if (sc === 'done') go('tab', { tab: 'home' });
+    else if (sc === 'intro' || sc === 'stats') go('tab');
+  }
+  window.addEventListener('popstate', function () {
+    if (ignorePop > 0) { ignorePop--; return; }
+    if (!inSub) return;
+    if (state.modal || state.screen === 'practice' || state.screen === 'quiz') {
+      try { history.pushState({ pp: 1 }, ''); } catch (e) { /* 무시 */ }   // 그 자리에 머물며 확인 창만 보여요
+      goBack();
+      return;
+    }
+    inSub = false;
+    backAnim = true;
+    goBack();
+  });
+  var sw = null;
+  function swReset(el) { if (el) { el.style.transition = ''; el.style.transform = ''; } }
+  document.addEventListener('touchstart', function (e) {
+    var t = e.touches && e.touches[0];
+    if (!t || e.touches.length !== 1 || t.clientX > 32 || !canGoBack() || !document.querySelector) { sw = null; return; }
+    sw = { x: t.clientX, y: t.clientY, dx: 0, drag: false, el: document.querySelector('.screen') };
+  }, { passive: true });
+  document.addEventListener('touchmove', function (e) {
+    if (!sw) return;
+    var t = e.touches[0], dx = t.clientX - sw.x, dy = t.clientY - sw.y;
+    if (!sw.drag) {
+      if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 10) { sw = null; return; }
+      if (dx > 10) sw.drag = true; else return;
+    }
+    sw.dx = Math.max(0, dx);
+    if (sw.el) { sw.el.style.transition = 'none'; sw.el.style.transform = 'translateX(' + sw.dx + 'px)'; }
+  }, { passive: true });
+  function swEnd() {
+    var s = sw; sw = null;
+    if (!s || !s.drag) return;
+    var ok = s.dx > Math.min(110, (window.innerWidth || 360) * 0.3);
+    if (s.el) { s.el.style.transition = 'transform .18s ease'; s.el.style.transform = ok ? 'translateX(100%)' : ''; }
+    if (ok) setTimeout(function () { backAnim = true; goBack(); }, 180);
+    else setTimeout(function () { swReset(s.el); }, 200);
+  }
+  document.addEventListener('touchend', swEnd, { passive: true });
+  document.addEventListener('touchcancel', function () { var s = sw; sw = null; if (s) swReset(s.el); }, { passive: true });
+
   function go(screen, extra) {
     state.screen = screen;
+    syncHistory(screen);
     if (extra) Object.keys(extra).forEach(function (k) { state[k] = extra[k]; });
     render();
     window.scrollTo(0, 0);
@@ -404,6 +469,8 @@
     return '<nav class="nav" aria-label="메뉴">' + b('home', '홈', I.home) + b('lessons', '레슨', I.list) + b('review', '복습', I.review) + b('words', '단어장', I.book) + b('me', '마이', I.user) + '</nav>';
   }
 
+  // 소개글의 첫 문장까지만 (예: "오늘은 … 배워볼 거예요.")
+  function firstSentence(t) { var m = String(t || '').match(/^.*?[.!?](?=\s|$)/); return m ? m[0] : t; }
   function viewHome() {
     var next = nextLesson();
     var due = dueRows().length;
@@ -430,7 +497,7 @@
         '<button class="btn soft" data-act="open-lesson" data-id="' + next.id + '">한 과 더 배우기</button></div>';
     } else {
       todayCard = '<div class="today hero">' + mascot('book', 'hero-m') + '<span class="chip y">오늘의 중국어</span>' +
-        '<h2>' + esc(next.title) + '</h2><p class="explain">' + esc(next.intro) + '</p>' +
+        '<h2>' + esc(next.title) + '</h2><p class="explain">' + esc(firstSentence(next.intro)) + '</p>' +
         '<button class="btn" data-act="open-lesson" data-id="' + next.id + '">학습하기</button></div>';
     }
 
@@ -729,7 +796,8 @@
       '<div class="set-row"><div class="set-t">하루 목표</div>' + seg('set-goal', p.goal, [[20, '20'], [50, '50'], [100, '100']]) + '</div>' +
       '<div class="set-row"><div class="set-t">효과음·진동</div>' + seg('set-sound', p.sound ? 'on' : 'off', [['on', '켜짐'], ['off', '꺼짐']]) + '</div>' +
       '<div class="set-row"><div class="set-t">화면</div>' + seg('set-theme', p.theme, [['auto', '자동'], ['light', '라이트'], ['dark', '다크']]) + '</div>' +
-      (typeof settingsExtra === 'function' ? settingsExtra() : '') + '</div>';
+      (typeof settingsExtra === 'function' ? settingsExtra() : '') +
+      '<div class="set-row"><div class="set-t">앱 버전</div><div class="set-v">' + APP_VERSION + '</div></div></div>';
   }
   function viewMe() {
     var learned = learnedLessons();
@@ -850,6 +918,11 @@
     else if (state.screen === 'stats') html = viewStats();
     else if (state.screen === 'done') html = viewDone();
     $app.innerHTML = html + modalHtml();
+    if (backAnim) {
+      backAnim = false;
+      var scr = $app.querySelector && $app.querySelector('.screen');
+      if (scr) scr.classList.add('slide-in-left');
+    }
     if (state.screen === 'tab' && state.tab === 'me' && state.editNick) {
       var ni = document.getElementById('nick');
       if (ni) { ni.focus(); try { ni.setSelectionRange(ni.value.length, ni.value.length); } catch (e) { /* 무시 */ } }
@@ -1151,6 +1224,19 @@
     go('practice');
     sayCurrentQuestion();
   }
+  function quitPractice() {
+    var s = state.s;
+    var pool0 = s.lessonId ? lessonById(s.lessonId).qs : [];
+    var covered = pool0.length > 0 && pool0.every(function (x) { return s.first[x.id] !== undefined; });
+    if (covered) {
+      askConfirm({ title: '여기까지 하고 끝낼까요?', body: '레슨을 마친 걸로 기록하고, 지금까지의 결과는 저장돼요.', ok: '끝내고 저장', cancel: '계속하기', m: 'thumbs' }, function () { stopRec(); finishSession(); });
+    } else if (s.solved > 0 || Object.keys(s.first).length) {
+      askConfirm({ title: '연습을 그만할까요?', body: s.kind === 'dialog' ? '푼 ' + s.solved + '번까지는 학습 기록에 더해져요.' : '푼 ' + s.solved + '문제까지는 저장돼요. 다음에 이어서 할 수 있어요.', ok: '저장하고 나가기', cancel: '계속하기', m: 'ask' }, function () { savePartial(); stopRec(); stopSpeak(); go('tab'); });
+    } else {
+      stopRec(); stopSpeak(); go('tab');
+    }
+  }
+
   function startDialog(id) {
     var d = (window.DIALOGS || []).filter(function (x) { return x.id === id; })[0];
     if (!d) return;
@@ -1468,7 +1554,6 @@
         store.load().then(function () { go('tab', { tab: 'home' }); });
         break;
       case 'tab':
-        sfx('tap');
         state.editNick = false; state.tab = id; render(); window.scrollTo(0, 0);
         refreshQuiet();
         break;
@@ -1495,17 +1580,7 @@
       case 'focus-tag': startFocus(id); break;
       case 'review-lesson': startLessonSession('review', id); break;
 
-      case 'quit':
-        var pool0 = s.lessonId ? lessonById(s.lessonId).qs : [];
-        var covered = pool0.length > 0 && pool0.every(function (x) { return s.first[x.id] !== undefined; });
-        if (covered) {
-          askConfirm({ title: '여기까지 하고 끝낼까요?', body: '레슨을 마친 걸로 기록하고, 지금까지의 결과는 저장돼요.', ok: '끝내고 저장', cancel: '계속하기', m: 'thumbs' }, function () { stopRec(); finishSession(); });
-        } else if (s.solved > 0 || Object.keys(s.first).length) {
-          askConfirm({ title: '연습을 그만할까요?', body: s.kind === 'dialog' ? '푼 ' + s.solved + '번까지는 학습 기록에 더해져요.' : '푼 ' + s.solved + '문제까지는 저장돼요. 다음에 이어서 할 수 있어요.', ok: '저장하고 나가기', cancel: '계속하기', m: 'ask' }, function () { savePartial(); stopRec(); stopSpeak(); go('tab'); });
-        } else {
-          stopRec(); stopSpeak(); go('tab');
-        }
-        break;
+      case 'quit': quitPractice(); break;
       case 'modal-ok':
         var fn = state.modal && state.modal.onOk;
         state.modal = null;
@@ -1720,7 +1795,7 @@
       if (!sb || !state.user || state.user.id === 'local') return;
       Promise.resolve(sb.from('app_errors').insert({
         message: msg, stack: String(stack || '').slice(0, 2000),
-        url: String(location.href).slice(0, 300), ua: String(navigator.userAgent || '').slice(0, 300), version: 'v20'
+        url: String(location.href).slice(0, 300), ua: String(navigator.userAgent || '').slice(0, 300), version: APP_VERSION
       })).catch(function () {});
     } catch (e) {}
   }
