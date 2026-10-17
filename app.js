@@ -50,6 +50,7 @@
       remind: /^\d\d:\d\d$/.test(p.remind || '') ? p.remind : '20:00',
       remindOn: !!p.remindOn,
       sound: p.sound !== false,
+      dlg: (Array.isArray(p.dlg) ? p.dlg : []).filter(function (x) { return typeof x === 'string'; }).slice(0, 50),
       favs: (Array.isArray(p.favs) ? p.favs : []).filter(function (x) { return typeof x === 'string'; }).slice(0, 100)
     };
   }
@@ -191,7 +192,7 @@
     state.progress = {}; state.done = {}; state.daily = {};
     if (!keepProfile) {
       var meta = (state.user && state.user.user_metadata) || {};
-      state.profile = normProfile({ nickname: meta.nickname, goal: meta.goal, theme: meta.theme, remind: meta.remind, remindOn: meta.remindOn, sound: meta.sound, favs: meta.favs });
+      state.profile = normProfile({ nickname: meta.nickname, goal: meta.goal, theme: meta.theme, remind: meta.remind, remindOn: meta.remindOn, sound: meta.sound, favs: meta.favs, dlg: meta.dlg });
       applyTheme();
     }
     (res[0].data || []).forEach(function (r) { state.progress[r.qid] = r; });
@@ -260,7 +261,7 @@
       persistLocal();
       if (!sb) return;
       var p = state.profile;
-      var res = await sb.auth.updateUser({ data: { nickname: p.nickname, goal: p.goal, theme: p.theme, remind: p.remind, remindOn: p.remindOn, sound: p.sound, favs: p.favs } });
+      var res = await sb.auth.updateUser({ data: { nickname: p.nickname, goal: p.goal, theme: p.theme, remind: p.remind, remindOn: p.remindOn, sound: p.sound, favs: p.favs, dlg: p.dlg } });
       if (res.error) saveFailed(res.error); else if (res.data && res.data.user) state.user = res.data.user;
     }),
     saveDaily: tracked(async function (row) {
@@ -294,7 +295,7 @@
   }
   function phraseRow(ph) {
     return '<div class="prow"><button class="pmain" data-act="say" data-text="' + esc(ph[0]) + '" aria-label="듣기">' +
-      '<div class="zh p-zh2">' + esc(ph[0]) + '</div><div class="kr">' + esc(kr(ph[1])) + '</div><div class="py">' + esc(ph[1]) + '</div><div class="ko">' + esc(ph[2]) + '</div></button>' +
+      '<div class="zh p-zh2">' + esc(ph[0]) + '</div><div class="py">' + esc(ph[1]) + '</div><div class="kr">' + esc(kr(ph[1])) + '</div><div class="ko">' + esc(ph[2]) + '</div></button>' +
       '<button class="star' + (isFav(ph[0]) ? ' on' : '') + '" data-act="fav" data-text="' + esc(ph[0]) + '" aria-pressed="' + (isFav(ph[0]) ? 'true' : 'false') + '" aria-label="문장 저장">' + I.star + '</button></div>';
   }
   function nickname() { return (state.profile && state.profile.nickname || '').trim(); }
@@ -440,8 +441,8 @@
 
     var ph = todayPhrase();
     var phraseCard = ph ? '<div class="phrase-card"><div class="lab">오늘의 한 문장</div>' +
-      '<div class="row"><div class="txt"><div class="zh p-zh">' + esc(ph[0]) + '</div><div class="kr p-kr">' + esc(kr(ph[1])) + '</div>' +
-      '<div class="py">' + esc(ph[1]) + '</div><div class="ko p-ko">' + esc(ph[2]) + '</div></div>' +
+      '<div class="row"><div class="txt"><div class="zh p-zh">' + esc(ph[0]) + '</div><div class="py p-py">' + esc(ph[1]) + '</div>' +
+      '<div class="kr p-kr">' + esc(kr(ph[1])) + '</div><div class="ko p-ko">' + esc(ph[2]) + '</div></div>' +
       '<div class="p-btns"><button class="round-btn" data-act="say" data-text="' + esc(ph[0]) + '" aria-label="오늘의 한 문장 듣기">' + I.spk + '</button>' +
       '<button class="star' + (isFav(ph[0]) ? ' on' : '') + '" data-act="fav" data-text="' + esc(ph[0]) + '" aria-pressed="' + (isFav(ph[0]) ? 'true' : 'false') + '" aria-label="문장 저장">' + I.star + '</button></div></div></div>' : '';
     return '<div class="screen"><div class="scroll with-nav home-scroll">' + head + goalCard + todayCard + phraseCard + reviewCard + '</div>' + navHtml() + '</div>';
@@ -466,6 +467,16 @@
       '<ul class="list" style="margin-top:16px">' + list + '</ul></div>' + navHtml() + '</div>';
   }
 
+  function dialogSection() {
+    var ds = window.DIALOGS || [];
+    if (!ds.length) return '';
+    return '<div class="section-title" style="margin-top:28px">상황 대화 연습</div><ul class="list">' + ds.map(function (d) {
+      var done = state.profile.dlg.indexOf(d.id) >= 0;
+      return '<li><button class="item" data-act="dialog-start" data-id="' + d.id + '"><span class="txt"><div class="t">' + esc(d.title) + '</div>' +
+        '<div class="s">' + esc(d.intro) + ' · ' + d.turns.length + '번 주고받기</div></span>' +
+        '<span class="chip ' + (done ? 'green' : 'soft') + '">' + (done ? '완료' : '시작') + '</span></button></li>';
+    }).join('') + '</ul>';
+  }
   function listenCard() {
     var n = learnedQs().length;
     return '<div class="weak-card"><div class="weak-txt"><div class="t">듣기 연습</div>' +
@@ -503,6 +514,7 @@
       '</div>' +
       weakCard() +
       listenCard() +
+      dialogSection() +
       '<div class="section-title">레슨별로 복습하기</div>' +
       (learned.length ? '<ul class="list">' + rows + '</ul>' : '<div class="empty">' + mascot('sleep') + '첫 레슨을 끝내면 여기서 복습할 수 있어요</div>') +
       '</div>' + navHtml() + '</div>';
@@ -542,7 +554,7 @@
   function wordRow(w) {
     return '<button class="word" data-act="say" data-text="' + esc(w[0]) + '" aria-label="' + esc(w[0]) + ' 듣기">' +
       '<span class="zhw">' + esc(w[0]) + '</span>' +
-      '<span class="mid"><div><b class="kr">' + esc(kr(w[1])) + '</b> <span class="py">' + esc(w[1]) + '</span></div><div class="ko">' + esc(w[2]) + '</div></span>' +
+      '<span class="mid"><div><span class="py">' + esc(w[1]) + '</span> <b class="kr">' + esc(kr(w[1])) + '</b></div><div class="ko">' + esc(w[2]) + '</div></span>' +
       '<span class="spk">' + I.spk + '</span></button>';
   }
 
@@ -555,7 +567,7 @@
       '<div class="scroll" style="padding-bottom:8px">' +
         '<div class="intro-head"><div><h1 class="big-title" style="margin-top:0">' + esc(l.title) + '</h1>' +
         '<p class="sub-title" style="margin-bottom:0">' + esc(l.intro) + '</p></div></div>' +
-        '<div class="pattern" style="margin-top:16px"><div class="zh">' + esc(l.pattern.zh) + '</div><div class="kr" style="margin-top:2px">' + esc(kr(l.pattern.py)) + '</div><div class="py">' + esc(l.pattern.py) + '</div><div class="ko" style="margin-top:2px">' + esc(l.pattern.ko) + '</div></div>' +
+        '<div class="pattern" style="margin-top:16px"><div class="zh">' + esc(l.pattern.zh) + '</div><div class="py" style="margin-top:2px">' + esc(l.pattern.py) + '</div><div class="kr">' + esc(kr(l.pattern.py)) + '</div><div class="ko" style="margin-top:2px">' + esc(l.pattern.ko) + '</div></div>' +
         '<div class="section-title" style="margin-top:24px">오늘 배울 말</div>' +
         '<div class="words">' + l.words.map(wordRow).join('') + '</div>' +
       '</div>' +
@@ -567,7 +579,7 @@
   function viewPractice() {
     var s = state.s;
     var q = s.cur;
-    var l = lessonById(q.lessonId);
+    var l = s.kind === 'dialog' ? { title: s.dlg.title, tip: '' } : lessonById(q.lessonId);
     var pct = Math.round((s.solved / s.total) * 100);
 
     var top = '<div class="topbar"><button class="icon-btn" data-act="quit" aria-label="그만하기">' + I.close + '</button>' +
@@ -577,13 +589,14 @@
     var showAnswer = s.revealed && s.phase === 'ask';
     var body = '<div class="q-wrap">' +
       '<div class="q-head"><span class="chip soft">' + esc(l.title) + '</span></div>' +
+      (s.kind === 'dialog' ? transcriptHtml(s) : '') +
       '<div class="q-zh">' + esc(q.zh) + '</div>' +
-      '<div class="q-kr">' + esc(kr(q.py)) + '</div>' +
       '<div class="q-py">' + esc(q.py) + '</div>' +
+      '<div class="q-kr">' + esc(kr(q.py)) + '</div>' +
       koBlock(s, q.ko, 'q-ko') +
       '<div class="q-actions">' +
         '<button class="round-btn" data-act="hear-q" aria-label="질문 다시 듣기">' + I.spk + '</button>' +
-        '<span class="tip">' + esc(l.tip) + '</span>' +
+        (l.tip ? '<span class="tip">' + esc(l.tip) + '</span>' : '') +
         (!s.revealed && s.phase === 'ask' ? '<button class="link-btn" data-act="reveal">힌트 보기</button>' : '') +
       '</div>' +
       (showAnswer ? answerCard(q, '따라 말해 보세요') : '') +
@@ -593,6 +606,12 @@
     return '<div class="screen">' + top + body + bottom + '</div>';
   }
 
+  function transcriptHtml(s) {
+    if (!s.log || !s.log.length) return '';
+    return '<div class="tr">' + s.log.map(function (t) {
+      return '<div class="tr-b them">' + esc(t.npc) + '</div><div class="tr-b me' + (t.skipped ? ' sk' : '') + '">' + esc(t.me) + '</div>';
+    }).join('') + '</div>';
+  }
   function koBlock(s, text, cls) {
     return s.showKo
       ? '<div class="' + cls + '" data-act="ko" role="button" tabindex="0">' + esc(text) + '</div>'
@@ -602,13 +621,13 @@
   function answerCard(q, label) {
     return '<div class="answer" style="margin-top:20px"><div class="body">' +
       '<div class="py" style="margin-bottom:4px">' + esc(label) + '</div>' +
-      '<div class="zh">' + esc(q.a.zh) + '</div><div class="kr">' + esc(kr(q.a.py)) + '</div><div class="py">' + esc(q.a.py) + '</div>' + koBlock(state.s, q.a.ko, 'ko a-ko') + '</div>' +
+      '<div class="zh">' + esc(q.a.zh) + '</div><div class="py">' + esc(q.a.py) + '</div><div class="kr">' + esc(kr(q.a.py)) + '</div>' + koBlock(state.s, q.a.ko, 'ko a-ko') + '</div>' +
       '<button class="round-btn" data-act="hear-a" aria-label="정답 듣기">' + I.spk + '</button></div>';
   }
 
   function micArea() {
     var s = state.s;
-    var hint = s.msg || '버튼을 누르고 중국어로 말해 보세요';
+    var hint = s.msg || '버튼을 누른 채로 중국어로 말하고, 끝나면 손을 떼세요';
     if (s.typing) {
       return '<div class="mic-area">' +
         '<div class="type-row"><input id="typed" class="zh" lang="zh-CN" inputmode="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="중국어로 입력" aria-label="중국어로 답 입력">' +
@@ -617,7 +636,7 @@
     }
     return '<div class="mic-area">' +
       '<div id="live" class="live' + (s.listening && s.live ? '' : ' hint') + '">' + esc(s.listening ? (s.live || '듣고 있어요…') : hint) + '</div>' +
-      '<button id="mic" class="mic' + (s.listening ? ' on' : '') + '" data-act="mic" aria-label="' + (s.listening ? '듣는 중. 누르면 멈춰요' : '눌러서 말하기') + '">' + I.mic + '</button></div>';
+      '<button id="mic" class="mic' + (s.listening ? ' on' : '') + '" data-hold="mic" aria-label="누른 채로 말하기">' + I.mic + '</button></div>';
   }
 
   // 틀렸을 때: 빠진 핵심 표현과(정답을 보기 전), 놓친 글자(정답을 본 뒤)를 알려줘요
@@ -739,6 +758,7 @@
         '<div class="stat"><b>' + solved + '</b><span>익숙해진 문제</span></div>' +
         '<div class="stat"><b>' + dueRows().length + '</b><span>복습할 문제</span></div>' +
       '</div>' +
+      '<button class="btn soft quiz-btn" data-act="open-stats">학습 통계 · 약점 분석 보기</button>' +
       settingsCard() +
       '<div class="me-actions">' +
         (sb ? '<button class="btn gray" data-act="logout">로그아웃</button>'
@@ -827,6 +847,7 @@
     else if (state.screen === 'intro') html = viewIntro();
     else if (state.screen === 'practice') html = viewPractice();
     else if (state.screen === 'quiz') html = viewQuiz();
+    else if (state.screen === 'stats') html = viewStats();
     else if (state.screen === 'done') html = viewDone();
     $app.innerHTML = html + modalHtml();
     if (state.screen === 'tab' && state.tab === 'me' && state.editNick) {
@@ -837,6 +858,102 @@
       var inp = document.getElementById('typed');
       if (inp) inp.focus();
     }
+  }
+
+  /* ---------- 학습 통계 · 약점 분석 ---------- */
+  // 문장 속 표현으로 문제 유형을 나눠요 (한 문제가 여러 유형에 속할 수 있어요)
+  var TAGS = [
+    { k: 'num', name: '숫자 · 시간 · 나이', re: /[二三四五六七八九十百千两]\s*(点|岁|块|个|月|号|分|年|层|楼|口|次|天|周)|星期|几点|几月|几号|几岁|多少|\d/ },
+    { k: 'ask', name: '질문하기', re: /吗|呢|什么|哪|怎么|几|多少|谁|为什么|？|\?/, on: 'q' },
+    { k: 'want', name: '바람 · 능력 · 허락 (想·要·会·能)', re: /想|要|会|能|可以|应该/ },
+    { k: 'neg', name: '부정하기 (不·没)', re: /不|没/ },
+    { k: 'asp', name: '완료 · 경험 · 진행 (了·过·着)', re: /了|过|着|正在/ },
+    { k: 'cmp', name: '비교 · 把 · 被', re: /比|把|被|更|最|一样/ },
+    { k: 'place', name: '장소 · 방향 · 교통', re: /在|去|到|左|右|前|后|旁边|对面|路|站|车|地铁|机场/ },
+    { k: 'shop', name: '음식 · 쇼핑 · 돈', re: /吃|喝|菜|饭|钱|买|贵|便宜|杯|碗|块/ },
+    { k: 'link', name: '이어 말하기 (因为·如果·然后)', re: /因为|所以|虽然|但是|如果|不但|而且|一边|然后|只要|先/ }
+  ];
+  var tagCache = {};
+  function tagsOf(q) {
+    if (tagCache[q.id]) return tagCache[q.id];
+    var t = TAGS.filter(function (g) { return g.re.test(g.on === 'q' ? q.zh : q.zh + q.a.zh); }).map(function (g) { return g.k; });
+    return (tagCache[q.id] = t);
+  }
+  function insight() {
+    var rows = Object.keys(state.progress).filter(function (k) { return QMAP[k]; }).map(function (k) { return state.progress[k]; });
+    var total = rows.reduce(function (n, r) { return n + r.correct + r.wrong; }, 0);
+    var tags = TAGS.map(function (g) {
+      var qs = rows.filter(function (r) { return tagsOf(QMAP[r.qid]).indexOf(g.k) >= 0; });
+      var c = qs.reduce(function (n, r) { return n + r.correct; }, 0), w = qs.reduce(function (n, r) { return n + r.wrong; }, 0);
+      return { k: g.k, name: g.name, n: qs.length, tries: c + w, wrong: w, rate: c + w ? w / (c + w) : 0 };
+    }).filter(function (t) { return t.tries >= 6 && t.wrong > 0; }).sort(function (x, y) { return y.rate - x.rate; });
+    var worst = rows.filter(function (r) { return r.wrong > 0; }).sort(function (x, y) { return y.wrong - x.wrong; }).slice(0, 5);
+    return { total: total, tags: tags.slice(0, 3), worst: worst };
+  }
+  function startFocus(k) {
+    var rows = Object.keys(state.progress).filter(function (id) { return QMAP[id] && tagsOf(QMAP[id]).indexOf(k) >= 0; }).map(function (id) { return state.progress[id]; });
+    var weak = rows.filter(function (r) { return r.wrong > 0; });
+    var pool = (weak.length >= 4 ? weak : rows).map(function (r) { return QMAP[r.qid]; });
+    if (!pool.length) { toast('아직 연습한 문제가 없어요'); return; }
+    beginSession('review', rounds(pool, 15));
+  }
+  function viewStats() {
+    var learned = learnedLessons();
+    var days = ['일', '월', '화', '수', '목', '금', '토'];
+    var goal = state.profile.goal, vals = [], max = goal;
+    for (var i = 6; i >= 0; i--) {
+      var d = new Date(); d.setDate(d.getDate() - i);
+      var r = state.daily[dayStr(d)], n = r ? r.answers : 0;
+      vals.push({ n: n, label: days[d.getDay()], today: i === 0 });
+      if (n > max) max = n;
+    }
+    var weekTotal = vals.reduce(function (s, v) { return s + v.n; }, 0);
+    var activeDays = vals.filter(function (v) { return v.n > 0; }).length;
+    var allAnswers = Object.keys(state.daily).reduce(function (s, k) { return s + (state.daily[k].answers || 0); }, 0);
+    var ins = insight();
+    var rows = Object.keys(state.progress).filter(function (k) { return QMAP[k]; }).map(function (k) { return state.progress[k]; });
+    var correct = rows.reduce(function (s, r) { return s + r.correct; }, 0), wrong = rows.reduce(function (s, r) { return s + r.wrong; }, 0);
+    var acc = correct + wrong ? Math.round(correct / (correct + wrong) * 100) : 0;
+    var bars = vals.map(function (v) {
+      var h = max ? Math.round(v.n / max * 100) : 0;
+      return '<div class="bcol"><span class="bn">' + (v.n || '') + '</span><div class="btrack"><i class="' + (v.n >= goal ? 'hit' : '') + '" style="height:' + Math.max(h, v.n ? 6 : 0) + '%"></i></div><span class="bl' + (v.today ? ' t' : '') + '">' + v.label + '</span></div>';
+    }).join('');
+    var goalPos = max ? Math.round(goal / max * 100) : 0;
+    var tagHtml;
+    if (ins.total < 10 || !ins.tags.length) {
+      tagHtml = '<div class="empty" style="padding:18px 0">' + mascot('ask') + (ins.total < 10 ? '조금 더 연습하면 약한 유형을 알려 드려요' : '아직 눈에 띄게 약한 유형이 없어요. 잘하고 있어요!') + '</div>';
+    } else {
+      tagHtml = '<div class="ins">' + ins.tags.map(function (t) {
+        var pct = Math.round(t.rate * 100);
+        return '<div class="ins-row"><div class="ins-top"><b>' + esc(t.name) + '</b><span>' + pct + '% 틀렸어요</span></div>' +
+          '<div class="meter"><i style="width:' + Math.max(pct, 4) + '%"></i></div>' +
+          '<div class="ins-s">' + t.n + '문제 · ' + t.tries + '번 중 ' + t.wrong + '번 틀림</div>' +
+          '<button class="pill-sm" data-act="focus-tag" data-id="' + t.k + '">이 유형 집중 연습</button></div>';
+      }).join('') + '</div>';
+    }
+    var worstHtml = ins.worst.length ? '<div class="section-title" style="margin-top:24px">자주 틀린 문장 TOP ' + ins.worst.length + '</div><div class="words">' +
+      ins.worst.map(function (r) {
+        var q = QMAP[r.qid];
+        return '<div class="prow"><button class="pmain" data-act="say" data-text="' + esc(q.a.zh) + '"><div class="zh p-zh2">' + esc(q.a.zh) + '</div><div class="py">' + esc(q.a.py) + '</div><div class="kr">' + esc(kr(q.a.py)) + '</div><div class="ko">' + esc(q.a.ko) + '</div></button>' +
+          '<span class="chip soft">' + r.wrong + '번</span></div>';
+      }).join('') + '</div>' : '';
+    var lessonHtml = learned.length ? '<div class="section-title" style="margin-top:24px">레슨별 숙련도</div><div class="words">' + learned.map(function (l) {
+      var m = mastered(l), pct = Math.round(m / l.qs.length * 100);
+      return '<div class="lm"><div class="lm-top"><span>' + esc(l.title) + '</span><b>' + pct + '%</b></div><div class="meter g"><i style="width:' + pct + '%"></i></div></div>';
+    }).join('') + '</div>' : '';
+    return '<div class="screen"><div class="topbar"><button class="icon-btn" data-act="back" aria-label="뒤로">' + I.back + '</button></div>' +
+      '<div class="scroll" style="padding-top:4px">' +
+      '<h1 class="big-title" style="margin-top:0">학습 통계</h1><p class="sub-title">내 공부 흐름과 약한 부분이에요.</p>' +
+      '<div class="stats" style="grid-template-columns:repeat(2,1fr)">' +
+        '<div class="stat"><b>' + allAnswers + '</b><span>지금까지 푼 문제</span></div>' +
+        '<div class="stat"><b>' + streak() + '일</b><span>연속 학습</span></div>' +
+        '<div class="stat"><b>' + acc + '%</b><span>한 번에 맞힌 비율</span></div>' +
+        '<div class="stat"><b>' + activeDays + '/7일</b><span>이번 주 공부한 날</span></div>' +
+      '</div>' +
+      '<div class="section-title" style="margin-top:24px">최근 7일 푼 문제 · ' + weekTotal + '개</div>' +
+      '<div class="chart"><div class="goalline" style="bottom:calc(' + goalPos + '% * 0.62 + 40px)"><span>목표 ' + goal + '</span></div><div class="bars">' + bars + '</div></div>' +
+      '<div class="section-title" style="margin-top:24px">약점 분석</div>' + tagHtml + worstHtml + lessonHtml +
+      '<div style="height:24px"></div></div></div>';
   }
 
   /* ---------- 퀴즈: 듣기 · 단어 ---------- */
@@ -930,7 +1047,7 @@
       prompt = '<div class="qz-prompt"><button class="listen-btn" data-act="say" data-text="' + esc(it.zh) + '" aria-label="다시 듣기">' + I.spk + '</button>' +
         '<div class="qz-cap">소리를 듣고 알맞은 뜻을 골라요</div></div>';
     } else {
-      prompt = '<div class="qz-prompt"><div class="q-zh">' + esc(it.zh) + '</div><div class="q-kr">' + esc(kr(it.py)) + '</div><div class="q-py">' + esc(it.py) + '</div>' +
+      prompt = '<div class="qz-prompt"><div class="q-zh">' + esc(it.zh) + '</div><div class="q-py">' + esc(it.py) + '</div><div class="q-kr">' + esc(kr(it.py)) + '</div>' +
         '<button class="round-btn" data-act="say" data-text="' + esc(it.zh) + '" aria-label="듣기" style="margin-top:12px">' + I.spk + '</button>' +
         '<div class="qz-cap">알맞은 뜻을 골라요</div></div>';
     }
@@ -941,7 +1058,7 @@
     }).join('') + '</div>';
     var reveal = '';
     if (z.picked !== null && z.kind === 'listen') {
-      reveal = '<div class="qz-reveal"><div class="zh">' + esc(it.zh) + '</div><div class="kr">' + esc(kr(it.py)) + '</div><div class="py">' + esc(it.py) + '</div></div>';
+      reveal = '<div class="qz-reveal"><div class="zh">' + esc(it.zh) + '</div><div class="py">' + esc(it.py) + '</div><div class="kr">' + esc(kr(it.py)) + '</div></div>';
     }
     var foot = z.picked !== null
       ? '<div class="footer"><button class="btn ' + (it.options[z.picked].ok ? 'green' : '') + '" data-act="quiz-next">' + (z.i + 1 >= z.items.length ? '결과 보기' : '다음') + '</button></div>' : '';
@@ -1022,7 +1139,7 @@
     saveResume(s);
   }
 
-  function beginSession(kind, qs, lessonId) {
+  function beginSession(kind, qs, lessonId, extra) {
     state.s = {
       kind: kind, lessonId: lessonId || null,
       queue: qs.slice(), cur: qs[0], total: qs.length, solved: 0,
@@ -1030,8 +1147,37 @@
       phase: 'ask', heard: '', pass: false, listening: false,
       typing: false, live: '', msg: '', showKo: false
     };
+    if (extra) Object.keys(extra).forEach(function (k) { state.s[k] = extra[k]; });
     go('practice');
     sayCurrentQuestion();
+  }
+  function startDialog(id) {
+    var d = (window.DIALOGS || []).filter(function (x) { return x.id === id; })[0];
+    if (!d) return;
+    var qs = d.turns.map(function (t, i) {
+      return { id: 'dlg-' + d.id + '-' + (i + 1), lessonId: null, zh: t.zh, py: t.py, ko: t.ko, a: t.a, must: t.must };
+    });
+    beginSession('dialog', qs, null, { dlg: { id: d.id, title: d.title }, log: [] });
+  }
+  function finishDialog() {
+    var s = state.s, day = dayStr(new Date());
+    var d0 = state.daily[day] || { day: day, lessons: 0, answers: 0 };
+    var before = d0.answers, goal = state.profile.goal;
+    var d = { day: day, lessons: d0.lessons, answers: d0.answers + Math.max(s.solved - s.solvedCommitted, 0) };
+    state.daily[day] = d; store.saveDaily(d);
+    var ft = Object.keys(s.first).filter(function (k) { return s.first[k] === true; }).length;
+    if (state.profile.dlg.indexOf(s.dlg.id) < 0) { state.profile.dlg = state.profile.dlg.concat([s.dlg.id]); store.saveProfile(); }
+    var stNow = streak();
+    var result = {
+      kind: 'dialog', title: s.dlg.title + ' 대화 완료!',
+      line: s.total + '번 주고받으며 ' + ft + '번은 한 번에 말했어요.',
+      answers: d.answers, goal: goal, goalHit: before < goal && d.answers >= goal,
+      milestone: (before === 0 && d.answers > 0 && MILESTONES.indexOf(stNow) >= 0) ? stNow : 0,
+      again: { act: 'dialog-start', id: s.dlg.id, label: '한 번 더 해보기' }
+    };
+    stopSpeak();
+    sfx(result.goalHit || result.milestone ? 'goal' : 'done');
+    go('done', { result: result });
   }
   function sayCurrentQuestion() {
     var s = state.s;
@@ -1056,6 +1202,7 @@
       s.queue.shift();
       s.solved++;
       s.pass = true;
+      if (s.log) s.log.push({ npc: q.zh, me: r.heard });
       s.mood = pick(['love', 'thumbs', 'wink']);
       s.combo = (s.tries === 0 && !s.revealed) ? s.combo + 1 : 0;
       sfx('right', s.combo);
@@ -1083,7 +1230,7 @@
       toast('이 브라우저는 음성 인식을 지원하지 않아 입력으로 바꿨어요');
       return;
     }
-    if (s.listening && rec) { try { rec.stop(); } catch (e) { /* noop */ } return; }
+    if (rec) return;
     stopSpeak();
 
     var finals = [];
@@ -1099,7 +1246,11 @@
     r.onstart = function () {
       if (state.s !== s) return;
       s.listening = true; s.live = ''; s.msg = '';
-      render();
+      // 손가락이 눌려 있는 동안 화면을 다시 그리면 버튼이 바뀌어 끊기므로, 필요한 부분만 바꿔요
+      var m = document.getElementById('mic'), lv = document.getElementById('live');
+      if (m) m.classList.add('on');
+      if (lv) { lv.textContent = '듣고 있어요…'; lv.classList.remove('hint'); }
+      if (!holding) { try { r.stop(); } catch (e) { /* noop */ } }
     };
     r.onresult = function (e) {
       var res = e.results[e.results.length - 1];
@@ -1128,12 +1279,45 @@
       } else if (errCode === 'aborted') {
         s.msg = '';
       } else {
-        s.msg = '목소리가 잘 안 들렸어요. 다시 눌러 말해 보세요';
+        s.msg = '목소리가 잘 안 들렸어요. 버튼을 누른 채로 말해 보세요';
       }
       render();
     };
-    try { r.start(); } catch (e) { s.msg = '음성 인식을 시작하지 못했어요. 다시 눌러 주세요'; render(); }
+    try {
+      r.start();
+      var m0 = document.getElementById('mic'); if (m0) m0.classList.add('on');
+    } catch (e) { rec = null; s.msg = '음성 인식을 시작하지 못했어요. 다시 눌러 주세요'; render(); }
   }
+
+  // 누르고 있는 동안만 듣고, 손을 떼면 마무리해요 (말끝이 잘리지 않게 잠깐 더 들어요)
+  var holding = false, holdTimer = null;
+  function micDown(e) {
+    var s = state.s;
+    if (state.screen !== 'practice' || !s || s.phase !== 'ask' || s.typing || state.modal || rec) return;
+    if (e && e.preventDefault) e.preventDefault();
+    holding = true; clearTimeout(holdTimer);
+    sfx('pop');
+    startListening();
+  }
+  function micUp() {
+    if (!holding) return;
+    holding = false;
+    var r = rec;
+    clearTimeout(holdTimer);
+    holdTimer = setTimeout(function () { if (r && rec === r) { try { r.stop(); } catch (e) { /* noop */ } } }, 450);
+  }
+  document.addEventListener('pointerdown', function (e) {
+    var t = e.target && e.target.closest && e.target.closest('[data-hold="mic"]');
+    if (t) micDown(e);
+  });
+  ['pointerup', 'pointercancel'].forEach(function (ev) { document.addEventListener(ev, micUp); });
+  window.addEventListener('blur', micUp);
+  document.addEventListener('keydown', function (e) {
+    if ((e.key === ' ' || e.key === 'Enter') && !e.repeat && e.target && e.target.id === 'mic') micDown(e);
+  });
+  document.addEventListener('keyup', function (e) {
+    if ((e.key === ' ' || e.key === 'Enter') && e.target && e.target.id === 'mic') micUp();
+  });
 
   function nextQuestion() {
     var s = state.s;
@@ -1147,6 +1331,7 @@
 
   function finishSession() {
     var s = state.s;
+    if (s.kind === 'dialog') { finishDialog(); return; }
     var now = new Date().toISOString();
     var pool = s.kind === 'lesson' ? lessonById(s.lessonId).qs
       : Object.keys(s.first).map(function (id) { return QMAP[id]; });
@@ -1211,9 +1396,23 @@
     go('done', { result: result });
   }
 
+  // 여러 레슨의 문제를 번갈아 골라서, 한 레슨에 치우치지 않게 섞어요 (순서는 입력 순서 우선)
+  function mixLessons(list, n) {
+    var order = [], by = {};
+    list.forEach(function (q) {
+      if (!by[q.lessonId]) { by[q.lessonId] = []; order.push(q.lessonId); }
+      by[q.lessonId].push(q);
+    });
+    var out = [];
+    while (out.length < n && order.some(function (id) { return by[id].length; })) {
+      order.forEach(function (id) { if (out.length < n && by[id].length) out.push(by[id].shift()); });
+    }
+    return out;
+  }
+
   /* ---------- 시작 함수 ---------- */
   function startReview() {
-    var qs = dueRows().map(function (r) { return QMAP[r.qid]; }).slice(0, REVIEW_SIZE);
+    var qs = mixLessons(dueRows().map(function (r) { return QMAP[r.qid]; }), REVIEW_SIZE);
     if (!qs.length) { toast('지금 복습할 문제가 없어요'); return; }
     beginSession('review', shuffle(qs));
   }
@@ -1225,7 +1424,7 @@
   function startRandomReview() {
     var pool = Object.keys(state.progress).map(function (id) { return QMAP[id]; }).filter(Boolean);
     if (!pool.length) { toast('먼저 레슨을 하나 끝내 주세요'); return; }
-    beginSession('review', shuffle(pool).slice(0, REVIEW_SIZE));
+    beginSession('review', shuffle(mixLessons(shuffle(pool), REVIEW_SIZE)));
   }
 
   /* ---------- 로그인/로그아웃 ---------- */
@@ -1291,6 +1490,9 @@
       case 'review-start': startReview(); break;
       case 'review-random': startRandomReview(); break;
       case 'review-weak': startWeak(); break;
+      case 'dialog-start': startDialog(id); break;
+      case 'open-stats': go('stats'); break;
+      case 'focus-tag': startFocus(id); break;
       case 'review-lesson': startLessonSession('review', id); break;
 
       case 'quit':
@@ -1299,7 +1501,7 @@
         if (covered) {
           askConfirm({ title: '여기까지 하고 끝낼까요?', body: '레슨을 마친 걸로 기록하고, 지금까지의 결과는 저장돼요.', ok: '끝내고 저장', cancel: '계속하기', m: 'thumbs' }, function () { stopRec(); finishSession(); });
         } else if (s.solved > 0 || Object.keys(s.first).length) {
-          askConfirm({ title: '연습을 그만할까요?', body: '푼 ' + s.solved + '문제까지는 저장돼요. 다음에 이어서 할 수 있어요.', ok: '저장하고 나가기', cancel: '계속하기', m: 'ask' }, function () { savePartial(); stopRec(); stopSpeak(); go('tab'); });
+          askConfirm({ title: '연습을 그만할까요?', body: s.kind === 'dialog' ? '푼 ' + s.solved + '번까지는 학습 기록에 더해져요.' : '푼 ' + s.solved + '문제까지는 저장돼요. 다음에 이어서 할 수 있어요.', ok: '저장하고 나가기', cancel: '계속하기', m: 'ask' }, function () { savePartial(); stopRec(); stopSpeak(); go('tab'); });
         } else {
           stopRec(); stopSpeak(); go('tab');
         }
@@ -1336,7 +1538,6 @@
       case 'hear-a': speak(s.cur.a.zh); break;
       case 'reveal': s.revealed = true; render(); break;
       case 'reveal-result': s.revealed = true; render(); break;
-      case 'mic': sfx('pop'); startListening(); break;
       case 'type-mode': stopRec(); s.typing = true; s.listening = false; render(); break;
       case 'voice-mode': s.typing = false; render(); break;
       case 'submit-typed':
@@ -1346,8 +1547,9 @@
       case 'retry': s.phase = 'ask'; s.heard = ''; s.msg = ''; s.live = ''; render(); break;
       case 'skip':
         var cur = s.queue.shift();
-        s.queue.push(cur);
         s.first[cur.id] = false;
+        if (s.kind === 'dialog') { s.solved++; s.log.push({ npc: cur.zh, me: cur.a.zh, skipped: true }); }
+        else s.queue.push(cur);
         nextQuestion();
         break;
       case 'next': nextQuestion(); break;

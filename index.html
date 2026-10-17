@@ -13,7 +13,8 @@
     // 첫 화면이 깜빡이지 않게, 저장된 테마를 먼저 적용해요.
     try { var t = localStorage.getItem('pangpang.theme'); if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t); } catch (e) {}
   </script>
-  <link rel="icon" type="image/png" href="img/icon-192.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="img/favicon-16.png">
   <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
   <title>팽팽이 · 말하면서 익히는 중국어</title>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
@@ -34,6 +35,7 @@
   <script src="grade.js"></script>
   <script src="hangul.js"></script>
   <script src="variants.js"></script>
+  <script src="dialogs.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
