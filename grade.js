@@ -50,7 +50,35 @@
     return { pass: false, heard: list[0] };
   }
 
-  var api = { normalize: normalize, check: check, numToCN: numToCN };
+  // 틀렸을 때 어디가 달랐는지: 빠진 핵심 표현(must)과, 예시 답안에서 못 들린 글자
+  function diagnose(question, heard) {
+    var n = normalize(heard);
+    var missing = (question.must || []).filter(function (group) {
+      return !group.some(function (w) { return n.indexOf(normalize(w)) !== -1; });
+    });
+    var ans = (question.a && question.a.zh) || '';
+    var a = ans.split(''), h = n.split('');
+    // 글자 단위 LCS 로 맞게 말한 글자를 표시
+    var L = [], i, j;
+    for (i = 0; i <= a.length; i++) { L.push([]); for (j = 0; j <= h.length; j++) L[i].push(0); }
+    for (i = a.length - 1; i >= 0; i--) {
+      for (j = h.length - 1; j >= 0; j--) {
+        L[i][j] = a[i] === h[j] ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
+      }
+    }
+    var mask = [];
+    i = 0; j = 0;
+    while (i < a.length) {
+      var isPunct = normalize(a[i]) === '';
+      if (isPunct) { mask.push(true); i++; continue; }
+      if (j < h.length && a[i] === h[j]) { mask.push(true); i++; j++; }
+      else if (j < h.length && L[i][j + 1] >= L[i + 1][j]) { j++; }
+      else { mask.push(false); i++; }
+    }
+    return { missing: missing, mask: mask, answer: ans };
+  }
+
+  var api = { normalize: normalize, check: check, numToCN: numToCN, diagnose: diagnose };
   if (typeof window !== 'undefined') window.Grade = api;
   if (typeof module !== 'undefined') module.exports = api;
 })();

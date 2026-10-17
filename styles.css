@@ -555,3 +555,52 @@ img, svg { -webkit-user-drag: none; user-drag: none; }
 /* 아래로 당겨서 새로고침 막기 */
 html, body { overscroll-behavior-y: none; }
 .scroll { overscroll-behavior-y: contain; }
+
+/* ---------- 반응형 연출 ---------- */
+.sheet.ok { animation: sheet-up .28s cubic-bezier(.3,1.4,.5,1); }
+.sheet.ok .m { animation: mascot-pop .5s cubic-bezier(.3,1.7,.5,1); }
+.sheet.ok .badge { animation: badge-pop .45s cubic-bezier(.3,1.9,.5,1); }
+.sheet.no { animation: sheet-shake .4s ease-in-out; }
+.sheet .combo { margin-left: auto; font-size: 13px; font-weight: 800; padding: 3px 10px; border-radius: 999px; background: var(--yellow); color: var(--on-yellow); }
+.progress > i { transition: width .45s cubic-bezier(.3,1.3,.5,1); }
+@keyframes sheet-up { from { transform: translateY(36px); opacity: .4; } to { transform: none; opacity: 1; } }
+@keyframes mascot-pop { 0% { transform: scale(.4) rotate(-12deg); } 100% { transform: none; } }
+@keyframes badge-pop { 0% { transform: scale(0); } 100% { transform: scale(1); } }
+@keyframes sheet-shake { 0%,100% { transform: translateX(0); } 20% { transform: translateX(-9px); } 40% { transform: translateX(8px); } 60% { transform: translateX(-5px); } 80% { transform: translateX(3px); } }
+.btn:active, .mic:active, .item:active { transition: transform .08s; }
+@media (prefers-reduced-motion: reduce) { .sheet.ok, .sheet.no, .sheet.ok .m, .sheet.ok .badge { animation: none; } }
+
+/* ---- v20: quiz, diagnose, favorites ---- */
+.qz-wrap { flex: 1; overflow-y: auto; padding: 8px 20px 20px; display: flex; flex-direction: column; }
+.qz-prompt { text-align: center; padding: 18px 0 14px; }
+.qz-prompt .q-zh { font-size: 40px; font-weight: 800; color: var(--navy); }
+.qz-cap { margin-top: 12px; font-size: 14px; color: var(--ink-2); }
+.listen-btn { width: 92px; height: 92px; border-radius: 50%; border: 0; background: var(--yellow); color: var(--on-yellow, var(--navy)); display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 6px 0 rgba(0,0,0,.12); }
+.listen-btn:active { transform: translateY(3px); box-shadow: 0 3px 0 rgba(0,0,0,.12); }
+.listen-btn svg { width: 40px; height: 40px; }
+.qz-opts { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+.opt { width: 100%; text-align: left; padding: 16px 18px; border-radius: 16px; border: 0; background: var(--card); color: var(--navy); font-size: 17px; font-weight: 600; box-shadow: inset 0 0 0 1.5px var(--line); }
+.opt:active:not(:disabled) { background: var(--press); }
+.opt.ok { background: var(--green); color: #fff; box-shadow: none; animation: pop .25s; }
+.opt.no { background: #ef5350; color: #fff; box-shadow: none; animation: shake .3s; }
+.opt.dim { opacity: .45; }
+.qz-reveal { margin-top: 16px; text-align: center; background: var(--card); border-radius: 16px; padding: 14px; }
+.qz-reveal .zh { font-size: 24px; font-weight: 800; color: var(--navy); }
+.qz-reveal .kr { font-size: 15px; color: var(--ink-2); margin-top: 4px; }
+.qz-reveal .py { font-size: 13px; color: var(--ink-3, var(--ink-2)); }
+.qz-combo { text-align: center; margin-top: 12px; font-weight: 700; color: var(--orange, #f59e0b); }
+.quiz-btn { margin: 14px 0 0; }
+.diag { margin: 10px 0 0; font-size: 14px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.diag .lab { color: var(--ink-2); font-weight: 600; margin-right: 2px; }
+.diag .need { background: rgba(239,83,80,.14); color: #d32f2f; border-radius: 999px; padding: 3px 10px; font-weight: 700; }
+.diag .dline { font-size: 20px; }
+u.miss { text-decoration: underline wavy #ef5350; text-underline-offset: 4px; color: #d32f2f; }
+.prow { display: flex; align-items: center; gap: 8px; padding: 12px 4px; border-bottom: 1px solid var(--sep, var(--line)); }
+.pmain { flex: 1; text-align: left; background: none; border: 0; padding: 0; color: inherit; }
+.p-zh2 { font-size: 18px; font-weight: 700; color: var(--navy); }
+.prow .kr, .prow .py, .prow .ko { font-size: 13px; color: var(--ink-2); }
+.star { width: 40px; height: 40px; border-radius: 50%; border: 0; background: transparent; color: var(--ink-3, #9aa3b2); display: inline-flex; align-items: center; justify-content: center; flex: none; }
+.star.on { color: #f5b301; }
+.star.on svg { fill: #f5b301; }
+.p-btns { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+@keyframes shake { 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }

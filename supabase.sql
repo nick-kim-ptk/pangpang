@@ -84,3 +84,17 @@ create policy "own push" on public.push_subscriptions
 --     headers := jsonb_build_object('Authorization', 'Bearer <CRON_SECRET>')
 --   );
 -- $$);
+
+
+-- ===== 오류 기록 (v20) =====
+create table if not exists app_errors (
+  id bigint generated always as identity primary key,
+  user_id uuid default auth.uid() references auth.users on delete set null,
+  message text, stack text, url text, ua text, version text,
+  created_at timestamptz default now()
+);
+alter table app_errors enable row level security;
+drop policy if exists "insert own errors" on app_errors;
+create policy "insert own errors" on app_errors for insert to authenticated
+  with check ((select auth.uid()) = user_id);
+-- 조회 정책은 일부러 없음: Supabase 대시보드 > Table Editor 에서만 볼 수 있어요.
