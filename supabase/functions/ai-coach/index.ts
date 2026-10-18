@@ -1,8 +1,8 @@
 // AI 선생님 (Supabase Edge Function) — 한 함수에 네 가지 일이 들어 있어요.
 //   correct    : 내 답 교정 (1크레딧)
 //   explain    : 정답 문장 '왜 이렇게 써요?' 설명 (무료·서버에 저장해 두고 다시 써요)
-//   chat_start : 가이드형 자유 대화 시작 (10크레딧, 한 판)
-//   chat_turn  : 대화 한 번 주고받기 (한 판 안에서는 추가 비용 없음)
+//   chat_start : 가이드형 자유 대화 시작 (무료, 크레딧이 2 이상 있어야 해요)
+//   chat_turn  : 대화 한 번 주고받기 (한 번에 2크레딧, 말할 때마다 차감하고 AI가 실패하면 돌려줘요)
 // 앱이 부르면: 로그인 확인 → (필요하면) 크레딧 차감 → Claude(Sonnet 5.5) 호출 → 결과 반환. 호출이 실패하면 크레딧을 돌려줘요.
 // 필요한 비밀 값: ANTHROPIC_API_KEY (없으면 '테스트 응답'을 돌려줘요. 그래도 크레딧은 차감돼요)
 // 선택: AI_MODEL (기본 claude-sonnet-5-5)
@@ -15,8 +15,9 @@ const CORS = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 const COST_CORRECT = 1;        // 교정 1회 = 1크레딧
-const COST_CHAT = 10;          // 자유 대화 한 판 = 10크레딧
-const MAX_TURNS = 6;           // 한 판에서 내가 말하는 횟수
+const COST_TURN = 2;           // 자유 대화 한 번 주고받기 = 2크레딧
+const MAX_TURNS = 40;          // 한 판의 안전 상한(이 정도면 한 번 마무리해요)
+const STARTS_PER_DAY = 30;     // 하루에 새로 시작할 수 있는 대화 수
 const EXPLAIN_PER_DAY = 40;    // 사용자당 하루에 새로 만드는 설명 수(이미 저장된 설명은 제한 없음)
 const MAX_TEXT = 120;          // 문장 길이 제한
 const MAX_PER_MINUTE = 10;     // 사용자당 분당 호출 제한
@@ -49,7 +50,7 @@ const SYSTEM_CHAT = `당신은 한국인 중국어 초보 학습자와 짧은 �
 - 학습자의 말은 음성 인식이나 직접 입력이라 오타가 있을 수 있어요. 뜻이 통하면 자연스럽게 이어 가세요.
 - 학습자가 어색하거나 틀린 말을 했을 때만 fix에 고쳐 주세요. 잘 말했으면 fix는 null입니다.
 - suggestions에는 학습자가 다음에 할 수 있는 말 3개를 쉬운 순서로 주세요(서로 다른 내용으로).
-- 학습자가 말한 횟수가 정해진 횟수에 이르면 마무리 인사를 하고 end를 true로 하세요. 그 전에는 false입니다.
+- 대화를 먼저 끝내지 말고 계속 이어 가세요. 학습자가 작별 인사를 하거나 끝내고 싶다고 말할 때만 마무리 인사를 하고 end를 true로 하세요. 그 외에는 false입니다.
 - 반드시 아래 JSON 객체 하나만 출력하세요. 다른 글자나 코드블록은 금지입니다.
 {"reply":{"zh":"중국어","py":"병음(성조 부호)","ko":"한국어 뜻"},"fix":null 또는 {"natural":"자연스러운 중국어","pinyin":"병음","why":"한국어 한 문장"},"suggestions":[{"zh":"","py":"","ko":""}],"end":false}`;
 
@@ -258,27 +259,27 @@ async function explain(deps: Deps, uid: string, body: any) {
   }
 }
 
-// 가이드형 자유 대화 시작: 10크레딧 → 상대가 먼저 말을 걸어요
+// 가이드형 자유 대화 시작: 크레딧은 말할 때마다(2크레딧) 내요. 시작은 무료, 크레딧이 2 이상 있어야 해요. 상대가 먼저 말을 걸어요.
 async function chatStart(deps: Deps, uid: string, body: any) {
   const { db, env } = deps;
   const sc = body.scenario ?? {};
   const scenario = { id: clean(sc.id).slice(0, 40), title: clean(sc.title), intro: clean(sc.intro) };
   if (!scenario.title) return json({ ok: false, error: 'bad_request' });
+  if (!(await isMember(db, uid))) return json({ ok: false, error: 'not_member' });
   if ((await recentCount(db, uid, 'chat', 60_000)) >= 12) return json({ ok: false, error: 'too_fast' });
-  const { count } = await db.from('ai_ledger').select('id', { count: 'exact', head: true })
-    .eq('user_id', uid).eq('kind', 'spend').gte('at', new Date(Date.now() - 60_000).toISOString());
-  if ((count ?? 0) >= MAX_PER_MINUTE) return json({ ok: false, error: 'too_fast' });
-  const sp = await db.rpc('ai_spend', { p_uid: uid, p_cost: COST_CHAT, p_note: 'chat' });
-  if (sp.error) return json({ ok: false, error: 'server' });
-  const spent = sp.data ?? {};
-  if (!spent.ok) return json({ ok: false, error: spent.error ?? 'server', monthly: spent.monthly, topup: spent.topup });
-  const refund = async () => (await db.rpc('ai_refund', { p_uid: uid, p_from_monthly: spent.from_monthly, p_from_topup: spent.from_topup, p_note: 'chat_failed' })).data ?? {};
+  const { count: starts } = await db.from('ai_chat').select('id', { count: 'exact', head: true })
+    .eq('user_id', uid).gte('created_at', new Date(Date.now() - 86_400_000).toISOString());
+  if ((starts ?? 0) >= STARTS_PER_DAY) return json({ ok: false, error: 'limit' });
+  const w = await db.rpc('_ai_sync', { p_uid: uid });   // 월 지급을 반영한 잔액 확인(차감 없음)
+  const monthly = w.data?.monthly ?? 0, topup = w.data?.topup ?? 0;
+  if (w.error) return json({ ok: false, error: 'server' });
+  if (monthly + topup < COST_TURN) return json({ ok: false, error: 'no_credit', monthly, topup });
   try {
     let parsed: any, msgs: any[] = [], usage: any = null;
     if (!env('ANTHROPIC_API_KEY')) {
       parsed = { reply: MOCK_LINES[0], fix: null, suggestions: MOCK_SUG, end: false };
     } else {
-      const first = { role: 'user', content: JSON.stringify({ scenario, max_learner_turns: MAX_TURNS, learner_turns_so_far: 0, instruction_data: '대화를 시작하세요. 상대 역할로 먼저 말을 거세요.' }) };
+      const first = { role: 'user', content: JSON.stringify({ scenario, instruction_data: '대화를 시작하세요. 먼저 말을 거세요.' }) };
       const a = await askClaude(deps, SYSTEM_CHAT, [first], 600);
       parsed = parseChat(a.text);
       if (!parsed) throw new Error('parse');
@@ -289,15 +290,14 @@ async function chatStart(deps: Deps, uid: string, body: any) {
     const sid = ins?.data?.id;
     if (!sid) throw new Error('session');
     if (usage) await db.from('ai_usage').insert({ user_id: uid, kind: 'chat', model: usage.model, in_tokens: usage.inT, out_tokens: usage.outT });
-    return json({ ok: true, mock: !usage, sid, turn: parsed, max_turns: MAX_TURNS, monthly: spent.monthly, topup: spent.topup });
+    return json({ ok: true, mock: !usage, sid, turn: parsed, cost: COST_TURN, monthly, topup });
   } catch (e) {
     console.error('ai-coach chat_start failed', String(e));
-    const back = await refund();
-    return json({ ok: false, error: 'ai_failed', refunded: true, monthly: back.monthly, topup: back.topup });
+    return json({ ok: false, error: 'ai_failed' });
   }
 }
 
-// 대화 한 번 주고받기: 한 판 안에서는 크레딧이 더 들지 않아요
+// 대화 한 번 주고받기: 말할 때마다 2크레딧을 내고, AI가 실패하면 그 크레딧을 돌려줘요
 async function chatTurn(deps: Deps, uid: string, body: any) {
   const { db, env } = deps;
   const sid = typeof body.sid === 'string' ? body.sid.slice(0, 64) : '';
@@ -307,28 +307,34 @@ async function chatTurn(deps: Deps, uid: string, body: any) {
   const got = await db.from('ai_chat').select('id,msgs,turns,done,scenario').eq('id', sid).eq('user_id', uid).maybeSingle();
   const ses = got?.data;
   if (!ses || ses.done || ses.turns >= MAX_TURNS) return json({ ok: false, error: 'bad_session' });
+  const sp = await db.rpc('ai_spend', { p_uid: uid, p_cost: COST_TURN, p_note: 'chat_turn' });
+  if (sp.error) return json({ ok: false, error: 'server' });
+  const spent = sp.data ?? {};
+  if (!spent.ok) return json({ ok: false, error: spent.error ?? 'server', monthly: spent.monthly, topup: spent.topup });
   const turns = ses.turns + 1;
   try {
     let parsed: any, msgs: any[] = ses.msgs ?? [], usage: any = null;
     if (!env('ANTHROPIC_API_KEY')) {
-      const last = turns >= MAX_TURNS;
-      parsed = { reply: MOCK_LINES[Math.min(turns, MOCK_LINES.length - 1)], fix: turns === 2 ? { natural: '我想要一杯咖啡。', pinyin: 'Wǒ xiǎng yào yì bēi kāfēi.', why: '(테스트 응답) 이런 식으로 고쳐 줘요.' } : null, suggestions: last ? [] : MOCK_SUG, end: last };
+      parsed = { reply: MOCK_LINES[turns % MOCK_LINES.length], fix: turns === 2 ? { natural: '我想要一杯咖啡。', pinyin: 'Wǒ xiǎng yào yì bēi kāfēi.', why: '(테스트 응답) 이런 식으로 고쳐 줘요.' } : null, suggestions: MOCK_SUG, end: false };
     } else {
-      const user = { role: 'user', content: JSON.stringify({ learner_said: answer, max_learner_turns: MAX_TURNS, learner_turns_so_far: turns }) };
-      const a = await askClaude(deps, SYSTEM_CHAT, [...msgs, user], 600);
+      const user = { role: 'user', content: JSON.stringify({ learner_said: answer }) };
+      // 대화가 길어지면 처음 두 줄(주제와 첫 인사)과 최근 대화만 보내요
+      const hist = msgs.length > 20 ? [msgs[0], msgs[1], ...msgs.slice(-14)] : msgs;
+      const a = await askClaude(deps, SYSTEM_CHAT, [...hist, user], 600);
       parsed = parseChat(a.text);
       if (!parsed) throw new Error('parse');
-      if (turns >= MAX_TURNS) { parsed.end = true; parsed.suggestions = []; }
       msgs = [...msgs, user, { role: 'assistant', content: a.text }];
       usage = a;
     }
-    const done = parsed.end === true || turns >= MAX_TURNS;
+    if (turns >= MAX_TURNS) { parsed.end = true; parsed.suggestions = []; }
+    const done = parsed.end === true;
     await db.from('ai_chat').update({ msgs, turns, done }).eq('id', sid).eq('user_id', uid);
     if (usage) await db.from('ai_usage').insert({ user_id: uid, kind: 'chat', model: usage.model, in_tokens: usage.inT, out_tokens: usage.outT });
-    return json({ ok: true, mock: !usage, turn: parsed, turns, end: done });
+    return json({ ok: true, mock: !usage, turn: parsed, turns, end: done, cost: COST_TURN, monthly: spent.monthly, topup: spent.topup });
   } catch (e) {
     console.error('ai-coach chat_turn failed', String(e));
-    return json({ ok: false, error: 'ai_failed' });   // 이번 말만 다시 해 보게 해요(크레딧은 이미 낸 한 판 안이라 따로 없어요)
+    const back = (await db.rpc('ai_refund', { p_uid: uid, p_from_monthly: spent.from_monthly, p_from_topup: spent.from_topup, p_note: 'chat_turn_failed' })).data ?? {};
+    return json({ ok: false, error: 'ai_failed', refunded: true, monthly: back.monthly, topup: back.topup });
   }
 }
 
