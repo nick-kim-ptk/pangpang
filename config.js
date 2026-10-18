@@ -5,5 +5,5 @@ window.APP_CONFIG = {
   SUPABASE_URL: 'https://qvbxgxfdfjjwcycxqibp.supabase.co',
   SUPABASE_ANON_KEY: 'sb_publishable_Uvcz-llc1Zc_VeaW2RbF_g_WT6VPT9X',
   // 복습 알림(웹 푸시)용 공개 키. README의 '알림 켜기' 순서대로 만든 VAPID 공개 키를 넣으세요.
-  VAPID_PUBLIC_KEY: ''
+  VAPID_PUBLIC_KEY: 'BOgiw-P_UYGdC-NeK3kTzD4w0Qqke4bnT7qCs1dr2XLGW8dDf5ljXlMzLurWuIxFtughVX6tQIgAifasflCTMUM'
 };
