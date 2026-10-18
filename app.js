@@ -457,6 +457,7 @@
   function goBack() {
     if (state.modal) { closeModal(); return; }
     var sc = state.screen;
+    if (sc === 'practice' && state.s && state.s.wordsOpen) { state.s.wordsOpen = false; render(); return; }
     if (sc === 'practice') quitPractice();
     else if (sc === 'quiz') { stopSpeak(); go(state.z && state.z.hsk ? 'hsk' : 'tab'); }
     else if (sc === 'hskstudy') { stopSpeak(); clearTimeout(hskTimer); store.saveProfile(); go('hsk'); }
@@ -876,7 +877,7 @@
         '<div class="chat">' + transcriptHtml(s) +
           '<div class="cb them cur"><div class="cb-main"><div class="q-zh">' + esc(q.zh) + '</div>' +
             '<div class="q-py">' + esc(q.py) + '</div><div class="q-kr">' + esc(kr(q.py)) + '</div>' +
-            koBlock(s, q.ko, 'q-ko') + '</div>' +
+            (s.showKo ? koBlock(s, q.ko, 'q-ko') : '') + qTools(s) + '</div>' +
             '<button class="round-btn cb-spk" data-act="hear-q" aria-label="질문 다시 듣기">' + I.spk + '</button></div>' +
           (s.phase === 'ask' ? '<div id="dlg-guide" class="cb me ghost' + (on ? ' on' : '') + '"' + (on ? '' : ' aria-hidden="true"') + '><div class="lab">이렇게 답변해보세요</div><div class="ko">' + esc(q.a.ko) + '</div></div>' : '') +
         '</div>' +
@@ -889,7 +890,7 @@
       '<div class="q-zh">' + esc(q.zh) + '</div>' +
       '<div class="q-py">' + esc(q.py) + '</div>' +
       '<div class="q-kr">' + esc(kr(q.py)) + '</div>' +
-      koBlock(s, q.ko, 'q-ko') +
+      (s.showKo ? koBlock(s, q.ko, 'q-ko') : '') + qTools(s) +
       '<div class="q-actions">' +
         '<button class="round-btn" data-act="hear-q" aria-label="질문 다시 듣기">' + I.spk + '</button>' +
         (l.tip ? '<span class="tip">' + esc(l.tip) + '</span>' : '') + hintBtn +
@@ -899,7 +900,7 @@
     }
 
     var bottom = s.phase === 'ask' ? micArea() : resultSheet(q);
-    return '<div class="screen">' + top + body + bottom + '</div>';
+    return '<div class="screen">' + top + body + bottom + (s.wordsOpen ? wordsSheet(s, q) : '') + '</div>';
   }
 
   function transcriptHtml(s) {
@@ -907,6 +908,75 @@
     return '<div class="tr">' + s.log.map(function (t) {
       return '<div class="tr-b them">' + esc(t.npc) + '</div><div class="tr-b me' + (t.skipped ? ' sk' : '') + '">' + esc(t.me) + '</div>';
     }).join('') + '</div>';
+  }
+  /* ---------- 문장 속 단어 (레슨 단어 + HSK 단어 + 아래 보충 단어로 문장을 쪼개요) ---------- */
+  var EXTRA_WORDS = [
+    ['首尔', "Shǒu'ěr", '서울'], ['北京', 'Běijīng', '베이징'], ['韩国', 'Hánguó', '한국'], ['日语', 'Rìyǔ', '일본어'],
+    ['分钟', 'fēnzhōng', '분 (시간의 길이)'], ['二十', 'èrshí', '20, 스물'], ['三十', 'sānshí', '30, 서른'], ['四十', 'sìshí', '40, 마흔'],
+    ['欢迎光临', 'huānyíng guāng lín', '어서 오세요 (손님을 맞는 인사)'], ['职员', 'zhíyuán', '직원, 사무직'],
+    ['金民秀', 'Jīn Mínxiù', '김민수 (사람 이름)'], ['小李', 'Xiǎo Lǐ', '샤오리 (이 씨를 친근하게 부르는 말)'], ['王明', 'Wáng Míng', '왕밍 (사람 이름)'],
+    ['踩', 'cǎi', '밟다'], ['菜馆', 'càiguǎn', '음식점, 식당'], ['烤鸭', 'kǎoyā', '오리구이'], ['点儿', 'diǎnr', '조금, 약간'],
+    ['付款', 'fùkuǎn', '돈을 내다, 결제하다'], ['码', 'mǎ', '코드 (扫码: 코드를 스캔하다)'], ['预订', 'yùdìng', '예약하다'],
+    ['出示', 'chūshì', '제시하다, 내보이다'], ['网络', 'wǎngluò', '인터넷, 네트워크'], ['不见不散', 'bú jiàn bú sàn', '만날 때까지 기다리다 (꼭 만나자)'],
+    ['抽烟', 'chōuyān', '담배를 피우다'], ['相', 'xiàng', '사진 (照相: 사진을 찍다)']
+  ];
+  var wordIdx = null, wordMax = 1;
+  function buildWordIdx() {
+    var idx = {};
+    function add(w, src) { if (!idx[w[0]]) { idx[w[0]] = { zh: w[0], py: w[1], ko: w[2], src: src }; if (w[0].length > wordMax) wordMax = w[0].length; } }
+    EXTRA_WORDS.forEach(function (w) { add(w, 'x'); });
+    LESSONS.forEach(function (l, i) { (l.words || []).forEach(function (w) { add(w, 'L' + l.id); }); });
+    Object.keys(HSKW).forEach(function (lv) { (HSKW[lv] || []).forEach(function (w) { add(w, 'H' + lv); }); });
+    return idx;
+  }
+  // 문장을 사전 단어로 쪼개요 (긴 단어부터 맞춰 봐요). 사전에 없는 글자(이름 등)는 건너뛰어요.
+  function segWords(zh) {
+    if (!wordIdx) wordIdx = buildWordIdx();
+    var out = [], seen = {}, i = 0, str = String(zh || '');
+    while (i < str.length) {
+      if (!/[\u4e00-\u9fff]/.test(str[i])) { i++; continue; }
+      var hit = null;
+      for (var L = Math.min(wordMax, str.length - i); L >= 1; L--) { var t = str.substr(i, L); if (wordIdx[t]) { hit = wordIdx[t]; break; } }
+      if (hit) { if (!seen[hit.zh]) { seen[hit.zh] = 1; out.push(hit); } i += hit.zh.length; } else i++;
+    }
+    return out;
+  }
+  function srcLabel(src) {
+    if (src === 'x') return '';
+    if (src[0] === 'H') return 'HSK ' + src.slice(1) + '급';
+    var n = LESSONS.map(function (l) { return l.id; }).indexOf(src.slice(1));
+    return n >= 0 ? (n + 1) + '강' : '';
+  }
+  function wsRow(w) {
+    var k = kr(w.py), lab = srcLabel(w.src);
+    return '<button class="ws-row" data-act="say" data-text="' + esc(w.zh) + '"><span class="ws-top"><span class="zh ws-zh">' + esc(w.zh) + '</span><span class="py ws-py">' + esc(w.py) + '</span>' +
+      (k ? '<span class="ws-kr">' + esc(k) + '</span>' : '') + (lab ? '<span class="ws-src">' + lab + '</span>' : '') + '</span><span class="ws-ko">' + esc(w.ko) + '</span></button>';
+  }
+  function wordsSheet(s, q) {
+    var lesson = s.kind === 'dialog' ? null : lessonById(q.lessonId);
+    var own = {}; if (lesson) (lesson.words || []).forEach(function (w) { own[w[0]] = 1; });
+    var sents = [{ lab: '질문', zh: q.zh }];
+    if (s.revealed || s.phase === 'result') sents.push({ lab: '예시 답안', zh: q.a.zh });
+    var seen = {}, all = [];
+    sents.forEach(function (t) { segWords(t.zh).forEach(function (w) { if (!seen[w.zh]) { seen[w.zh] = 1; all.push(w); } }); });
+    var out = all.filter(function (w) { return !own[w.zh]; }), inn = all.filter(function (w) { return own[w.zh]; });
+    var body = '';
+    if (!lesson) body = '<div class="ws-list">' + all.map(wsRow).join('') + '</div>';
+    else {
+      body += '<div class="ws-lab">이 레슨 밖 단어 <em>' + out.length + '</em></div>' +
+        (out.length ? '<div class="ws-list">' + out.map(wsRow).join('') + '</div>' : '<p class="ws-none">이 문장의 단어는 모두 이 레슨에서 배운 단어예요.</p>');
+      if (inn.length) body += '<div class="ws-lab">이 레슨에서 배운 단어 <em>' + inn.length + '</em></div><div class="ws-list">' + inn.map(wsRow).join('') + '</div>';
+    }
+    if (!all.length) body = '<p class="ws-none">설명할 단어가 없어요.</p>';
+    return '<div class="ws-scrim" data-act="words-close"></div><div class="ws" role="dialog" aria-label="문장 속 단어"><div class="ws-grip"></div>' +
+      '<div class="ws-head"><b>문장 속 단어</b><button class="icon-btn" data-act="words-close" aria-label="닫기">' + I.close + '</button></div>' +
+      '<div class="ws-sent zh">' + esc(q.zh) + '</div><div class="ws-body">' + body + '</div></div>';
+  }
+  function qTools(s) {
+    var on = !(state.profile && state.profile.kr === false);
+    return '<div class="q-tools">' + (s.showKo ? '' : '<button class="ko-peek" data-act="ko">뜻 보기</button>') +
+      '<button class="tg' + (on ? ' on' : '') + '" data-act="set-kr" data-v="' + (on ? 'off' : 'on') + '" role="switch" aria-checked="' + on + '">한글 발음<i aria-hidden="true"></i></button>' +
+      '<button class="tg wd" data-act="words-open">' + I.book + '단어</button></div>';
   }
   function koBlock(s, text, cls) {
     return s.showKo
@@ -2348,7 +2418,7 @@
     }
     s.cur = s.queue[0];
     saveResume(s);
-    s.tries = 0; s.revealed = false; s.showKo = false; s.phase = 'ask'; s.heard = ''; s.pass = false; s.msg = ''; s.live = ''; s.guideOn = false;
+    s.tries = 0; s.revealed = false; s.showKo = false; s.phase = 'ask'; s.heard = ''; s.pass = false; s.msg = ''; s.live = ''; s.guideOn = false; s.wordsOpen = false;
     render();
     sayCurrentQuestion();
   }
@@ -2562,6 +2632,8 @@
       case 'back': goBack(); break;
       case 'home': go('tab', { tab: 'home' }); break;
       case 'say': speak(el.getAttribute('data-text'), 0.8); break;
+      case 'words-open': if (state.s) { state.s.wordsOpen = true; render(); } break;
+      case 'words-close': if (state.s) { state.s.wordsOpen = false; render(); } break;
       case 'practice-lesson': startLessonSession('lesson', id); break;
       case 'review-start': startReview(); break;
       case 'review-random': startRandomReview(); break;
