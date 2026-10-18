@@ -325,3 +325,55 @@ end;
 $$;
 revoke all on function public.test_reset() from public, anon;
 grant execute on function public.test_reset() to authenticated;
+
+-- ===== v56: 평생 이용 → 1년 + 2개월(14개월) 연간 이용 =====
+-- 이용권 종류에 'yearly' 추가 (기존 'monthly', 'lifetime' 은 그대로 유효)
+alter table public.entitlements drop constraint if exists entitlements_plan_check;
+alter table public.entitlements add constraint entitlements_plan_check check (plan in ('monthly', 'yearly', 'lifetime'));
+
+-- 이용 기간 늘리기: 평생이면 그대로, 아니면 남은 기간 뒤에 이어 붙여요 (연간을 한 번이라도 샀으면 연간 표시 유지)
+drop function if exists public._grant_days(uuid, int, text);
+create or replace function public._grant_days(p_uid uuid, p_days int, p_source text, p_plan text default 'monthly')
+returns timestamptz
+language plpgsql security definer set search_path = public
+as $$
+declare v_exp timestamptz;
+begin
+  insert into entitlements (user_id, plan, expires_at, source)
+  values (p_uid, p_plan, now() + make_interval(days => p_days), p_source)
+  on conflict (user_id) do update set
+    plan = case when entitlements.plan = 'lifetime' then 'lifetime'
+                when p_plan = 'yearly' or entitlements.plan = 'yearly' then 'yearly'
+                else 'monthly' end,
+    expires_at = case when entitlements.plan = 'lifetime' then null
+                      else greatest(coalesce(entitlements.expires_at, now()), now()) + make_interval(days => p_days) end,
+    source = p_source, updated_at = now()
+  returning expires_at into v_exp;
+  return v_exp;
+end;
+$$;
+revoke all on function public._grant_days(uuid, int, text, text) from public, anon, authenticated;
+
+-- 테스트 결제: monthly(30일) / yearly(425일 = 1년 + 2개월)
+create or replace function public.test_purchase(p_plan text)
+returns jsonb
+language plpgsql security definer set search_path = public
+as $$
+declare v_uid uuid := auth.uid();
+begin
+  if v_uid is null then raise exception 'not_authenticated'; end if;
+  if coalesce((select value from app_settings where key = 'payment_test_mode'), 'false') <> 'true' then
+    return jsonb_build_object('ok', false, 'error', 'test_mode_off');
+  end if;
+  if p_plan = 'yearly' then
+    perform _grant_days(v_uid, 425, 'test', 'yearly');
+  elsif p_plan = 'monthly' then
+    perform _grant_days(v_uid, 30, 'test', 'monthly');
+  else
+    return jsonb_build_object('ok', false, 'error', 'invalid_plan');
+  end if;
+  return jsonb_build_object('ok', true);
+end;
+$$;
+revoke all on function public.test_purchase(text) from public, anon;
+grant execute on function public.test_purchase(text) to authenticated;

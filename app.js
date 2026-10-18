@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v55';
+  var APP_VERSION = 'v56';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -350,8 +350,8 @@
   }
   function nickname() { return (state.profile && state.profile.nickname || '').trim(); }
 
-  /* ---------- 멤버십 (무료 3강 / 월 구독 / 평생) ---------- */
-  var FREE_LESSONS = 3, PRICE_MONTH = 2990, PRICE_LIFE = 19900, WAS_MONTH = 4900, WAS_LIFE = 39000;
+  /* ---------- 멤버십 (무료 3강 / 월 구독 / 연간 14개월) ---------- */
+  var FREE_LESSONS = 3, PRICE_MONTH = 2990, PRICE_LIFE = 19900, WAS_MONTH = 4900, WAS_YEAR = PRICE_MONTH * 12, YEAR_DAYS = 425;   // 연간: 1년 + 2개월 무료(14개월), 정가 대신 '월 구독 12개월 값'을 비교해요
   function offPct(was, now) { return Math.round((1 - now / was) * 100); }
   function won(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '원'; }
   // 이용권 정보(state.ent)를 서버에서 가져와요. 못 가져오면(네트워크·표 없음) 잠그지 않아요.
@@ -395,6 +395,7 @@
     var e = state.ent;
     if (!isPro()) return { t: '무료 이용 중', s: '3강까지 무료예요' };
     if (e && e.plan === 'lifetime') return { t: '평생 이용 중', s: '모든 레슨을 계속 쓸 수 있어요' };
+    if (e && e.plan === 'yearly' && e.expires_at) return { t: '연간 이용 중', s: fmtDate(e.expires_at) + '까지 이용할 수 있어요' };
     if (e && e.expires_at) return { t: '구독 중', s: fmtDate(e.expires_at) + '까지 이용할 수 있어요' };
     return { t: '이용 중', s: '모든 레슨을 쓸 수 있어요' };
   }
@@ -640,11 +641,12 @@
     var goalPct = Math.round(ans / goal * 100), hit = ans >= goal;
     var scale = Math.max(100, Math.min(goalPct, 300));
     var basePct = Math.min(goalPct, 100) / scale * 100, tickPct = 100 / scale * 100, fillPct = Math.min(goalPct, 300) / scale * 100;
-    var goalCard = '<div class="goal-card' + (hit ? ' hit' : '') + (goalPct > 100 ? ' over' : '') + '"><div class="goal-top"><span>오늘 목표</span><b>' +
-      (hit ? '달성! ' : '') + Math.min(ans, 9999) + ' / ' + goal + '문제' + (hit ? ' <em class="goal-pct">' + Math.min(goalPct, 999) + '%</em>' : '') + '</b></div>' +
+    var capTxt = goalPct > 100 ? '목표보다 ' + (ans - goal) + '문제 더 했어요' : '오늘 목표를 채웠어요';
+    var goalCard = '<div class="goal-card' + (hit ? ' hit' : '') + (goalPct > 100 ? ' over' : '') + '"><div class="goal-top"><span>오늘 목표</span>' +
+      (hit ? '<em class="goal-pct">달성!</em>' : '<b>' + Math.min(ans, 9999) + ' / ' + goal + '문제</b>') + '</div>' +
       '<div class="goal-bar"><i class="gb-base" style="width:' + basePct + '%"></i>' +
       (goalPct > 100 ? '<i class="gb-over" style="left:' + tickPct + '%;width:' + (fillPct - tickPct) + '%"></i><span class="gb-tick" style="left:' + tickPct + '%"></span>' : '') + '</div>' +
-      (goalPct > 100 ? '<div class="goal-sub">목표보다 ' + (ans - goal) + '문제 더 했어요</div>' : '') + '</div>';
+      (hit ? '<div class="goal-sub"><span>' + capTxt + '</span><span>' + Math.min(ans, 9999) + ' / ' + goal + '문제</span></div>' : '') + '</div>';
 
     var todayCard;
     if (!next) {
@@ -1598,11 +1600,11 @@
         '<li>' + I.check + '복습 알림 · 1분 중국어 알림</li>' +
       '</ul>' +
       (isLifetime() ? '' : '<div class="plans">' +
-        '<div class="plan best"><span class="pl-badge">가장 추천</span><div class="pl-n">평생 이용</div>' +
-          '<div class="pl-was"><s>' + won(WAS_LIFE) + '</s><span class="pl-off">' + offPct(WAS_LIFE, PRICE_LIFE) + '% 할인</span></div>' +
-          '<div class="pl-p">' + won(PRICE_LIFE) + '<small>한 번만</small></div>' +
-          '<div class="pl-s">월 구독 약 7개월 값으로 평생 쓸 수 있어요.<br>이후엔 추가 비용이 없고, 새 레슨도 계속 열려요.</div>' +
-          '<button class="btn pl-main" data-act="buy" data-id="lifetime">평생 이용 시작하기</button></div>' +
+        '<div class="plan best"><span class="pl-badge">가장 추천</span><div class="pl-n">1년 이용 + 2개월 무료</div>' +
+          '<div class="pl-was"><s>' + won(WAS_YEAR) + '</s><span class="pl-off">' + offPct(WAS_YEAR, PRICE_LIFE) + '% 할인</span></div>' +
+          '<div class="pl-p">' + won(PRICE_LIFE) + '<small>14개월 이용</small></div>' +
+          '<div class="pl-s">월 구독 12개월 값보다 저렴하고, 2개월은 덤이에요.<br>한 번 결제로 14개월 쓰고, 자동 갱신은 없어요.</div>' +
+          '<button class="btn pl-main" data-act="buy" data-id="yearly">1년 + 2개월 시작하기</button></div>' +
         '<div class="plan"><div class="pl-n">월 구독</div><div class="pl-was"><s>' + won(WAS_MONTH) + '</s><span class="pl-off">' + offPct(WAS_MONTH, PRICE_MONTH) + '% 할인</span></div><div class="pl-p">' + won(PRICE_MONTH) + '<small>/월</small></div><div class="pl-s">커피 한 잔보다 저렴하게, 한 달씩 언제든 그만둘 수 있어요</div>' +
           '<button class="btn soft" data-act="buy" data-id="monthly">월 구독 시작하기</button></div>' +
       '</div>') +
@@ -1636,7 +1638,7 @@
       await loadEnt();
       state.payWhy = null;
       render();
-      toast(plan === 'lifetime' ? '평생 이용이 시작됐어요 (테스트)' : '월 구독이 시작됐어요 (테스트)');
+      toast(plan === 'yearly' ? '14개월 이용이 시작됐어요 (테스트)' : '월 구독이 시작됐어요 (테스트)');
     } catch (e) { if (window.console) console.error(e); toast('처리하지 못했어요. 잠시 후 다시 시도해 주세요'); }
   }
   // 테스트용: 이용권을 지우고 무료 상태로 되돌려요 (서버가 테스트 모드일 때만 허용)

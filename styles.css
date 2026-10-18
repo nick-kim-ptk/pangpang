@@ -1059,3 +1059,10 @@ u.miss { text-decoration: underline wavy #ef5350; text-underline-offset: 4px; co
 .acc-danger .acc-t { font-weight: 800; font-size: 15px; color: var(--ink-2); }
 .acc-danger p { margin: 6px 0 14px; font-size: 13px; line-height: 1.5; color: var(--ink-3); word-break: keep-all; }
 .acc-del { color: #d2455a; }
+
+/* v56: 목표 달성 배지 · 초과 안내 띠 */
+.goal-pct { margin-left: 0 !important; font-size: 13px; padding: 2px 10px; }
+.goal-card.hit .goal-pct { background: var(--green); color: #fff; }
+.goal-card.over .goal-pct { background: #d4561c; }
+.goal-sub { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 10px; padding: 8px 12px; border-radius: 12px; font-size: 13px; font-weight: 700; color: #fff; background: var(--green); }
+.goal-card.over .goal-sub { background: #d4561c; }
