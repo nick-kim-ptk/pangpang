@@ -1022,3 +1022,40 @@ u.miss { text-decoration: underline wavy #ef5350; text-underline-offset: 4px; co
 .pay-test span { flex: 1; min-width: 0; }
 .pay-test .btn { width: auto; flex: none; }
 .hsk-new { margin: -4px 0 12px; font-size: 13px; color: var(--ink-2); }
+
+/* v55: 상황 대화 — 질문은 상대 말풍선 안에, 내 답변 안내는 보낼 메시지처럼 떠올라요 */
+.chat { display: flex; flex-direction: column; gap: 8px; margin: 10px 0 8px; }
+.chat .tr { margin: 0; max-height: 26vh; }
+.cb { max-width: 92%; border-radius: 20px; }
+.cb.them.cur { align-self: flex-start; display: flex; gap: 8px; align-items: flex-start; padding: 14px 12px 14px 16px; background: var(--card); box-shadow: inset 0 0 0 1.5px var(--line); border-top-left-radius: 6px; }
+.cb-main { flex: 1; min-width: 0; }
+.cb.them .q-zh { font-size: 26px; margin: 0 0 6px; }
+.cb.them .q-py { font-size: 17px; }
+.cb.them .q-kr { font-size: 14px; margin-bottom: 6px; }
+.cb.them .q-ko, .cb.them .ko-peek { font-size: 15px; }
+.cb-spk { flex: none; }
+.cb.me.ghost { align-self: flex-end; max-width: 86%; padding: 10px 14px; border-top-right-radius: 6px; background: var(--y); color: var(--on-yellow, var(--navy));
+  opacity: 0; transform: translateY(16px) scale(.94); transform-origin: 100% 100%; pointer-events: none;
+  transition: opacity .28s ease, transform .5s cubic-bezier(.2, 1.5, .4, 1); }
+.cb.me.ghost.on { opacity: 1; transform: none; }
+.cb.me.ghost .lab { font-size: 12px; font-weight: 800; opacity: .75; margin-bottom: 2px; letter-spacing: -.01em; }
+.cb.me.ghost .ko { font-size: 16px; line-height: 1.5; font-weight: 600; word-break: keep-all; }
+@media (prefers-reduced-motion: reduce) { .cb.me.ghost { transition: opacity .2s; transform: none; } }
+
+/* v55: 목표 초과 표시 */
+.goal-bar { position: relative; }
+.goal-bar i { position: absolute; top: 0; bottom: 0; left: 0; height: auto; }
+.goal-bar .gb-over { background: linear-gradient(90deg, #f5a524, #ef6c2c); border-radius: 0 4px 4px 0; transition: width .5s ease; }
+.goal-bar .gb-tick { position: absolute; top: -2px; bottom: -2px; width: 2px; margin-left: -1px; background: var(--card); box-shadow: 0 0 0 1px rgba(0,0,0,.08); }
+.goal-pct { font-style: normal; margin-left: 6px; padding: 1px 8px; border-radius: 999px; background: var(--green); color: #fff; font-size: 12px; font-weight: 800; }
+.goal-card.over .goal-pct { background: #ef6c2c; }
+.goal-sub { margin-top: 8px; font-size: 12px; font-weight: 700; color: #c2571a; }
+.goal-card.hit .goal-bar i.gb-over { background: linear-gradient(90deg, #f5a524, #ef6c2c); }
+.me-links { flex-wrap: wrap; row-gap: 8px; }
+
+/* v55: 계정 관리 */
+.acc-v { max-width: 60%; text-align: right; overflow-wrap: anywhere; }
+.acc-danger { margin-top: 40px; padding-top: 20px; border-top: 1.5px solid var(--line); }
+.acc-danger .acc-t { font-weight: 800; font-size: 15px; color: var(--ink-2); }
+.acc-danger p { margin: 6px 0 14px; font-size: 13px; line-height: 1.5; color: var(--ink-3); word-break: keep-all; }
+.acc-del { color: #d2455a; }

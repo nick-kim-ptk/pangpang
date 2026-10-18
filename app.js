@@ -384,7 +384,11 @@
   }
   // 무료 체험: 스피드 퀴즈·상황 대화는 1회분, HSK는 1급만
   function speedLocked() { return !isPro() && state.profile.speedUsed >= 1; }
-  function dialogLocked() { return !isPro() && state.profile.dlg.length >= 1; }
+  function dialogLocked(id) {   // 첫 번째 상황 대화는 무료로 계속 할 수 있어요
+    if (isPro()) return false;
+    var ds = window.DIALOGS || [];
+    return !ds.length || !id || ds[0].id !== id;
+  }
   function hskLocked(lv) { return lv >= 2 && !isPro(); }
   function fmtDate(iso) { var d = new Date(iso); return d.getFullYear() + '.' + (d.getMonth() + 1) + '.' + d.getDate(); }
   function memberLabel() {
@@ -436,7 +440,7 @@
 
   /* ---------- 화면 이동 ---------- */
   // 뒤로 가기: 폰의 뒤로 제스처·버튼(기록)과 화면 왼쪽 가장자리에서 오른쪽으로 미는 동작을 같이 처리해요
-  var SUBSCREEN = { pay: 1, privacy: 1, login: 1, intro: 1, practice: 1, quiz: 1, stats: 1, done: 1, hsk: 1, hskstudy: 1, feedback: 1, speed: 1 };
+  var SUBSCREEN = { pay: 1, privacy: 1, login: 1, intro: 1, practice: 1, quiz: 1, stats: 1, done: 1, hsk: 1, hskstudy: 1, feedback: 1, speed: 1, account: 1 };
   var inSub = false, ignorePop = 0, backAnim = false;
   function syncHistory(screen) {
     try {
@@ -461,7 +465,7 @@
     else if (sc === 'privacy') go(state.privFrom === 'login' ? 'login' : 'tab');
     else if (sc === 'speed') { stopSpeed(); go('tab'); }
     else if (sc === 'done') go('tab', { tab: 'home' });
-    else if (sc === 'intro' || sc === 'stats' || sc === 'feedback') go('tab');
+    else if (sc === 'intro' || sc === 'stats' || sc === 'feedback' || sc === 'account') go('tab');
   }
   window.addEventListener('popstate', function () {
     if (ignorePop > 0) { ignorePop--; return; }
@@ -632,9 +636,15 @@
       (st > 0 ? ' <span class="chip y streak-chip">' + st + '일 연속</span>' : '') + '</h1></div>';
 
     var ans = todayAnswers(), goal = state.profile.goal;
-    var goalPct = Math.min(100, Math.round(ans / goal * 100));
-    var goalCard = '<div class="goal-card' + (ans >= goal ? ' hit' : '') + '"><div class="goal-top"><span>오늘 목표</span><b>' +
-      (ans >= goal ? '달성! ' : '') + Math.min(ans, 9999) + ' / ' + goal + '문제</b></div><div class="goal-bar"><i style="width:' + goalPct + '%"></i></div></div>';
+    // 목표를 넘기면 150%처럼 그대로 보여 주고, 막대도 목표선(100%)을 넘어 계속 길어져요 (최대 300%까지)
+    var goalPct = Math.round(ans / goal * 100), hit = ans >= goal;
+    var scale = Math.max(100, Math.min(goalPct, 300));
+    var basePct = Math.min(goalPct, 100) / scale * 100, tickPct = 100 / scale * 100, fillPct = Math.min(goalPct, 300) / scale * 100;
+    var goalCard = '<div class="goal-card' + (hit ? ' hit' : '') + (goalPct > 100 ? ' over' : '') + '"><div class="goal-top"><span>오늘 목표</span><b>' +
+      (hit ? '달성! ' : '') + Math.min(ans, 9999) + ' / ' + goal + '문제' + (hit ? ' <em class="goal-pct">' + Math.min(goalPct, 999) + '%</em>' : '') + '</b></div>' +
+      '<div class="goal-bar"><i class="gb-base" style="width:' + basePct + '%"></i>' +
+      (goalPct > 100 ? '<i class="gb-over" style="left:' + tickPct + '%;width:' + (fillPct - tickPct) + '%"></i><span class="gb-tick" style="left:' + tickPct + '%"></span>' : '') + '</div>' +
+      (goalPct > 100 ? '<div class="goal-sub">목표보다 ' + (ans - goal) + '문제 더 했어요</div>' : '') + '</div>';
 
     var todayCard;
     if (!next) {
@@ -700,13 +710,12 @@
   function dialogSection() {
     var ds = window.DIALOGS || [];
     if (!ds.length) return '';
-    var lockedAll = dialogLocked();
     return '<div class="section-title" style="margin-top:28px">상황 대화 연습</div>' +
-      (isPro() ? '' : '<p class="hsk-note under-title">' + (lockedAll ? '무료 체험 1회를 썼어요. 계속하려면 멤버십이 필요해요.' : '무료로 1회 체험할 수 있어요.') + '</p>') + '<ul class="list">' + ds.map(function (d) {
+      (isPro() ? '' : '<p class="hsk-note under-title">첫 번째 대화는 무료로 계속 연습할 수 있어요. 나머지는 멤버십이 필요해요.</p>') + '<ul class="list">' + ds.map(function (d) {
       var done = state.profile.dlg.indexOf(d.id) >= 0;
       return '<li><button class="item" data-act="dialog-start" data-id="' + d.id + '"><span class="txt"><div class="t">' + esc(d.title) + '</div>' +
         '<div class="s">' + esc(d.intro) + ' · ' + d.turns.length + '번 주고받기</div></span>' +
-        (lockedAll ? '<span class="chip lockchip">' + I.lock + 'PRO</span>' : '<span class="chip ' + (done ? 'green' : 'soft') + '">' + (done ? '완료' : '시작') + '</span>') + '</button></li>';
+        (dialogLocked(d.id) ? '<span class="chip lockchip">' + I.lock + 'PRO</span>' : '<span class="chip ' + (done ? 'green' : 'soft') + '">' + (done ? '완료' : '시작') + '</span>') + '</button></li>';
     }).join('') + '</ul>';
   }
   function listenCard() {
@@ -855,21 +864,37 @@
       '<span class="chip" style="min-width:48px;justify-content:center">' + cnt + '</span></div>';
 
     var showAnswer = s.revealed && s.phase === 'ask';
-    var body = '<div class="q-wrap">' +
+    var hintBtn = !s.revealed && s.phase === 'ask' ? '<button class="link-btn" data-act="reveal">힌트 보기</button>' : '';
+    var body;
+    if (s.kind === 'dialog') {
+      // 질문(상대 말풍선) 안에 중국어·병음·발음·뜻을 함께 넣고, 내 답변 안내는 보낼 메시지처럼 아래에 떠올라요
+      var on = s.guideOn && s.phase === 'ask';
+      body = '<div class="q-wrap">' +
+        '<div class="q-head"><span class="chip soft">' + esc(l.title) + '</span></div>' +
+        '<div class="chat">' + transcriptHtml(s) +
+          '<div class="cb them cur"><div class="cb-main"><div class="q-zh">' + esc(q.zh) + '</div>' +
+            '<div class="q-py">' + esc(q.py) + '</div><div class="q-kr">' + esc(kr(q.py)) + '</div>' +
+            koBlock(s, q.ko, 'q-ko') + '</div>' +
+            '<button class="round-btn cb-spk" data-act="hear-q" aria-label="질문 다시 듣기">' + I.spk + '</button></div>' +
+          (s.phase === 'ask' ? '<div id="dlg-guide" class="cb me ghost' + (on ? ' on' : '') + '"' + (on ? '' : ' aria-hidden="true"') + '><div class="lab">이렇게 답변해보세요</div><div class="ko">' + esc(q.a.ko) + '</div></div>' : '') +
+        '</div>' +
+        (hintBtn ? '<div class="q-actions">' + hintBtn + '</div>' : '') +
+        (showAnswer ? answerCard(q, '따라 말해 보세요') : '') +
+      '</div>';
+    } else {
+      body = '<div class="q-wrap">' +
       '<div class="q-head"><span class="chip soft">' + esc(l.title) + '</span></div>' +
-      (s.kind === 'dialog' ? transcriptHtml(s) : '') +
       '<div class="q-zh">' + esc(q.zh) + '</div>' +
       '<div class="q-py">' + esc(q.py) + '</div>' +
       '<div class="q-kr">' + esc(kr(q.py)) + '</div>' +
       koBlock(s, q.ko, 'q-ko') +
       '<div class="q-actions">' +
         '<button class="round-btn" data-act="hear-q" aria-label="질문 다시 듣기">' + I.spk + '</button>' +
-        (l.tip ? '<span class="tip">' + esc(l.tip) + '</span>' : '') +
-        (!s.revealed && s.phase === 'ask' ? '<button class="link-btn" data-act="reveal">힌트 보기</button>' : '') +
+        (l.tip ? '<span class="tip">' + esc(l.tip) + '</span>' : '') + hintBtn +
       '</div>' +
-      (s.kind === 'dialog' && s.phase === 'ask' ? '<div class="dlg-guide"><div class="lab">이렇게 답변해보세요.</div><div class="ko">' + esc(q.a.ko) + '</div></div>' : '') +
       (showAnswer ? answerCard(q, '따라 말해 보세요') : '') +
     '</div>';
+    }
 
     var bottom = s.phase === 'ask' ? micArea() : resultSheet(q);
     return '<div class="screen">' + top + body + bottom + '</div>';
@@ -1089,8 +1114,9 @@
       '</div></div>';
   }
 
+  function isLifetime() { return !!sb && !state.entErr && !!state.ent && state.ent.plan === 'lifetime'; }
   function memberCard() {
-    if (!sb) return '';
+    if (!sb || isLifetime()) return '';   // 평생 회원은 아래 메뉴 목록에서 확인해요
     var m = memberLabel();
     return '<button class="member-card' + (isPro() ? ' on' : '') + '" data-act="open-pay"><span class="mc-t">' + esc(m.t) + '</span><span class="mc-s">' + esc(m.s) + '</span>' +
       '<span class="mc-go">' + (isPro() ? '멤버십 관리' : '멤버십 보기') + '</span></button>';
@@ -1123,6 +1149,7 @@
       '<div class="set-row"><div class="set-t">한국어 발음 표기</div>' + seg('set-kr', p.kr ? 'on' : 'off', [['on', '켜짐'], ['off', '꺼짐']]) + '</div>' +
       '<div class="set-row"><div class="set-t">화면</div>' + seg('set-theme', p.theme, [['auto', '자동'], ['light', '라이트'], ['dark', '다크']]) + '</div>' +
       (typeof settingsExtra === 'function' ? settingsExtra() : '') +
+      (sb && !isGuest() ? '<div class="set-row"><div class="set-t">계정 관리</div><button class="pill-sm" data-act="open-account">열기</button></div>' : '') +
       '<div class="set-row"><div class="set-t">의견 보내기</div><button class="pill-sm" data-act="open-feedback">보내기</button></div>' +
       '<div class="set-row"><div class="set-t">앱 버전</div><div class="set-v">' + APP_VERSION + '</div></div></div>';
   }
@@ -1158,7 +1185,7 @@
       '<div class="me-actions">' +
         (sb ? '<button class="btn gray" data-act="logout">로그아웃</button>'
             : '<button class="btn gray" data-act="reset-local">기록 모두 지우기</button>') +
-      '<div class="me-links"><button data-act="open-privacy">개인정보처리방침</button>' + (sb ? '<button data-act="delete-account" class="warn">계정 삭제</button>' : '') + '</div>' +
+      '<div class="me-links">' + (isLifetime() ? '<button data-act="open-pay">평생 회원 · 멤버십 정보</button>' : '') + '<button data-act="open-privacy">개인정보처리방침</button></div>' +
       '</div>' +
       '</div>' + navHtml() + '</div>';
   }
@@ -1247,6 +1274,7 @@
     else if (state.screen === 'hsk') html = viewHsk();
     else if (state.screen === 'feedback') html = viewFeedback();
     else if (state.screen === 'privacy') html = viewPrivacy();
+    else if (state.screen === 'account') html = viewAccount();
     else if (state.screen === 'pay') html = viewPay();
     else if (state.screen === 'speed') html = viewSpeed();
     else if (state.screen === 'hskstudy') html = viewHskStudy();
@@ -1561,15 +1589,15 @@
     return '<div class="screen"><div class="topbar"><button class="icon-btn" data-act="back" aria-label="뒤로">' + I.back + '</button></div>' +
       '<div class="scroll" style="padding-top:4px">' +
       '<h1 class="big-title" style="margin-top:0">팽팽이랑 오래 공부하기</h1>' +
-      '<p class="sub-title">1~' + FREE_LESSONS + '강과 HSK 1급은 무료예요. 멤버십이면 이렇게 쓸 수 있어요.</p>' + why +
+      '<p class="sub-title">1~' + FREE_LESSONS + '강, HSK 1급, 첫 상황 대화는 무료예요. 멤버십이면 이렇게 쓸 수 있어요.</p>' + why +
       (pro ? '<div class="pay-status"><b>' + esc(m.t) + '</b><span>' + esc(m.s) + '</span></div>' : '') +
       '<ul class="perks">' +
         '<li>' + I.check + LESSONS.length + '강 전체 레슨 <em class="perk-tag">계속 업데이트돼요</em></li>' +
         '<li>' + I.check + '개정된 신 HSK 3.0 · 1~4급 단어 <em class="perk-tag">최신 개정판</em></li>' +
-        '<li>' + I.check + '스피드 퀴즈 · 상황 대화 무제한</li>' +
+        '<li>' + I.check + '스피드 퀴즈 · 모든 상황 대화 무제한</li>' +
         '<li>' + I.check + '복습 알림 · 1분 중국어 알림</li>' +
       '</ul>' +
-      '<div class="plans">' +
+      (isLifetime() ? '' : '<div class="plans">' +
         '<div class="plan best"><span class="pl-badge">가장 추천</span><div class="pl-n">평생 이용</div>' +
           '<div class="pl-was"><s>' + won(WAS_LIFE) + '</s><span class="pl-off">' + offPct(WAS_LIFE, PRICE_LIFE) + '% 할인</span></div>' +
           '<div class="pl-p">' + won(PRICE_LIFE) + '<small>한 번만</small></div>' +
@@ -1577,13 +1605,13 @@
           '<button class="btn pl-main" data-act="buy" data-id="lifetime">평생 이용 시작하기</button></div>' +
         '<div class="plan"><div class="pl-n">월 구독</div><div class="pl-was"><s>' + won(WAS_MONTH) + '</s><span class="pl-off">' + offPct(WAS_MONTH, PRICE_MONTH) + '% 할인</span></div><div class="pl-p">' + won(PRICE_MONTH) + '<small>/월</small></div><div class="pl-s">커피 한 잔보다 저렴하게, 한 달씩 언제든 그만둘 수 있어요</div>' +
           '<button class="btn soft" data-act="buy" data-id="monthly">월 구독 시작하기</button></div>' +
-      '</div>' +
+      '</div>') +
       '<div class="notice pay-test"><span>지금은 테스트 모드예요. 실제로 결제되지 않고, 누르면 바로 이용권이 열려요.</span>' +
         (state.ent ? '<button class="btn sm soft" data-act="test-reset">복구하기</button>' : '') + '</div>' +
-      '<div class="section-title" style="margin-top:24px">쿠폰</div>' +
+      (isLifetime() ? '' : '<div class="section-title" style="margin-top:24px">쿠폰</div>' +
       '<div class="coupon-row"><input id="coupon" class="coupon-in" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="쿠폰 번호 입력" aria-label="쿠폰 번호">' +
       '<button class="btn sm" data-act="coupon-redeem">등록</button></div>' +
-      '<p class="coupon-help">쿠폰을 등록하면 1개월 동안 모든 레슨을 쓸 수 있어요.</p>' +
+      '<p class="coupon-help">쿠폰을 등록하면 1개월 동안 모든 레슨을 쓸 수 있어요.</p>') +
       '</div></div>';
   }
   var COUPON_ERR = {
@@ -1650,6 +1678,21 @@
     ['보관과 삭제', '정보는 계정을 유지하는 동안 보관해요. 마이 화면의 “계정 삭제”를 누르면 계정과 학습 기록, 설정, 알림 구독이 바로 삭제되고 되돌릴 수 없어요. 이미 보낸 의견·오류 기록은 개인을 알아볼 수 없는 상태로 남을 수 있어요.'],
     ['문의', '궁금한 점이나 삭제·정정 요청은 마이 화면의 “의견 보내기”로 남겨 주세요.']
   ];
+  function viewAccount() {
+    var email = state.user && state.user.email ? state.user.email : '';
+    var m = memberLabel();
+    return '<div class="screen"><div class="topbar"><button class="icon-btn" data-act="back" aria-label="뒤로">' + I.back + '</button></div>' +
+      '<div class="scroll" style="padding-top:4px"><h1 class="big-title" style="margin-top:0">계정 관리</h1>' +
+      '<p class="sub-title">내 계정 정보예요.</p>' +
+      '<div class="set-card">' +
+        '<div class="set-row"><div class="set-t">로그인 계정</div><div class="set-v acc-v">' + esc(email || 'Google 계정') + '</div></div>' +
+        '<div class="set-row"><div class="set-t">멤버십</div><div class="set-v acc-v">' + esc(m.t) + '</div></div>' +
+      '</div>' +
+      '<div class="acc-danger"><div class="acc-t">계정 삭제</div>' +
+        '<p>계정과 모든 학습 기록, 설정, 알림 구독이 바로 삭제돼요. 삭제한 뒤에는 되돌릴 수 없어요.' + (isPro() && !state.entErr && state.ent ? ' 이용 중인 멤버십도 함께 사라져요.' : '') + '</p>' +
+        '<button class="btn gray acc-del" data-act="delete-account">계정 삭제하기</button></div>' +
+      '</div></div>';
+  }
   function viewPrivacy() {
     return '<div class="screen"><div class="topbar"><button class="icon-btn" data-act="back" aria-label="뒤로">' + I.back + '</button></div>' +
       '<div class="scroll legal" style="padding-top:4px"><h1 class="big-title" style="margin-top:0">개인정보처리방침</h1>' +
@@ -2097,7 +2140,7 @@
   function startDialog(id) {
     var d = (window.DIALOGS || []).filter(function (x) { return x.id === id; })[0];
     if (!d) return;
-    if (dialogLocked()) { go('pay', { payWhy: '상황 대화 무료 체험(1회)을 모두 썼어요. 계속하려면 멤버십이 필요해요.' }); return; }
+    if (dialogLocked(id)) { go('pay', { payWhy: '이 상황 대화는 멤버십이 필요해요. 첫 번째 대화는 무료예요.' }); return; }
     var qs = d.turns.map(function (t, i) {
       return { id: 'dlg-' + d.id + '-' + (i + 1), lessonId: null, zh: t.zh, py: t.py, ko: t.ko, a: t.a, must: t.must };
     });
@@ -2126,7 +2169,24 @@
   function sayCurrentQuestion() {
     var s = state.s;
     setTimeout(function () {
-      if (state.screen === 'practice' && state.s === s && s.phase === 'ask' && !s.listening && s.cur) speak(s.cur.zh);
+      if (state.screen === 'practice' && state.s === s && s.phase === 'ask' && !s.listening && s.cur) {
+        var q0 = s.cur;
+        if (s.kind === 'dialog' && !s.guideOn) {
+          var shown = false;
+          var show = function () {
+            if (shown) return; shown = true;
+            if (state.s !== s || s.cur !== q0 || s.phase !== 'ask') return;
+            setTimeout(function () {
+              if (state.s !== s || s.cur !== q0 || s.phase !== 'ask') return;
+              s.guideOn = true;
+              var g = document.getElementById('dlg-guide');
+              if (g) { g.classList.add('on'); g.removeAttribute('aria-hidden'); }
+            }, 250);
+          };
+          setTimeout(show, 9000);          // 음성이 안 끝나는 기기를 위한 안전장치
+          speak(q0.zh, undefined, show);
+        } else speak(q0.zh);
+      }
     }, 350);
   }
 
@@ -2277,7 +2337,7 @@
     }
     s.cur = s.queue[0];
     saveResume(s);
-    s.tries = 0; s.revealed = false; s.showKo = false; s.phase = 'ask'; s.heard = ''; s.pass = false; s.msg = ''; s.live = '';
+    s.tries = 0; s.revealed = false; s.showKo = false; s.phase = 'ask'; s.heard = ''; s.pass = false; s.msg = ''; s.live = ''; s.guideOn = false;
     render();
     sayCurrentQuestion();
   }
@@ -2456,6 +2516,7 @@
       case 'buy': buyPlan(id); break;
       case 'coupon-redeem': redeemCoupon(); break;
       case 'test-reset': resetPlan(); break;
+      case 'open-account': go('account'); break;
       case 'open-privacy': go('privacy', { privFrom: state.screen === 'login' ? 'login' : 'tab' }); break;
       case 'delete-account':
         askConfirm({ title: '계정을 삭제할까요?', body: '계정과 모든 학습 기록, 설정이 사라지고 되돌릴 수 없어요.', ok: '계속하기', cancel: '취소', danger: true, m: 'shy' }, function () {
