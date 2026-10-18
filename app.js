@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v72';
+  var APP_VERSION = 'v73';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -160,6 +160,7 @@
     check: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
     x: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
     home: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M4 11l8-7 8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1v-8z"/></svg>',
+    chat: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1.1-4.3A8 8 0 1 1 21 12z"/><path d="M8.5 11.5h7M8.5 14.5h4"/></svg>',
     review: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.6-5.9M20 4v5h-5"/></svg>',
     list: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1" fill="currentColor"/><circle cx="4.5" cy="12" r="1" fill="currentColor"/><circle cx="4.5" cy="18" r="1" fill="currentColor"/></svg>',
     user: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20c1-4 4-6 8-6s7 2 8 6"/></svg>',
@@ -391,7 +392,7 @@
     } catch (e) { state.ai = null; }   // 표가 아직 없으면 AI 메뉴를 숨겨요
     if (state.ai) await loadFixes();
   }
-  /* AI가 고쳐 준 문장 모음 (복습 탭에 보여요). 서버 표 ai_fix가 있으면 거기에, 없으면 이 기기에 저장해요 */
+  /* AI가 고쳐 준 문장·모은 표현 (AI 대화 탭에 보여요). 서버 표 ai_fix가 있으면 거기에, 없으면 이 기기에 저장해요 */
   var FIX_KEY = 'pangpang.aifix';
   function fixUid() { return (state.user && state.user.id) || 'x'; }
   function fixLocalRead() { try { var a = JSON.parse(localStorage.getItem(FIX_KEY + '.' + fixUid()) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
@@ -422,7 +423,7 @@
     state.fixes = (state.fixes || []).filter(function (x) { return x.natural !== natural; }); fixLocalWrite();
     try { Promise.resolve(sb.from('ai_fix').delete().eq('zh', natural)).catch(function () {}); } catch (e) { /* 무시 */ }
   }
-  var fixUi = { all: false, all2: false };
+  var fixUi = { seg: 'expr', n: {} };
   function fixRowHtml(f) {
     var x = f.kind === 'ask' || f.kind === 'say';
     return '<div class="fixrow"><button class="fixrow-main" data-act="say" data-text="' + esc(f.natural) + '">' +
@@ -433,19 +434,24 @@
       (f.why ? '<span class="why">' + esc(f.why) + '</span>' : '') + '</button>' +
       '<button class="fixrow-x" data-act="ai-fix-del" data-t="' + esc(f.natural) + '" aria-label="삭제">' + I.close + '</button></div>';
   }
-  function fixBlock(list, title, note, key) {
-    if (!list.length) return '';
-    var all = fixUi[key], shown = all ? list : list.slice(0, 5);
-    return '<div class="section-title" style="margin-top:28px">' + title + ' ' + list.length + '</div>' +
-      '<p class="hsk-note under-title">' + note + '</p><div class="fixlist">' + shown.map(fixRowHtml).join('') + '</div>' +
-      (list.length > 5 ? '<button class="link-btn" style="margin-top:6px" data-act="ai-fix-more" data-k="' + key + '">' + (all ? '접기' : '전체 보기 (' + list.length + ')') + '</button>' : '');
-  }
+  // AI 대화 탭: '모은 표현'과 '고쳐 준 문장' 두 메뉴. 7개씩 보여 주고 더보기로 늘려요
   function aiFixSection() {
     var fx = aiFixes();
-    var fixes = fx.filter(function (f) { return !f.kind || f.kind === 'fix'; });
-    var exprs = fx.filter(function (f) { return f.kind === 'ask' || f.kind === 'say'; });
-    return fixBlock(exprs, 'AI 대화에서 모은 표현', '대화에서 자주 묻고 답할 만한 말을 모았어요. 눌러서 소리를 듣고 따라 말해 보세요.', 'all2') +
-      fixBlock(fixes, 'AI 선생님이 고쳐 준 문장', 'AI 대화에서 고쳐 받은 문장이에요. 눌러서 소리를 듣고 따라 말해 보세요.', 'all');
+    var lists = {
+      expr: fx.filter(function (f) { return f.kind === 'ask' || f.kind === 'say'; }),
+      fix: fx.filter(function (f) { return !f.kind || f.kind === 'fix'; })
+    };
+    var seg = fixUi.seg === 'fix' ? 'fix' : 'expr', list = lists[seg];
+    var take = fixUi.n[seg] || 7, shown = list.slice(0, take);
+    var tabs = '<div class="aiseg" role="tablist">' +
+      '<button role="tab" class="' + (seg === 'expr' ? 'on' : '') + '" data-act="ai-seg" data-k="expr">모은 표현<b>' + lists.expr.length + '</b></button>' +
+      '<button role="tab" class="' + (seg === 'fix' ? 'on' : '') + '" data-act="ai-seg" data-k="fix">고쳐 준 문장<b>' + lists.fix.length + '</b></button></div>';
+    var note = seg === 'expr' ? '대화에서 자주 묻고 답할 만한 말을 모았어요. 눌러서 소리를 듣고 따라 말해 보세요.' : 'AI 선생님이 고쳐 준 문장이에요. 눌러서 소리를 듣고 따라 말해 보세요.';
+    var body = list.length ?
+      '<p class="hsk-note under-title">' + note + '</p><div class="fixlist">' + shown.map(fixRowHtml).join('') + '</div>' +
+        (list.length > take ? '<button class="more-btn" data-act="ai-fix-more" data-k="' + seg + '">더보기 (' + Math.min(7, list.length - take) + '개 더)</button>' : '')
+      : '<div class="aiempty">' + (seg === 'expr' ? '아직 모은 표현이 없어요.<br>AI와 대화하고 마치면 자주 쓸 표현이 여기에 모여요.' : '아직 고쳐 받은 문장이 없어요.<br>대화 중 어색한 말을 하면 AI 선생님이 고쳐 줘요.') + '</div>';
+    return '<div class="section-title" style="margin-top:28px">내가 모은 것</div>' + tabs + body;
   }
   function aiOn() { return !!(sb && !isGuest() && !state.entErr && state.ai && isPro()); }
   function aiBal() { return state.ai ? state.ai.monthly + state.ai.topup : 0; }
@@ -707,7 +713,7 @@
     function b(id, label, icon) {
       return '<button data-act="tab" data-id="' + id + '"' + (state.tab === id ? ' aria-current="page"' : '') + '>' + icon + '<span>' + label + '</span></button>';
     }
-    return '<nav class="nav" aria-label="메뉴">' + b('home', '홈', I.home) + b('lessons', '레슨', I.list) + b('review', '복습', I.review) + b('words', '단어장', I.book) + b('me', '마이', I.user) + '</nav>';
+    return '<nav class="nav" aria-label="메뉴">' + b('home', '홈', I.home) + b('lessons', '레슨', I.list) + b('review', 'AI 대화', I.chat) + b('words', '단어장', I.book) + b('me', '마이', I.user) + '</nav>';
   }
 
   // 소개글의 첫 문장까지만 (예: "오늘은 … 배워볼 거예요.")
@@ -773,11 +779,24 @@
     var n = snap && snap.solved ? snap.solved : 0;
     return Math.max(0, Math.min(100, Math.round(n / CLEAR_COUNT * 100)));
   }
+  var lessonUi = { n: null, rn: null };
+  // 처음엔 7개, 다음 레슨(NEW)이 아래에 있으면 그 줄까지 보여 줘요
+  function lessonInitN() {
+    var nx = nextLesson(), idx = nx ? LESSONS.indexOf(nx) : 0;
+    return Math.max(7, Math.ceil((idx + 1) / 7) * 7);
+  }
+  function renderKeep() {
+    var sc = document.querySelector('.scroll'), top = sc ? sc.scrollTop : 0, wy = window.pageYOffset || 0;
+    render();
+    var s2 = document.querySelector('.scroll'); if (s2) s2.scrollTop = top;
+    try { window.scrollTo(0, wy); } catch (e) { /* 무시 */ }
+  }
   function viewLessons() {
     var next = nextLesson();
     var n = learnedLessons().length;
     var pct = Math.round(n / LESSONS.length * 100);
-    var list = LESSONS.map(function (l, i) {
+    var take = Math.min(LESSONS.length, lessonUi.n || lessonInitN());
+    var list = LESSONS.slice(0, take).map(function (l, i) {
       var isDone = !!state.done[l.id];
       var pc = isDone ? 0 : lessonPercent(l.id);
       var locked = lessonLocked(l.id);
@@ -792,13 +811,15 @@
       '<p class="sub-title">' + '배운 내용을 활용해 보며 자연스럽게 익혀가요.' + '</p>' +
       '<div class="lesson-progress"><div class="row"><b>' + n + ' / ' + LESSONS.length + '</b><span>레슨 완료</span></div>' +
       '<div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + pct + '"><i style="width:' + pct + '%"></i></div></div>' +
-      '<ul class="list" style="margin-top:16px">' + list + '</ul></div>' + navHtml() + '</div>';
+      '<ul class="list" style="margin-top:16px">' + list + '</ul>' +
+      (take < LESSONS.length ? '<button class="more-btn" data-act="lessons-more">레슨 더보기 (' + Math.min(7, LESSONS.length - take) + '개 더 · 전체 ' + LESSONS.length + '개)</button>' : '') +
+      reviewBlock() + '</div>' + navHtml() + '</div>';
   }
 
   function dialogSection() {
     var ds = window.DIALOGS || [];
     if (!ds.length) return '';
-    return aiEntry() + aiFixSection() + '<div class="section-title" style="margin-top:28px">상황 대화 연습</div>' +
+    return '<div class="section-title" style="margin-top:28px">상황 대화 연습</div>' +
       (isPro() ? '' : '<p class="hsk-note under-title">첫 번째 대화는 무료로 계속 연습할 수 있어요. 나머지는 멤버십이 필요해요.</p>') + '<ul class="list">' + ds.map(function (d) {
       var done = state.profile.dlg.indexOf(d.id) >= 0;
       return '<li><button class="item" data-act="dialog-start" data-id="' + d.id + '"><span class="txt"><div class="t">' + esc(d.title) + '</div>' +
@@ -818,19 +839,19 @@
       '<div class="s">' + (n ? '자주 틀린 문제 ' + n + '개를 모아서 풀어요' : '아직 약한 문제가 없어요. 잘하고 있어요!') + '</div></div>' +
       '<button class="pill-sm" data-act="review-weak"' + (n ? '' : ' disabled') + '>시작</button></div>';
   }
-  function viewReview() {
+  // 레슨 탭 아래쪽에 붙는 '복습' 영역
+  function reviewBlock() {
     var due = dueRows().length;
     var learned = learnedLessons();
-    var rows = learned.map(function (l) {
+    var take = lessonUi.rn || 7, shown = learned.slice(0, take);
+    var rows = shown.map(function (l) {
       var m = mastered(l);
       var no = LESSONS.indexOf(l) + 1;
       return '<li><button class="item" data-act="review-lesson" data-id="' + l.id + '">' +
         '<span class="num">' + no + '</span><span class="txt"><div class="t">' + esc(l.title) + '</div><div class="s">익숙해진 문제 ' + m + ' / ' + l.qs.length + '</div></span>' +
         '<span class="chip soft">복습</span></button></li>';
     }).join('');
-
-    return '<div class="screen"><div class="scroll with-nav" style="padding-top:28px">' +
-      '<h1 class="big-title">복습하기</h1>' +
+    return '<h2 class="big-title" style="margin-top:36px;font-size:26px">복습하기</h2>' +
       '<p class="sub-title">배운 문장을 다시 말하면서 오래 기억해요.</p>' +
       '<div class="today' + (due > 0 ? '' : ' done') + '" style="margin-top:0">' +
         '<div class="today-top"><span class="chip ' + (due > 0 ? 'y' : 'green') + '">' + (due > 0 ? '지금 복습할 문제' : '오늘 복습 완료') + '</span>' +
@@ -846,8 +867,17 @@
       listenCard() +
       dialogSection() +
       '<div class="section-title">레슨별로 복습하기</div>' +
-      (learned.length ? '<ul class="list">' + rows + '</ul>' : emptyState('empty', { title: '아직 복습할 게 없어요', desc: '첫 레슨을 끝내면\n여기서 복습할 수 있어요', cta: { act: 'tab', id: 'lessons', label: '레슨 보러 가기' } })) +
-      '</div>' + navHtml() + '</div>';
+      (learned.length ? '<ul class="list">' + rows + '</ul>' + (learned.length > take ? '<button class="more-btn" data-act="rlessons-more">더보기 (' + Math.min(7, learned.length - take) + '개 더)</button>' : '')
+        : emptyState('empty', { title: '아직 복습할 게 없어요', desc: '첫 레슨을 끝내면\n여기서 복습할 수 있어요' }));
+  }
+  // 하단 'AI 대화' 탭
+  function viewAi() {
+    var head = '<h1 class="big-title">AI 대화</h1><p class="sub-title">AI 선생님과 편하게 말해 보고, 모은 표현을 다시 익혀요.</p>';
+    var body;
+    if (aiOn()) body = aiEntry() + aiFixSection();
+    else body = '<div class="ai-lock"><div class="ai-lock-t">AI 대화는 멤버십에서 쓸 수 있어요</div><p>AI 선생님과 자유롭게 대화하고, 말이 막히면 한국어로 물어보고, 고쳐 받은 문장과 표현을 모아 복습해요.</p>' +
+      '<button class="btn" data-act="open-pay">멤버십 보기</button></div>';
+    return '<div class="screen"><div class="scroll with-nav" style="padding-top:28px">' + head + body + '</div>' + navHtml() + '</div>';
   }
 
   function phraseSections() {
@@ -1478,7 +1508,7 @@
     var head = '<div class="section-title" style="margin-top:20px">자주 쓸 만한 표현</div>';
     if (w.busy) return head + '<div class="acb them typing" style="align-self:flex-start"><span class="ai-dots"><i></i><i></i><i></i></span></div><p class="hsk-note under-title">이번 대화에서 다시 쓸 만한 말을 고르고 있어요…</p>';
     if (w.err) return head + '<p class="hsk-note under-title">표현을 고르지 못했어요. 다음 대화에서는 꼭 모아 드릴게요.</p>';
-    return head + '<p class="hsk-note under-title">복습 탭에 저장했어요. 눌러서 소리를 들어 보세요.</p><div class="fixlist">' + (w.items || []).map(function (x) {
+    return head + '<p class="hsk-note under-title">AI 대화 탭에 저장했어요. 눌러서 소리를 들어 보세요.</p><div class="fixlist">' + (w.items || []).map(function (x) {
       return '<div class="fixrow"><button class="fixrow-main" data-act="say" data-text="' + esc(x.zh) + '"><span class="xchip ' + (x.kind === 'ask' ? 'ask' : 'say') + '">' + (x.kind === 'ask' ? '질문' : '대답') + '</span><span class="zh">' + esc(x.zh) + '</span>' +
         (x.py ? '<span class="py">' + esc(x.py) + '</span>' : '') + (x.ko ? '<span class="why">' + esc(x.ko) + '</span>' : '') + '</button></div>';
     }).join('') + '</div>';
@@ -1492,7 +1522,7 @@
       '<div class="scroll" style="padding-top:4px"><h1 class="big-title" style="margin-top:0">대화 끝! 수고했어요</h1>' +
       '<p class="sub-title">' + esc(a.scenario.title) + '</p>' +
       '<div class="ac-settle"><div><span>주고받은 횟수</span><b>' + a.turns + '번</b></div><div><span>사용한 크레딧</span><b>' + (a.turns * AI_CHAT_COST) + '</b></div><div><span>남은 크레딧</span><b>' + aiBal() + '</b></div></div>' +
-      '<div class="section-title" style="margin-top:8px">이렇게 고쳐 보세요</div>' + (a.fixes.length ? '<p class="hsk-note under-title">복습 탭에도 모아 뒀어요.</p>' : '') + fx + acWrapHtml(a) + '<div style="height:96px"></div></div>' +
+      '<div class="section-title" style="margin-top:8px">이렇게 고쳐 보세요</div>' + (a.fixes.length ? '<p class="hsk-note under-title">AI 대화 탭에도 모아 뒀어요.</p>' : '') + fx + acWrapHtml(a) + '<div style="height:96px"></div></div>' +
       '<div class="footer fc-foot"><button class="btn gray" data-act="ac-leave-yes">닫기</button><button class="btn" data-act="ac-again">한 번 더 하기</button></div></div>';
   }
   async function acCall(body) {
@@ -1816,7 +1846,7 @@
     var html = '';
     if (state.screen === 'loading') html = viewLoading();
     else if (state.screen === 'login') html = viewLogin();
-    else if (state.screen === 'tab') html = state.tab === 'lessons' ? viewLessons() : state.tab === 'review' ? viewReview() : (state.tab === 'words' ? viewWords() : (state.tab === 'me' ? viewMe() : viewHome()));
+    else if (state.screen === 'tab') html = state.tab === 'lessons' ? viewLessons() : state.tab === 'review' ? viewAi() : (state.tab === 'words' ? viewWords() : (state.tab === 'me' ? viewMe() : viewHome()));
     else if (state.screen === 'intro') html = viewIntro();
     else if (state.screen === 'practice') html = viewPractice();
     else if (state.screen === 'quiz') html = viewQuiz();
@@ -3119,7 +3149,10 @@
         }
         break;
       case 'ai-fix-del': aiFixDel(el.getAttribute('data-t')); render(); break;
-      case 'ai-fix-more': var fk = el.getAttribute('data-k') || 'all'; fixUi[fk] = !fixUi[fk]; render(); break;
+      case 'ai-fix-more': var fk = el.getAttribute('data-k') || 'expr'; fixUi.n[fk] = (fixUi.n[fk] || 7) + 7; renderKeep(); break;
+      case 'ai-seg': fixUi.seg = el.getAttribute('data-k') === 'fix' ? 'fix' : 'expr'; render(); break;
+      case 'lessons-more': lessonUi.n = (lessonUi.n || lessonInitN()) + 7; renderKeep(); break;
+      case 'rlessons-more': lessonUi.rn = (lessonUi.rn || 7) + 7; renderKeep(); break;
       case 'ac-showko': if (state.ac) { var sk = state.ac.msgs[+el.getAttribute('data-i')]; if (sk) { sk.showKo = !sk.showKo; render(); } } break;
       case 'ac-ko': if (state.ac && state.ac.mode === 'chat' && !state.ac.busy && !state.ac.ended) { state.ac.ko = { opts: null, heard: '', busy: false }; render(); acScroll(); } break;
       case 'ac-ko-close': if (state.ac) { acStop(); state.ac.ko = null; state.ac.koSend = false; state.ac.live = ''; render(); acScroll(); } break;
