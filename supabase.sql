@@ -150,3 +150,8 @@ end;
 $$;
 revoke all on function public.delete_my_account() from public, anon;
 grant execute on function public.delete_my_account() to authenticated;
+
+
+-- ===== v49/v51: 알림 두 종류를 따로 켜고 끄기 (복습 알림 / 1분 중국어) =====
+alter table public.push_subscriptions add column if not exists daily_on  boolean not null default true;
+alter table public.push_subscriptions add column if not exists minute_on boolean not null default false;

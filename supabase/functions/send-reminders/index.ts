@@ -6,6 +6,20 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 import webpush from 'npm:web-push@3.6.7';
 
 const WINDOW_MIN = 15;
+// 1분 중국어: 사용자 현지 시각 9시~21시, 매 정시마다(15분 구간 안에서 한 번)
+const RAND_FROM = 9, RAND_TO = 21;
+const APP_URL = (Deno.env.get('APP_URL') ?? 'https://nick-kim-ptk.github.io/pangpang').replace(/\/$/, '');
+
+// 문제 문장 목록(앱과 함께 배포되는 qbank.json). 못 가져오면 일반 문구로 보내요.
+let qbank: Record<string, string[]> | null = null;
+async function loadQbank() {
+  if (qbank) return qbank;
+  try {
+    const r = await fetch(`${APP_URL}/qbank.json`);
+    if (r.ok) qbank = await r.json();
+  } catch (_e) { /* 아래에서 일반 문구 사용 */ }
+  return qbank;
+}
 
 function localParts(tz: string, d = new Date()) {
   const f = new Intl.DateTimeFormat('en-CA', {
@@ -32,6 +46,41 @@ Deno.serve(async (req) => {
   let sent = 0, skipped = 0, removed = 0;
   for (const s of subs ?? []) {
     const now = localParts(s.tz || 'Asia/Seoul');
+
+    // 1) 1분 중국어: 켜 둔 사람에게 낮 동안 한 시간에 한 번, 배운 레슨의 문제 하나(질문+모범 답)를 알림으로 보내요
+    if (s.minute_on) {
+      const hour = Math.floor(now.minutes / 60), minute = now.minutes % 60;
+      if (hour >= RAND_FROM && hour <= RAND_TO && minute < WINDOW_MIN) {
+        const bank = await loadQbank();
+        if (bank) {
+          const { data: done } = await db.from('lesson_done').select('lesson_id').eq('user_id', s.user_id);
+          const learned = new Set((done ?? []).map((r: { lesson_id: string }) => r.lesson_id));
+          const all = Object.keys(bank);
+          const pool = learned.size ? all.filter((id) => learned.has(id.slice(0, id.lastIndexOf('-')))) : all;
+          const item = bank[(pool.length ? pool : all)[Math.floor(Math.random() * (pool.length ? pool : all).length)]];
+          // 앱을 열지 않고 알림만 봐도 공부가 되게: 질문(병음·뜻)과 모범 답을 모두 보여 줘요
+          const payload = {
+            title: `1분 중국어 · ${item[0]}`, tag: 'pangpang-minute',
+            body: `${item[1]}\n${item[2]}\n\n답: ${item[3]}\n${item[4]}\n${item[5]}`,
+          };
+          try {
+            await webpush.sendNotification(
+              { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, JSON.stringify(payload));
+            sent++;
+          } catch (e) {
+            const code = (e as { statusCode?: number }).statusCode;
+            if (code === 404 || code === 410) {
+              await db.from('push_subscriptions').delete().eq('user_id', s.user_id).eq('endpoint', s.endpoint);
+              removed++;
+              continue;
+            }
+          }
+        }
+      }
+    }
+
+    // 2) 매일 정해 둔 시간 알림
+    if (s.daily_on === false) { skipped++; continue; }   // 복습 알림은 꺼 둔 사람
     const [h, m] = String(s.remind_time).split(':').map(Number);
     const diff = now.minutes - (h * 60 + m);
     if (diff < 0 || diff >= WINDOW_MIN) { skipped++; continue; }

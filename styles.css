@@ -962,3 +962,7 @@ u.miss { text-decoration: underline wavy #ef5350; text-underline-offset: 4px; co
 .legal p:not(.sub-title) { margin: 0; font-size: 15px; line-height: 1.7; color: var(--ink-2); }
 .lg-legal { margin: 2px 0 0; text-align: center; font-size: 12px; line-height: 1.5; color: #8791ad; }
 .lg-legal button { border: 0; background: none; color: #a7b0cc; font: inherit; font-weight: 600; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; padding: 0; }
+
+/* ---------- v49 연습 화면: 녹음 영역을 아래에 띄워 둬요 ---------- */
+.screen > .mic-area { position: sticky; bottom: 0; z-index: 20; margin-top: auto; padding-top: 18px;
+  background: linear-gradient(to top, var(--bg) 72%, transparent); }

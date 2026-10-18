@@ -31,7 +31,7 @@ self.addEventListener('push', function (e) {
     body: data.body || '오늘 중국어 한 문장만 말해 볼까요?',
     icon: 'img/icon-192.png',
     badge: 'img/icon-192.png',
-    tag: 'pangpang-daily'
+    tag: data.tag || 'pangpang-daily'
   }));
 });
 self.addEventListener('notificationclick', function (e) {
