@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v46';
+  var APP_VERSION = 'v47';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -186,9 +186,11 @@
 
   /* ---------- 저장소 (Supabase / 미리보기 모드) ---------- */
   var LOCAL_KEY = 'pangpang.v1';
+  var GUEST_KEY = 'pangpang.guest';   // 로그인 전 학습 기록(이 기기에만). 로그인하면 계정으로 옮겨요
+  function isGuest() { return !!(state.user && state.user.id === 'guest'); }
   function persistLocal() {
     try {
-      localStorage.setItem(LOCAL_KEY, JSON.stringify({ progress: state.progress, done: state.done, daily: state.daily, profile: state.profile }));
+      localStorage.setItem(isGuest() ? GUEST_KEY : LOCAL_KEY, JSON.stringify({ progress: state.progress, done: state.done, daily: state.daily, profile: state.profile }));
     } catch (e) { /* 저장 공간이 없으면 무시 */ }
   }
   function saveFailed(err) {
@@ -227,7 +229,7 @@
   }
   // 하단 탭을 누를 때 조용히 최신 기록으로 맞춰요. 달라진 게 있을 때만 화면을 다시 그려서 깜빡이지 않아요.
   async function refreshQuiet() {
-    if (!sb || !state.user || state.user.id === 'local' || pendingSaves > 0) return;
+    if (!sb || !state.user || state.user.id === 'local' || isGuest() || pendingSaves > 0) return;
     if (Date.now() - lastRefresh < 4000) return;
     lastRefresh = Date.now();
     var gen = saveGen;
@@ -247,9 +249,9 @@
 
   var store = {
     load: async function () {
-      if (!sb) {
+      if (!sb || isGuest()) {
         try {
-          var raw = JSON.parse(localStorage.getItem(LOCAL_KEY) || '{}');
+          var raw = JSON.parse(localStorage.getItem(isGuest() ? GUEST_KEY : LOCAL_KEY) || '{}');
           state.progress = raw.progress || {};
           state.done = raw.done || {};
           state.daily = raw.daily || {};
@@ -264,31 +266,53 @@
     },
     saveProgress: tracked(async function (rows) {
       persistLocal();
-      if (!sb || !rows.length) return;
+      if (!sb || isGuest() || !rows.length) return;
       var out = rows.map(function (r) { return Object.assign({ user_id: state.user.id }, r); });
       var res = await sb.from('progress').upsert(out, { onConflict: 'user_id,qid' });
       if (res.error) saveFailed(res.error);
     }),
     saveDone: tracked(async function (row) {
       persistLocal();
-      if (!sb) return;
+      if (!sb || isGuest()) return;
       var res = await sb.from('lesson_done').upsert(Object.assign({ user_id: state.user.id }, row), { onConflict: 'user_id,lesson_id' });
       if (res.error) saveFailed(res.error);
     }),
     saveProfile: tracked(async function () {
       persistLocal();
-      if (!sb) return;
+      if (!sb || isGuest()) return;
       var p = state.profile;
       var res = await sb.auth.updateUser({ data: { nickname: p.nickname, goal: p.goal, theme: p.theme, remind: p.remind, remindOn: p.remindOn, sound: p.sound, kr: p.kr, favs: p.favs, dlg: p.dlg, hsk3: p.hsk3 } });
       if (res.error) saveFailed(res.error); else if (res.data && res.data.user) state.user = res.data.user;
     }),
     saveDaily: tracked(async function (row) {
       persistLocal();
-      if (!sb) return;
+      if (!sb || isGuest()) return;
       var res = await sb.from('daily_log').upsert(Object.assign({ user_id: state.user.id }, row), { onConflict: 'user_id,day' });
       if (res.error) saveFailed(res.error);
     })
   };
+
+  // 로그인 전에 한 학습을 계정으로 옮겨요 (계정에 이미 있는 기록은 그대로 둬요)
+  function mergeGuest() {
+    var raw;
+    try { raw = JSON.parse(localStorage.getItem(GUEST_KEY) || 'null'); } catch (e) { raw = null; }
+    if (!raw) return 0;
+    var rows = [], n = 0;
+    Object.keys(raw.progress || {}).forEach(function (q) {
+      if (!state.progress[q]) { state.progress[q] = raw.progress[q]; rows.push(raw.progress[q]); }
+    });
+    Object.keys(raw.done || {}).forEach(function (l) {
+      if (!state.done[l]) { state.done[l] = raw.done[l]; store.saveDone(raw.done[l]); n++; }
+    });
+    Object.keys(raw.daily || {}).forEach(function (d) {
+      var g = raw.daily[d], r = state.daily[d];
+      if (!r) { state.daily[d] = g; store.saveDaily(g); }
+      else if ((g.answers || 0) > (r.answers || 0)) { r.answers = g.answers; r.lessons = Math.max(r.lessons || 0, g.lessons || 0); store.saveDaily(r); }
+    });
+    if (rows.length) store.saveProgress(rows);
+    try { localStorage.removeItem(GUEST_KEY); } catch (e) {}
+    return rows.length + n;
+  }
 
   /* ---------- 학습 상태 계산 ---------- */
   // 오늘의 한 문장: 날짜로 순서를 정해 하루에 하나씩
@@ -359,7 +383,7 @@
 
   /* ---------- 화면 이동 ---------- */
   // 뒤로 가기: 폰의 뒤로 제스처·버튼(기록)과 화면 왼쪽 가장자리에서 오른쪽으로 미는 동작을 같이 처리해요
-  var SUBSCREEN = { intro: 1, practice: 1, quiz: 1, stats: 1, done: 1, hsk: 1, hskstudy: 1, feedback: 1, speed: 1 };
+  var SUBSCREEN = { login: 1, intro: 1, practice: 1, quiz: 1, stats: 1, done: 1, hsk: 1, hskstudy: 1, feedback: 1, speed: 1 };
   var inSub = false, ignorePop = 0, backAnim = false;
   function syncHistory(screen) {
     try {
@@ -379,6 +403,7 @@
     else if (sc === 'quiz') { stopSpeak(); go(state.z && state.z.hsk ? 'hsk' : 'tab'); }
     else if (sc === 'hskstudy') { stopSpeak(); clearTimeout(hskTimer); store.saveProfile(); go('hsk'); }
     else if (sc === 'hsk') go('tab');
+    else if (sc === 'login') loginLater();
     else if (sc === 'speed') { stopSpeed(); go('tab'); }
     else if (sc === 'done') go('tab', { tab: 'home' });
     else if (sc === 'intro' || sc === 'stats' || sc === 'feedback') go('tab');
@@ -423,7 +448,25 @@
   document.addEventListener('touchend', swEnd, { passive: true });
   document.addEventListener('touchcancel', function () { var s = sw; sw = null; if (s) swReset(s.el); }, { passive: true });
 
+  // 로그인이 필요한 순간: 로그인 화면을 띄우고, '나중에'를 누르면 하려던 곳으로 보내요
+  var LOGIN_MSG = {
+    save: '학습한 내용을 저장하려면 로그인이 필요해요.',
+    me: '내 기록과 설정을 보려면 로그인이 필요해요.'
+  };
+  function requireLogin(reason, later) {
+    state.loginReason = reason; state.loginLater = later; state.loginBusy = false;
+    go('login');
+  }
+  function loginLater() {
+    var f = state.loginLater;
+    state.loginLater = null; state.loginReason = null;
+    if (f) f(); else go('tab', { tab: 'home' });
+  }
   function go(screen, extra) {
+    if (screen === 'done' && isGuest() && !(extra && extra.loginDone)) {
+      requireLogin('save', function () { go('done', Object.assign({}, extra || {}, { loginDone: true })); });
+      return;
+    }
     state.screen = screen;
     syncHistory(screen);
     if (extra) Object.keys(extra).forEach(function (k) { state[k] = extra[k]; });
@@ -469,20 +512,43 @@
   }
   function viewLogin() {
     var local = !sb;
-    return '<div class="screen login">' +
-      '<div class="hero">' +
-        '<div class="stage">' + mascot('wink') + '</div>' +
-        '<h1 class="brand">팽팽이</h1>' +
-        '<p>천천히, 그래도 매일.<br>말하면서 익히는 중국어예요.</p>' +
+    var reason = LOGIN_MSG[state.loginReason];
+    var offline = !local && navigator.onLine === false;
+    var cta;
+    if (offline) cta = emptyState('offline', { small: true, cta: { act: 'pp-retry', label: '다시 시도' } });
+    else if (local) cta = '<div class="lg-note">Supabase 설정 전이라 미리보기 모드예요. 학습 기록은 이 기기에만 저장돼요.</div>' +
+      '<button class="btn g-btn" data-act="start-local">미리보기로 시작하기</button>';
+    else if (state.loginBusy) cta = '<button class="btn g-btn loading" disabled><span class="lg-spin"></span>로그인 중…</button>';
+    else cta = '<button class="btn g-btn" data-act="google">' + I.google + 'Google로 계속하기</button>';
+    var later = (!local && !state.loginBusy) ? '<button class="lg-later" data-act="lg-later">' + (state.loginLater ? '나중에 할게요' : '둘러보기') + '</button>' : '';
+    function bub(cls, zh, ko, d, x1, y1, x2, y2) {
+      return '<div class="lg-bub ' + cls + '" style="--d:' + d + 's;--x1:' + x1 + 'px;--y1:' + y1 + 'px;--x2:' + x2 + 'px;--y2:' + y2 + 'px">' + zh + ' <small>' + ko + '</small></div>';
+    }
+    return '<div class="screen lg">' +
+      '<div class="lg-dots"></div>' +
+      '<div class="lg-main">' +
+        '<div class="lg-hero" data-act="lg-tap">' +
+          '<div class="lg-glow"></div>' +
+          '<div class="lg-orbit"><i></i><i></i></div>' +
+          bub('', '你好', '안녕', 1.4, -150, -200, -162, -238) +
+          bub('b2', '谢谢!', '고마워', 3.53, 24, -176, 30, -214) +
+          bub('b3', '加油', '힘내', 5.66, -168, -96, -180, -130) +
+          '<div class="lg-shadow"></div>' +
+          '<div class="lg-hop">' +
+            '<img src="' + ms('snail-phone-body') + '" alt="" draggable="false">' +
+            '<img class="blink" src="' + ms('snail-phone-blink') + '" alt="" draggable="false">' +
+            '<img class="marks" src="' + ms('snail-phone-marks') + '" alt="" draggable="false">' +
+          '</div>' +
+        '</div>' +
+        '<div class="lg-copy">' +
+          '<div class="lg-logo"><span style="--d:.55s">嘭</span><span style="--d:.69s">嘭</span></div>' +
+          '<div class="lg-sub">PĒNG · PĒNG</div>' +
+          '<p class="lg-lede">' + (reason
+            ? esc(reason)
+            : '천천히, 그래도 매일<br><b>계속 연습하면서 중국어를 배워요!</b>') + '</p>' +
+        '</div>' +
       '</div>' +
-      '<div class="actions">' +
-        (!local && navigator.onLine === false
-          ? emptyState('offline', { small: true, cta: { act: 'pp-retry', label: '다시 시도' } })
-          : local
-          ? '<div class="notice">Supabase 설정 전이라 미리보기 모드예요. 학습 기록은 이 기기에만 저장돼요.</div>' +
-            '<button class="btn" data-act="start-local">미리보기로 시작하기</button>'
-          : '<button class="btn g-btn" data-act="google">' + I.google + 'Google로 시작하기</button>') +
-      '</div>' +
+      '<div class="lg-cta">' + cta + later + '</div>' +
     '</div>';
   }
 
@@ -2094,11 +2160,13 @@
 
   /* ---------- 로그인/로그아웃 ---------- */
   async function signIn() {
+    state.loginBusy = true;
+    if (state.screen === 'login') render();
     var res = await sb.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: window.location.origin + window.location.pathname }
     });
-    if (res.error) toast('로그인을 시작하지 못했어요: ' + res.error.message);
+    if (res.error) { state.loginBusy = false; if (state.screen === 'login') render(); toast('로그인을 시작하지 못했어요: ' + res.error.message); }
   }
   async function handleSession(session) {
     var u = session && session.user;
@@ -2106,14 +2174,21 @@
       if (state.user && state.user.id === u.id) return;
       state.user = u;
       await store.load();
+      var moved = mergeGuest();
       if (window.location.search || window.location.hash) {
         history.replaceState(null, '', window.location.pathname);
       }
-      afterSplash(function () { go('tab', { tab: 'home' }); });
+      state.loginReason = null; state.loginLater = null; state.loginBusy = false;
+      afterSplash(function () {
+        go('tab', { tab: 'home' });
+        if (moved) toast('로그인 전에 한 학습도 저장했어요');
+      });
     } else {
-      if (state.screen === 'login') return;
-      state.user = null;
-      afterSplash(function () { go('login'); });
+      if (isGuest()) return;
+      // 로그인 전: 손님으로 둘러볼 수 있어요
+      state.user = { id: 'guest', email: '' };
+      await store.load();
+      afterSplash(function () { go('tab', { tab: 'home' }); });
     }
   }
 
@@ -2134,17 +2209,23 @@
         setTimeout(function () { if (navigator.onLine === false) { el.disabled = false; el.textContent = '다시 시도'; toast('아직 연결되지 않았어요'); } else render(); }, 1400);
         break;
       case 'google': signIn(); break;
+      case 'lg-later': loginLater(); break;
+      case 'lg-tap':
+        el.classList.remove('tap'); void el.offsetWidth; el.classList.add('tap');
+        try { if (navigator.vibrate) navigator.vibrate(8); } catch (e2) {}
+        break;
       case 'start-local':
         state.user = { id: 'local', email: '' };
         store.load().then(function () { go('tab', { tab: 'home' }); });
         break;
       case 'tab':
+        if (id === 'me' && isGuest()) { requireLogin('me', function () { go('tab'); }); break; }
         state.editNick = false; state.tab = id; render(); window.scrollTo(0, 0);
         refreshQuiet();
         break;
       case 'logout':
         stopSpeak();
-        sb.auth.signOut().then(function () { state.user = null; state.progress = {}; state.done = {}; state.daily = {}; state.profile = normProfile({}); applyTheme(); go('login'); });
+        sb.auth.signOut().then(function () { state.user = { id: 'guest', email: '' }; return store.load(); }).then(function () { state.tab = 'home'; go('tab', { tab: 'home' }); });
         break;
       case 'reset-local':
         askConfirm({ title: '학습 기록을 모두 지울까요?', body: '이 기기에 저장된 진도와 복습 기록이 사라지고, 되돌릴 수 없어요.', ok: '모두 지우기', cancel: '취소', danger: true, m: 'shy' }, function () {
@@ -2423,7 +2504,7 @@
         log.push({ t: new Date().toISOString(), m: msg });
         localStorage.setItem('pangpang.errors', JSON.stringify(log.slice(-10)));
       } catch (e) {}
-      if (!sb || !state.user || state.user.id === 'local') return;
+      if (!sb || !state.user || state.user.id === 'local' || isGuest()) return;
       Promise.resolve(sb.from('app_errors').insert({
         message: msg, stack: String(stack || '').slice(0, 2000),
         url: String(location.href).slice(0, 300), ua: String(navigator.userAgent || '').slice(0, 300), version: APP_VERSION
