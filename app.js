@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v51';
+  var APP_VERSION = 'v53';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -65,6 +65,7 @@
       remind: /^\d\d:\d\d$/.test(p.remind || '') ? p.remind : '20:00',
       remindOn: !!p.remindOn,
       minuteOn: !!p.minuteOn,
+      speedUsed: Math.max(0, parseInt(p.speedUsed, 10) || 0),
       sound: p.sound !== false,
       kr: p.kr !== false,
       hsk3: normHsk(p.hsk3),
@@ -87,6 +88,8 @@
     screen: 'loading', // loading | login | tab | intro | practice | done
     tab: 'home',       // home | lessons | review | words | me
     user: null,
+    ent: null,         // 이용권 {plan, expires_at}
+    entErr: false,
     progress: {},      // qid -> row
     done: {},          // lessonId -> row
     daily: {},         // 'YYYY-MM-DD' -> {lessons, answers}
@@ -149,6 +152,7 @@
 
   /* ---------- 아이콘 ---------- */
   var I = {
+    lock: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>',
     mic: '<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="12" rx="3" fill="currentColor"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>',
     spk: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg>',
     close: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
@@ -213,7 +217,7 @@
     state.progress = {}; state.done = {}; state.daily = {};
     if (!keepProfile) {
       var meta = (state.user && state.user.user_metadata) || {};
-      state.profile = normProfile({ nickname: meta.nickname, goal: meta.goal, theme: meta.theme, remind: meta.remind, remindOn: meta.remindOn, minuteOn: meta.minuteOn, sound: meta.sound, kr: meta.kr, favs: meta.favs, dlg: meta.dlg, hsk3: meta.hsk3 });
+      state.profile = normProfile({ nickname: meta.nickname, goal: meta.goal, theme: meta.theme, remind: meta.remind, remindOn: meta.remindOn, minuteOn: meta.minuteOn, speedUsed: meta.speedUsed, sound: meta.sound, kr: meta.kr, favs: meta.favs, dlg: meta.dlg, hsk3: meta.hsk3 });
       applyTheme();
     }
     (res[0].data || []).forEach(function (r) { state.progress[r.qid] = r; });
@@ -240,7 +244,9 @@
       var before = JSON.stringify([state.progress, state.done, state.daily]);
       applyRemote(d, true);
       var rch = await pullResume();
-      if (!rch && JSON.stringify([state.progress, state.done, state.daily]) === before) return;
+      var entBefore = JSON.stringify(state.ent);
+      await loadEnt();
+      if (!rch && JSON.stringify(state.ent) === entBefore && JSON.stringify([state.progress, state.done, state.daily]) === before) return;
       var sc = document.querySelector ? document.querySelector('.scroll') : null;
       var top = sc ? sc.scrollTop : 0;
       render();
@@ -283,7 +289,7 @@
       persistLocal();
       if (!sb || isGuest()) return;
       var p = state.profile;
-      var res = await sb.auth.updateUser({ data: { nickname: p.nickname, goal: p.goal, theme: p.theme, remind: p.remind, remindOn: p.remindOn, minuteOn: p.minuteOn, sound: p.sound, kr: p.kr, favs: p.favs, dlg: p.dlg, hsk3: p.hsk3 } });
+      var res = await sb.auth.updateUser({ data: { nickname: p.nickname, goal: p.goal, theme: p.theme, remind: p.remind, remindOn: p.remindOn, minuteOn: p.minuteOn, speedUsed: p.speedUsed, sound: p.sound, kr: p.kr, favs: p.favs, dlg: p.dlg, hsk3: p.hsk3 } });
       if (res.error) saveFailed(res.error); else if (res.data && res.data.user) state.user = res.data.user;
     }),
     saveDaily: tracked(async function (row) {
@@ -344,6 +350,50 @@
   }
   function nickname() { return (state.profile && state.profile.nickname || '').trim(); }
 
+  /* ---------- 멤버십 (무료 3강 / 월 구독 / 평생) ---------- */
+  var FREE_LESSONS = 3, PRICE_MONTH = 1990, PRICE_LIFE = 19900;
+  function won(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '원'; }
+  // 이용권 정보(state.ent)를 서버에서 가져와요. 못 가져오면(네트워크·표 없음) 잠그지 않아요.
+  async function loadEnt() {
+    state.entErr = false;
+    if (!sb || !state.user || state.user.id === 'local' || isGuest()) { state.ent = null; return; }
+    var key = 'pangpang.ent.' + state.user.id;
+    try {
+      var res = await sb.from('entitlements').select('plan,expires_at').eq('user_id', state.user.id).maybeSingle();
+      if (res.error) throw res.error;
+      state.ent = res.data || null;
+      try { localStorage.setItem(key, JSON.stringify({ v: state.ent })); } catch (e) {}
+    } catch (e) {
+      var c = null;
+      try { c = JSON.parse(localStorage.getItem(key) || 'null'); } catch (e2) {}
+      if (c && 'v' in c) state.ent = c.v; else { state.ent = null; state.entErr = true; }
+    }
+  }
+  function isPro() {
+    if (!sb) return true;                 // 미리보기 모드는 전부 열려 있어요
+    if (state.entErr) return true;        // 이용권을 확인하지 못했을 땐 잠그지 않아요
+    var e = state.ent;
+    if (!e) return false;
+    if (e.plan === 'lifetime') return true;
+    return !!e.expires_at && new Date(e.expires_at) > new Date();
+  }
+  function lessonLocked(id) {
+    var i = LESSONS.indexOf(lessonById(id));
+    return i >= FREE_LESSONS && !isPro();
+  }
+  // 무료 체험: 스피드 퀴즈·상황 대화는 1회분, HSK는 1급만
+  function speedLocked() { return !isPro() && state.profile.speedUsed >= 1; }
+  function dialogLocked() { return !isPro() && state.profile.dlg.length >= 1; }
+  function hskLocked(lv) { return lv >= 2 && !isPro(); }
+  function fmtDate(iso) { var d = new Date(iso); return d.getFullYear() + '.' + (d.getMonth() + 1) + '.' + d.getDate(); }
+  function memberLabel() {
+    var e = state.ent;
+    if (!isPro()) return { t: '무료 이용 중', s: '3강까지 무료예요' };
+    if (e && e.plan === 'lifetime') return { t: '평생 이용 중', s: '모든 레슨을 계속 쓸 수 있어요' };
+    if (e && e.expires_at) return { t: '구독 중', s: fmtDate(e.expires_at) + '까지 이용할 수 있어요' };
+    return { t: '이용 중', s: '모든 레슨을 쓸 수 있어요' };
+  }
+
   function dueRows() {
     var now = new Date();
     return Object.keys(state.progress).map(function (k) { return state.progress[k]; })
@@ -385,7 +435,7 @@
 
   /* ---------- 화면 이동 ---------- */
   // 뒤로 가기: 폰의 뒤로 제스처·버튼(기록)과 화면 왼쪽 가장자리에서 오른쪽으로 미는 동작을 같이 처리해요
-  var SUBSCREEN = { privacy: 1, login: 1, intro: 1, practice: 1, quiz: 1, stats: 1, done: 1, hsk: 1, hskstudy: 1, feedback: 1, speed: 1 };
+  var SUBSCREEN = { pay: 1, privacy: 1, login: 1, intro: 1, practice: 1, quiz: 1, stats: 1, done: 1, hsk: 1, hskstudy: 1, feedback: 1, speed: 1 };
   var inSub = false, ignorePop = 0, backAnim = false;
   function syncHistory(screen) {
     try {
@@ -406,6 +456,7 @@
     else if (sc === 'hskstudy') { stopSpeak(); clearTimeout(hskTimer); store.saveProfile(); go('hsk'); }
     else if (sc === 'hsk') go('tab');
     else if (sc === 'login') loginLater();
+    else if (sc === 'pay') go('tab');
     else if (sc === 'privacy') go(state.privFrom === 'login' ? 'login' : 'tab');
     else if (sc === 'speed') { stopSpeed(); go('tab'); }
     else if (sc === 'done') go('tab', { tab: 'home' });
@@ -454,7 +505,8 @@
   // 로그인이 필요한 순간: 로그인 화면을 띄우고, '나중에'를 누르면 하려던 곳으로 보내요
   var LOGIN_MSG = {
     save: '학습한 내용을 저장하려면 로그인이 필요해요.',
-    me: '내 기록과 설정을 보려면 로그인이 필요해요.'
+    me: '내 기록과 설정을 보려면 로그인이 필요해요.',
+    pay: '멤버십을 쓰려면 로그인이 필요해요.'
   };
   function requireLogin(reason, later) {
     state.loginReason = reason; state.loginLater = later; state.loginBusy = false;
@@ -469,6 +521,9 @@
     if (screen === 'done' && isGuest() && !(extra && extra.loginDone)) {
       requireLogin('save', function () { go('done', Object.assign({}, extra || {}, { loginDone: true })); });
       return;
+    }
+    if (screen === 'intro' && extra && extra.lessonId && lessonLocked(extra.lessonId)) {
+      extra = { payWhy: '‘' + lessonById(extra.lessonId).title + '’ 레슨은 멤버십이 필요해요.' }; screen = 'pay';
     }
     state.screen = screen;
     syncHistory(screen);
@@ -626,15 +681,16 @@
     var list = LESSONS.map(function (l, i) {
       var isDone = !!state.done[l.id];
       var pc = isDone ? 0 : lessonPercent(l.id);
-      return '<li><button class="item' + (isDone ? '' : ' off') + '" data-act="open-lesson" data-id="' + l.id + '">' +
+      var locked = lessonLocked(l.id);
+      return '<li><button class="item' + (isDone && !locked ? '' : ' off') + (locked ? ' locked' : '') + '" data-act="open-lesson" data-id="' + l.id + '">' +
         '<span class="num">' + (i + 1) + '</span><span class="txt"><div class="t">' + esc(l.title) + '</div><div class="s">' + esc(l.sub) + '</div></span>' +
-        (isDone ? '<span class="chip green">' + I.check + '완료</span>' : '<span class="chips-end">' + (next && next.id === l.id ? '<span class="chip y">NEW</span>' : '') +
+        (locked ? '<span class="chip lockchip">' + I.lock + 'PRO</span>' : isDone ? '<span class="chip green">' + I.check + '완료</span>' : '<span class="chips-end">' + (next && next.id === l.id ? '<span class="chip y">NEW</span>' : '') +
           (pc > 0 ? '<span class="chip soft pct">' + pc + '%</span>' : '') + '</span>') +
         '</button></li>';
     }).join('');
     return '<div class="screen"><div class="scroll with-nav" style="padding-top:28px">' +
       '<h1 class="big-title">전체 레슨</h1>' +
-      '<p class="sub-title">원하는 레슨을 골라 미리 배우거나 다시 연습할 수 있어요.</p>' +
+      '<p class="sub-title">' + (isPro() ? '원하는 레슨을 골라 미리 배우거나 다시 연습할 수 있어요.' : '1~' + FREE_LESSONS + '강은 무료예요. 나머지 레슨은 멤버십이 필요해요.') + '</p>' +
       '<div class="lesson-progress"><div class="row"><b>' + n + ' / ' + LESSONS.length + '</b><span>레슨 완료</span></div>' +
       '<div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + pct + '"><i style="width:' + pct + '%"></i></div></div>' +
       '<ul class="list" style="margin-top:16px">' + list + '</ul></div>' + navHtml() + '</div>';
@@ -643,11 +699,13 @@
   function dialogSection() {
     var ds = window.DIALOGS || [];
     if (!ds.length) return '';
-    return '<div class="section-title" style="margin-top:28px">상황 대화 연습</div><ul class="list">' + ds.map(function (d) {
+    var lockedAll = dialogLocked();
+    return '<div class="section-title" style="margin-top:28px">상황 대화 연습</div>' +
+      (isPro() ? '' : '<p class="hsk-note under-title">' + (lockedAll ? '무료 체험 1회를 썼어요. 계속하려면 멤버십이 필요해요.' : '무료로 1회 체험할 수 있어요.') + '</p>') + '<ul class="list">' + ds.map(function (d) {
       var done = state.profile.dlg.indexOf(d.id) >= 0;
       return '<li><button class="item" data-act="dialog-start" data-id="' + d.id + '"><span class="txt"><div class="t">' + esc(d.title) + '</div>' +
         '<div class="s">' + esc(d.intro) + ' · ' + d.turns.length + '번 주고받기</div></span>' +
-        '<span class="chip ' + (done ? 'green' : 'soft') + '">' + (done ? '완료' : '시작') + '</span></button></li>';
+        (lockedAll ? '<span class="chip lockchip">' + I.lock + 'PRO</span>' : '<span class="chip ' + (done ? 'green' : 'soft') + '">' + (done ? '완료' : '시작') + '</span>') + '</button></li>';
     }).join('') + '</ul>';
   }
   function listenCard() {
@@ -1030,6 +1088,12 @@
       '</div></div>';
   }
 
+  function memberCard() {
+    if (!sb) return '';
+    var m = memberLabel();
+    return '<button class="member-card' + (isPro() ? ' on' : '') + '" data-act="open-pay"><span class="mc-t">' + esc(m.t) + '</span><span class="mc-s">' + esc(m.s) + '</span>' +
+      '<span class="mc-go">' + (isPro() ? '멤버십 관리' : '멤버십 보기') + '</span></button>';
+  }
   function meCard(initial, email) {
     var nick = nickname();
     var sub = sb ? email : '기록이 이 기기에만 저장돼요';
@@ -1077,7 +1141,7 @@
     return '<div class="screen"><div class="scroll with-nav">' +
       '<div class="tab-head"><div><h1 class="big-title">' + (nickname() ? esc(nickname()) + '님,<br>' : '') + '오늘도 화이팅!</h1>' +
       '<p class="sub-title" style="margin-bottom:0">내 학습 기록이에요.</p></div>' + mascot('wink') + '</div>' +
-      meCard(initial, email) +
+      meCard(initial, email) + memberCard() +
       '<div class="stats">' +
         '<div class="stat"><b>' + learned.length + '/' + LESSONS.length + '</b><span>배운 레슨</span></div>' +
         '<div class="stat"><b>' + wordCount + '</b><span>배운 단어</span></div>' +
@@ -1182,6 +1246,7 @@
     else if (state.screen === 'hsk') html = viewHsk();
     else if (state.screen === 'feedback') html = viewFeedback();
     else if (state.screen === 'privacy') html = viewPrivacy();
+    else if (state.screen === 'pay') html = viewPay();
     else if (state.screen === 'speed') html = viewSpeed();
     else if (state.screen === 'hskstudy') html = viewHskStudy();
     else if (state.screen === 'done') html = viewDone();
@@ -1308,8 +1373,8 @@
   function speedCard() {
     var n = learnedLessons().length;
     return '<div class="weak-card"><div class="weak-txt"><div class="t">스피드 퀴즈</div>' +
-      '<div class="s">' + (n ? '끝낸 레슨에서 ' + SPEED_SIZE + '문제 · ' + SPEED_SEC + '초 안에 대답해요' : '레슨을 하나 끝내면 열려요') + '</div></div>' +
-      '<button class="pill-sm" data-act="speed-start"' + (n ? '' : ' disabled') + '>시작</button></div>';
+      '<div class="s">' + (n ? '끝낸 레슨에서 ' + SPEED_SIZE + '문제 · ' + SPEED_SEC + '초 안에 대답해요' + (isPro() ? '' : (speedLocked() ? ' · 멤버십 필요' : ' · 무료 1회')) : '레슨을 하나 끝내면 열려요') + '</div></div>' +
+      '<button class="pill-sm" data-act="speed-start"' + (n ? '' : ' disabled') + '>' + (n && speedLocked() ? I.lock + ' PRO' : '시작') + '</button></div>';
   }
   function speedOptions(q) {
     var seen = {}, d = [];
@@ -1319,6 +1384,7 @@
     return shuffle(d.concat([{ zh: q.a.zh, py: q.a.py, ok: true }]));
   }
   function startSpeed() {
+    if (speedLocked()) { go('pay', { payWhy: '스피드 퀴즈 무료 체험(1회)을 모두 썼어요. 계속하려면 멤버십이 필요해요.' }); return; }
     var pool = learnedQs();
     if (pool.length < 5) { toast('레슨을 하나 끝내면 열려요'); return; }
     stopSpeed();
@@ -1420,6 +1486,7 @@
     sp.i++; speedAsk();
   }
   function finishSpeed() {
+    if (!isPro()) { state.profile.speedUsed = (state.profile.speedUsed || 0) + 1; store.saveProfile(); }
     var sp = state.sp, goal = state.profile.goal, now = todayAnswers();
     var hit = sp.before < goal && now >= goal, n = sp.items.length;
     stopSpeed();
@@ -1487,6 +1554,68 @@
   /* ---------- 의견 보내기 (Supabase feedback — 관리자는 대시보드에서만 확인) ---------- */
   var FB_CATS = [['idea', '아이디어'], ['bug', '불편·오류'], ['praise', '칭찬'], ['etc', '기타']];
   var FB_MAX = 1000, fbLast = 0;
+  function viewPay() {
+    var m = memberLabel(), pro = isPro() && !state.entErr;
+    var why = state.payWhy ? '<div class="pay-why">' + esc(state.payWhy) + '</div>' : '';
+    return '<div class="screen"><div class="topbar"><button class="icon-btn" data-act="back" aria-label="뒤로">' + I.back + '</button></div>' +
+      '<div class="scroll" style="padding-top:4px">' +
+      '<h1 class="big-title" style="margin-top:0">팽팽이 멤버십</h1>' +
+      '<p class="sub-title">1~' + FREE_LESSONS + '강은 무료예요. 멤버십이면 ' + LESSONS.length + '강 전체를 쓸 수 있어요.</p>' + why +
+      (pro ? '<div class="pay-status"><b>' + esc(m.t) + '</b><span>' + esc(m.s) + '</span></div>' : '') +
+      '<div class="plans">' +
+        '<div class="plan"><div class="pl-n">월 구독</div><div class="pl-p">' + won(PRICE_MONTH) + '<small>/월</small></div><div class="pl-s">언제든 그만둘 수 있어요</div>' +
+          '<button class="btn" data-act="buy" data-id="monthly">월 구독 시작하기</button></div>' +
+        '<div class="plan best"><span class="pl-badge">추천</span><div class="pl-n">평생 이용</div><div class="pl-p">' + won(PRICE_LIFE) + '<small>한 번만</small></div><div class="pl-s">한 번 결제로 계속 이용해요</div>' +
+          '<button class="btn" data-act="buy" data-id="lifetime">평생 이용 시작하기</button></div>' +
+      '</div>' +
+      '<div class="notice pay-test">지금은 테스트 모드예요. 실제로 결제되지 않고, 누르면 바로 이용권이 열려요.</div>' +
+      '<div class="section-title" style="margin-top:24px">쿠폰</div>' +
+      '<div class="coupon-row"><input id="coupon" class="coupon-in" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="쿠폰 번호 입력" aria-label="쿠폰 번호">' +
+      '<button class="btn sm" data-act="coupon-redeem">등록</button></div>' +
+      '<p class="coupon-help">쿠폰을 등록하면 1개월 동안 모든 레슨을 쓸 수 있어요.</p>' +
+      '</div></div>';
+  }
+  var COUPON_ERR = {
+    invalid_coupon: '쿠폰 번호를 다시 확인해 주세요',
+    already_used: '이미 사용한 쿠폰이에요',
+    already_lifetime: '이미 평생 이용 중이라 쿠폰이 필요 없어요',
+    too_many_attempts: '시도가 너무 많아요. 한 시간 뒤에 다시 해 주세요',
+    test_mode_off: '아직 결제를 준비 중이에요'
+  };
+  function needLoginPay() {
+    if (!isGuest()) return false;
+    requireLogin('pay', function () { go('pay'); });
+    return true;
+  }
+  async function buyPlan(plan) {
+    if (needLoginPay()) return;
+    try {
+      var res = await sb.rpc('test_purchase', { p_plan: plan });
+      if (res.error) throw res.error;
+      var d = res.data || {};
+      if (!d.ok) { toast(COUPON_ERR[d.error] || '결제하지 못했어요'); return; }
+      await loadEnt();
+      state.payWhy = null;
+      render();
+      toast(plan === 'lifetime' ? '평생 이용이 시작됐어요 (테스트)' : '월 구독이 시작됐어요 (테스트)');
+    } catch (e) { if (window.console) console.error(e); toast('처리하지 못했어요. 잠시 후 다시 시도해 주세요'); }
+  }
+  async function redeemCoupon() {
+    if (needLoginPay()) return;
+    var inp = document.getElementById('coupon');
+    var code = inp ? inp.value.trim() : '';
+    if (!code) { toast('쿠폰 번호를 입력해 주세요'); return; }
+    try {
+      var res = await sb.rpc('redeem_coupon', { p_code: code });
+      if (res.error) throw res.error;
+      var d = res.data || {};
+      if (!d.ok) { toast(COUPON_ERR[d.error] || '쿠폰을 등록하지 못했어요'); return; }
+      await loadEnt();
+      state.payWhy = null;
+      render();
+      toast('쿠폰이 등록됐어요. ' + fmtDate(d.expires_at) + '까지 이용할 수 있어요');
+    } catch (e) { if (window.console) console.error(e); toast('처리하지 못했어요. 잠시 후 다시 시도해 주세요'); }
+  }
   var PRIVACY = [
     ['수집하는 정보', 'Google 로그인 시 이메일 주소와 계정 식별값을 받아요. 앱을 쓰는 동안 닉네임, 하루 목표, 화면·소리 설정, 즐겨찾기 같은 설정과 학습 기록(푼 문제, 완료한 레슨, 하루 학습량, 복습 일정, 이어하기 위치)이 저장돼요. 의견 보내기를 쓰면 내용·이메일·앱 버전이, 오류가 나면 오류 내용과 기기·브라우저 정보가 함께 저장될 수 있어요.'],
     ['이용 목적', '로그인 유지, 학습 기록 저장과 기기 간 동기화, 복습 알림 발송, 앱 개선과 오류 수정에만 써요. 광고에 쓰거나 다른 곳에 팔지 않아요.'],
@@ -1523,7 +1652,7 @@
       Object.keys(m).forEach(function (k) { if (k.indexOf(uid + '|') === 0) delete m[k]; });
       writeResume(m);
     } catch (e) {}
-    state.user = { id: 'guest', email: '' };
+    state.user = { id: 'guest', email: '' }; state.ent = null;
     await store.load();
     state.tab = 'home';
     go('tab', { tab: 'home' });
@@ -1610,7 +1739,8 @@
     return '<div class="section-title" style="margin-top:24px">HSK 단어</div><p class="hsk-note under-title">' + HSK_NOTE + '</p><ul class="list">' + [1, 2, 3, 4].map(function (lv) {
       var n = hskList(lv).length, k = hskCount(lv), pct = n ? Math.round(k / n * 100) : 0;
       return '<li><button class="item" data-act="hsk-open" data-id="' + lv + '"><span class="num">' + lv + '</span><span class="txt"><div class="t">HSK ' + lv + '급</div>' +
-        '<div class="s">단어 ' + n + '개 · 익힌 ' + k + '개</div><div class="meter g" style="margin-top:6px"><i style="width:' + pct + '%"></i></div></span></button></li>';
+        '<div class="s">단어 ' + n + '개 · 익힌 ' + k + '개</div><div class="meter g" style="margin-top:6px"><i style="width:' + pct + '%"></i></div></span>' +
+        (hskLocked(lv) ? '<span class="chip lockchip">' + I.lock + 'PRO</span>' : '') + '</button></li>';
     }).join('') + '</ul>';
   }
   function hskRow(lv, w, i) {
@@ -1873,6 +2003,7 @@
     } catch (e) { return false; }
   }
   function startLessonSession(kind, lessonId) {
+    if (kind === 'lesson' && lessonLocked(lessonId)) { go('pay', { payWhy: '‘' + lessonById(lessonId).title + '’ 레슨은 멤버십이 필요해요.' }); return; }
     var snap = readResume()[resumeKey(kind, lessonId)];
     var fresh = function () { clearResume(kind, lessonId); beginSession(kind, rounds(lessonById(lessonId).qs, PRACTICE_SIZE), lessonId); };
     if (snap && snap.queue && snap.queue.length && snap.solved > 0) {
@@ -1941,6 +2072,7 @@
   function startDialog(id) {
     var d = (window.DIALOGS || []).filter(function (x) { return x.id === id; })[0];
     if (!d) return;
+    if (dialogLocked()) { go('pay', { payWhy: '상황 대화 무료 체험(1회)을 모두 썼어요. 계속하려면 멤버십이 필요해요.' }); return; }
     var qs = d.turns.map(function (t, i) {
       return { id: 'dlg-' + d.id + '-' + (i + 1), lessonId: null, zh: t.zh, py: t.py, ko: t.ko, a: t.a, must: t.must };
     });
@@ -2258,6 +2390,7 @@
       state.user = u;
       await store.load();
       await pullResume();
+      await loadEnt();
       var moved = mergeGuest();
       if (window.location.search || window.location.hash) {
         history.replaceState(null, '', window.location.pathname);
@@ -2270,7 +2403,7 @@
     } else {
       if (isGuest()) return;
       // 로그인 전: 손님으로 둘러볼 수 있어요
-      state.user = { id: 'guest', email: '' };
+      state.user = { id: 'guest', email: '' }; state.ent = null;
       await store.load();
       afterSplash(function () { go('tab', { tab: 'home' }); });
     }
@@ -2294,6 +2427,9 @@
         break;
       case 'google': signIn(); break;
       case 'lg-later': loginLater(); break;
+      case 'open-pay': go('pay', { payWhy: null }); break;
+      case 'buy': buyPlan(id); break;
+      case 'coupon-redeem': redeemCoupon(); break;
       case 'open-privacy': go('privacy', { privFrom: state.screen === 'login' ? 'login' : 'tab' }); break;
       case 'delete-account':
         askConfirm({ title: '계정을 삭제할까요?', body: '계정과 모든 학습 기록, 설정이 사라지고 되돌릴 수 없어요.', ok: '계속하기', cancel: '취소', danger: true, m: 'shy' }, function () {
@@ -2315,7 +2451,7 @@
         break;
       case 'logout':
         stopSpeak();
-        sb.auth.signOut().then(function () { state.user = { id: 'guest', email: '' }; return store.load(); }).then(function () { state.tab = 'home'; go('tab', { tab: 'home' }); });
+        sb.auth.signOut().then(function () { state.user = { id: 'guest', email: '' }; state.ent = null; return store.load(); }).then(function () { state.tab = 'home'; go('tab', { tab: 'home' }); });
         break;
       case 'reset-local':
         askConfirm({ title: '학습 기록을 모두 지울까요?', body: '이 기기에 저장된 진도와 복습 기록이 사라지고, 되돌릴 수 없어요.', ok: '모두 지우기', cancel: '취소', danger: true, m: 'shy' }, function () {
@@ -2383,7 +2519,9 @@
         break;
       case 'minute-toggle': toggleMinute(); break;
       case 'remind-toggle': if (pushOn) disableReminder(); else enableReminder(); break;
-      case 'hsk-open': state.hsk = { lv: parseInt(id, 10), unknownOnly: false }; go('hsk'); break;
+      case 'hsk-open':
+        if (hskLocked(parseInt(id, 10))) { go('pay', { payWhy: 'HSK ' + id + '급은 멤버십이 필요해요. 1급은 무료예요.' }); break; }
+        state.hsk = { lv: parseInt(id, 10), unknownOnly: false }; go('hsk'); break;
       case 'hsk-study': startHskStudy(parseInt(id, 10)); break;
       case 'hsk-quiz': startHskQuiz(parseInt(id, 10)); break;
       case 'hsk-flip': if (state.hc && !state.hc.flip) { state.hc.flip = true; sfx('tap'); render(); } break;
