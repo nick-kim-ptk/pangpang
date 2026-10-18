@@ -32,7 +32,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v38';
+  var APP_VERSION = 'v39';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -496,7 +496,7 @@
     var st = streak();
 
     var nick = nickname();
-    var head = '<div class="home-greet"><h1>팽팽, 느려도 좋아,<br>너만의 속도로.' +
+    var head = '<div class="home-greet"><h1>팽팽,<br>느려도 괜찮아, 너만의 속도로.' +
       (st > 0 ? ' <span class="chip y streak-chip">' + st + '일 연속</span>' : '') + '</h1></div>';
 
     var ans = todayAnswers(), goal = state.profile.goal;
@@ -931,7 +931,7 @@
     }
     var solved = Object.keys(state.progress).filter(function (k) { return QMAP[k] && state.progress[k].box >= 4; }).length;
     return '<div class="screen"><div class="scroll with-nav">' +
-      '<div class="tab-head"><div><h1 class="big-title">' + (nickname() ? esc(nickname()) + '님, ' : '') + '오늘도 화이팅!</h1>' +
+      '<div class="tab-head"><div><h1 class="big-title">' + (nickname() ? esc(nickname()) + '님,<br>' : '') + '오늘도 화이팅!</h1>' +
       '<p class="sub-title" style="margin-bottom:0">내 학습 기록이에요.</p></div>' + mascot('wink') + '</div>' +
       meCard(initial, email) +
       '<div class="stats">' +
