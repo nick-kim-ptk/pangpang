@@ -44,7 +44,16 @@ Deno.serve(async (req) => {
   if (error) return new Response(error.message, { status: 500 });
 
   let sent = 0, skipped = 0, removed = 0;
+  // 알림은 멤버십 기능이라, 이용권이 있는 사람에게만 보내요 (평생이거나 월 구독이 아직 남아 있을 때)
+  const { data: ents } = await db.from('entitlements').select('user_id, plan, expires_at');
+  const proUsers = new Set(
+    (ents ?? [])
+      .filter((e: { plan: string; expires_at: string | null }) => e.plan === 'lifetime' || (e.expires_at && new Date(e.expires_at) > new Date()))
+      .map((e: { user_id: string }) => e.user_id),
+  );
+
   for (const s of subs ?? []) {
+    if (!proUsers.has(s.user_id)) { skipped++; continue; }
     const now = localParts(s.tz || 'Asia/Seoul');
 
     // 1) 1분 중국어: 켜 둔 사람에게 낮 동안 한 시간에 한 번, 배운 레슨의 문제 하나(질문+모범 답)를 알림으로 보내요

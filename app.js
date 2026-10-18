@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v53';
+  var APP_VERSION = 'v54';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -1374,7 +1374,7 @@
     var n = learnedLessons().length;
     return '<div class="weak-card"><div class="weak-txt"><div class="t">스피드 퀴즈</div>' +
       '<div class="s">' + (n ? '끝낸 레슨에서 ' + SPEED_SIZE + '문제 · ' + SPEED_SEC + '초 안에 대답해요' + (isPro() ? '' : (speedLocked() ? ' · 멤버십 필요' : ' · 무료 1회')) : '레슨을 하나 끝내면 열려요') + '</div></div>' +
-      '<button class="pill-sm" data-act="speed-start"' + (n ? '' : ' disabled') + '>' + (n && speedLocked() ? I.lock + ' PRO' : '시작') + '</button></div>';
+      '<button class="pill-sm' + (n && speedLocked() ? ' pro' : '') + '" data-act="speed-start"' + (n ? '' : ' disabled') + '>' + (n && speedLocked() ? I.lock + 'PRO' : '시작') + '</button></div>';
   }
   function speedOptions(q) {
     var seen = {}, d = [];
@@ -1559,14 +1559,22 @@
     var why = state.payWhy ? '<div class="pay-why">' + esc(state.payWhy) + '</div>' : '';
     return '<div class="screen"><div class="topbar"><button class="icon-btn" data-act="back" aria-label="뒤로">' + I.back + '</button></div>' +
       '<div class="scroll" style="padding-top:4px">' +
-      '<h1 class="big-title" style="margin-top:0">팽팽이 멤버십</h1>' +
-      '<p class="sub-title">1~' + FREE_LESSONS + '강은 무료예요. 멤버십이면 ' + LESSONS.length + '강 전체를 쓸 수 있어요.</p>' + why +
+      '<h1 class="big-title" style="margin-top:0">팽팽이랑 오래 공부하기</h1>' +
+      '<p class="sub-title">1~' + FREE_LESSONS + '강과 HSK 1급은 무료예요. 멤버십이면 이렇게 쓸 수 있어요.</p>' + why +
       (pro ? '<div class="pay-status"><b>' + esc(m.t) + '</b><span>' + esc(m.s) + '</span></div>' : '') +
+      '<ul class="perks">' +
+        '<li>' + I.check + LESSONS.length + '강 전체 레슨</li>' +
+        '<li>' + I.check + 'HSK 1~4급 단어</li>' +
+        '<li>' + I.check + '스피드 퀴즈 · 상황 대화 무제한</li>' +
+        '<li>' + I.check + '복습 알림 · 1분 중국어 알림</li>' +
+      '</ul>' +
       '<div class="plans">' +
-        '<div class="plan"><div class="pl-n">월 구독</div><div class="pl-p">' + won(PRICE_MONTH) + '<small>/월</small></div><div class="pl-s">언제든 그만둘 수 있어요</div>' +
-          '<button class="btn" data-act="buy" data-id="monthly">월 구독 시작하기</button></div>' +
-        '<div class="plan best"><span class="pl-badge">추천</span><div class="pl-n">평생 이용</div><div class="pl-p">' + won(PRICE_LIFE) + '<small>한 번만</small></div><div class="pl-s">한 번 결제로 계속 이용해요</div>' +
-          '<button class="btn" data-act="buy" data-id="lifetime">평생 이용 시작하기</button></div>' +
+        '<div class="plan best"><span class="pl-badge">가장 추천</span><div class="pl-n">평생 이용</div>' +
+          '<div class="pl-p">' + won(PRICE_LIFE) + '<small>한 번만</small></div>' +
+          '<div class="pl-s">월 구독 10개월 값이면 평생 쓸 수 있어요.<br>이후엔 추가 비용이 없어요.</div>' +
+          '<button class="btn pl-main" data-act="buy" data-id="lifetime">평생 이용 시작하기</button></div>' +
+        '<div class="plan"><div class="pl-n">월 구독</div><div class="pl-p">' + won(PRICE_MONTH) + '<small>/월</small></div><div class="pl-s">부담 없이 한 달씩, 언제든 그만둘 수 있어요</div>' +
+          '<button class="btn soft" data-act="buy" data-id="monthly">월 구독 시작하기</button></div>' +
       '</div>' +
       '<div class="notice pay-test">지금은 테스트 모드예요. 실제로 결제되지 않고, 누르면 바로 이용권이 열려요.</div>' +
       '<div class="section-title" style="margin-top:24px">쿠폰</div>' +
@@ -2517,8 +2525,13 @@
       case 'install':
         if (installEvt) { installEvt.prompt(); installEvt.userChoice.then(function () { installEvt = null; render(); }); }
         break;
-      case 'minute-toggle': toggleMinute(); break;
-      case 'remind-toggle': if (pushOn) disableReminder(); else enableReminder(); break;
+      case 'minute-toggle':
+        if (!state.profile.minuteOn && !isPro()) { go('pay', { payWhy: '알림은 멤버십 기능이에요.' }); break; }
+        toggleMinute(); break;
+      case 'remind-toggle':
+        if (pushOn) { disableReminder(); break; }
+        if (!isPro()) { go('pay', { payWhy: '알림은 멤버십 기능이에요.' }); break; }
+        enableReminder(); break;
       case 'hsk-open':
         if (hskLocked(parseInt(id, 10))) { go('pay', { payWhy: 'HSK ' + id + '급은 멤버십이 필요해요. 1급은 무료예요.' }); break; }
         state.hsk = { lv: parseInt(id, 10), unknownOnly: false }; go('hsk'); break;
@@ -2735,13 +2748,13 @@
     if (pushReady()) {
       h += '<div class="set-row"><div><div class="set-t">복습 알림</div><div class="set-s">' +
         (pushOn ? '오늘 공부 전이면 ' + esc(p.remind) + '에 알려 드려요' : '정해 둔 시간에 알려 드려요') + '</div></div>' +
-        '<button class="pill-sm" data-act="remind-toggle">' + (pushOn ? '끄기' : '켜기') + '</button></div>';
+        '<button class="pill-sm' + (!pushOn && !isPro() ? ' pro' : '') + '" data-act="remind-toggle">' + (pushOn ? '끄기' : (isPro() ? '켜기' : I.lock + 'PRO')) + '</button></div>';
       if (pushOn) {
         h += '<div class="set-row"><div class="set-t">알림 시간</div><input class="time-in" type="time" value="' + esc(p.remind) + '" aria-label="알림 시간"></div>';
       }
       h += '<div class="set-row"><div><div class="set-t">1분 중국어</div><div class="set-s">' +
         (p.minuteOn ? '오전 9시~밤 9시, 한 시간에 한 번 알림으로 바로 공부해요' : '낮 동안 한 시간에 한 번, 알림에서 바로 배워요') + '</div></div>' +
-        '<button class="pill-sm" data-act="minute-toggle">' + (p.minuteOn ? '끄기' : '켜기') + '</button></div>';
+        '<button class="pill-sm' + (!p.minuteOn && !isPro() ? ' pro' : '') + '" data-act="minute-toggle">' + (p.minuteOn ? '끄기' : (isPro() ? '켜기' : I.lock + 'PRO')) + '</button></div>';
     } else {
       h += '<div class="set-row"><div><div class="set-t">복습 알림</div><div class="set-s">' +
         (sb ? (cfg.VAPID_PUBLIC_KEY ? '이 브라우저는 알림을 지원하지 않아요' + (isIOS ? ' (홈 화면에 추가한 뒤 켤 수 있어요)' : '') : '관리자 설정(VAPID 키)이 필요해요')

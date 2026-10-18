@@ -994,3 +994,20 @@ u.miss { text-decoration: underline wavy #ef5350; text-underline-offset: 4px; co
 .coupon-help { margin: 8px 2px 24px; font-size: 13px; color: var(--ink-3); }
 .coupon-row .btn { width: auto; flex: none; padding: 0 20px; }
 .pill-sm svg { margin-right: 4px; vertical-align: -2px; }
+
+/* ---------- v54 멤버십 대비 보정·평생 강조 ---------- */
+.chip.lockchip, .pill-sm.pro { background: var(--btn-bg); color: var(--btn-ink); }
+.pill-sm.pro { display: inline-flex; align-items: center; gap: 2px; font-weight: 800; }
+.member-card.on { background: var(--btn-bg); color: var(--btn-ink); }
+.member-card .mc-go { background: var(--y); color: var(--on-yellow); }
+.member-card.on .mc-go { background: var(--y); color: var(--on-yellow); }
+.pay-status { background: var(--btn-bg); color: var(--btn-ink); }
+.perks { list-style: none; margin: 14px 0 4px; padding: 0; display: grid; gap: 8px; }
+.perks li { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 600; color: var(--ink); }
+.perks li svg { flex: none; width: 20px; height: 20px; padding: 3px; border-radius: 50%; background: var(--green-soft); color: var(--green); }
+.plan.best { background: var(--y); color: var(--on-yellow); box-shadow: 0 10px 28px rgba(236,205,76,.35); padding: 22px 18px 18px; }
+.plan.best .pl-n { color: var(--on-yellow); opacity: .8; }
+.plan.best .pl-p { color: var(--on-yellow); font-size: 38px; }
+.plan.best .pl-p small, .plan.best .pl-s { color: var(--on-yellow); opacity: .8; }
+.plan.best .pl-badge { background: var(--on-yellow); color: #fff; }
+.plan.best .pl-main { background: var(--on-yellow); color: #fff; height: 56px; font-size: 17px; }
