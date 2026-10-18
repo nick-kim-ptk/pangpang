@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v57';
+  var APP_VERSION = 'v58';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -244,9 +244,9 @@
       var before = JSON.stringify([state.progress, state.done, state.daily]);
       applyRemote(d, true);
       var rch = await pullResume();
-      var entBefore = JSON.stringify(state.ent);
+      var entBefore = JSON.stringify([state.ent, state.ai]);
       await loadEnt();
-      if (!rch && JSON.stringify(state.ent) === entBefore && JSON.stringify([state.progress, state.done, state.daily]) === before) return;
+      if (!rch && JSON.stringify([state.ent, state.ai]) === entBefore && JSON.stringify([state.progress, state.done, state.daily]) === before) return;
       var sc = document.querySelector ? document.querySelector('.scroll') : null;
       var top = sc ? sc.scrollTop : 0;
       render();
