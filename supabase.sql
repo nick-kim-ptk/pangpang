@@ -559,3 +559,28 @@ grant execute on function public.ai_spend(uuid, int, text) to service_role;
 grant execute on function public.ai_refund(uuid, int, int, text) to service_role;
 
 notify pgrst, 'reload schema';
+
+-- v69: AI 선생님이 고쳐 준 문장 모음 (복습 탭). 여러 번 실행해도 안전해요.
+create table if not exists public.ai_fix (
+  id         bigint generated always as identity primary key,
+  user_id    uuid not null references auth.users(id) on delete cascade,
+  natural    text not null,
+  pinyin     text not null default '',
+  why        text not null default '',
+  mine       text not null default '',
+  created_at timestamptz not null default now(),
+  unique (user_id, natural)
+);
+alter table public.ai_fix enable row level security;
+drop policy if exists "ai_fix own select" on public.ai_fix;
+drop policy if exists "ai_fix own insert" on public.ai_fix;
+drop policy if exists "ai_fix own update" on public.ai_fix;
+drop policy if exists "ai_fix own delete" on public.ai_fix;
+create policy "ai_fix own select" on public.ai_fix for select using (auth.uid() = user_id);
+create policy "ai_fix own insert" on public.ai_fix for insert with check (auth.uid() = user_id);
+create policy "ai_fix own update" on public.ai_fix for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "ai_fix own delete" on public.ai_fix for delete using (auth.uid() = user_id);
+grant select, insert, update, delete on public.ai_fix to authenticated;
+-- v70: 대화에서 모은 표현(질문/대답)도 같은 표에 저장해요
+alter table public.ai_fix add column if not exists kind text not null default 'fix';
+alter table public.ai_fix add column if not exists ko text not null default '';

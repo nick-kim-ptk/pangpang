@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v68';
+  var APP_VERSION = 'v70';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -389,6 +389,63 @@
       var d = r.data || {};
       state.ai = d.ok && d.member ? { monthly: d.monthly | 0, topup: d.topup | 0, grant: d.grant | 0 } : null;
     } catch (e) { state.ai = null; }   // 표가 아직 없으면 AI 메뉴를 숨겨요
+    if (state.ai) await loadFixes();
+  }
+  /* AI가 고쳐 준 문장 모음 (복습 탭에 보여요). 서버 표 ai_fix가 있으면 거기에, 없으면 이 기기에 저장해요 */
+  var FIX_KEY = 'pangpang.aifix';
+  function fixUid() { return (state.user && state.user.id) || 'x'; }
+  function fixLocalRead() { try { var a = JSON.parse(localStorage.getItem(FIX_KEY + '.' + fixUid()) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+  function fixLocalWrite() { try { localStorage.setItem(FIX_KEY + '.' + fixUid(), JSON.stringify((state.fixes || []).slice(0, 100))); } catch (e) { /* 무시 */ } }
+  function aiFixes() { return state.fixes || []; }
+  async function loadFixes() {
+    var local = fixLocalRead();
+    state.fixes = local;
+    try {
+      var r = await sb.from('ai_fix').select('natural,pinyin,why,mine,kind,ko,created_at').order('created_at', { ascending: false }).limit(200);
+      if (r && !r.error && Array.isArray(r.data)) {
+        var seen = {}, out = [];
+        r.data.concat(local).forEach(function (x) { if (x && x.natural && !seen[x.natural]) { seen[x.natural] = 1; out.push({ natural: x.natural, pinyin: x.pinyin || '', why: x.why || '', mine: x.mine || '', kind: x.kind || 'fix', ko: x.ko || '', at: x.created_at || x.at || '' }); } });
+        state.fixes = out.slice(0, 200); fixLocalWrite();
+      }
+    } catch (e) { /* 표가 아직 없으면 이 기기에만 저장돼요 */ }
+  }
+  function aiFixAdd(f) {
+    if (!f || !f.natural) return;
+    var list = (state.fixes || []).filter(function (x) { return x.natural !== f.natural; });
+    list.unshift({ natural: f.natural, pinyin: f.pinyin || '', why: f.why || '', mine: f.mine || '', kind: f.kind || 'fix', ko: f.ko || '', at: new Date().toISOString() });
+    state.fixes = list.slice(0, 200); fixLocalWrite();
+    try {
+      Promise.resolve(sb.from('ai_fix').upsert({ user_id: state.user.id, natural: f.natural, pinyin: f.pinyin || '', why: f.why || '', mine: f.mine || '', kind: f.kind || 'fix', ko: f.ko || '' }, { onConflict: 'user_id,natural' })).catch(function () {});
+    } catch (e) { /* 무시 */ }
+  }
+  function aiFixDel(natural) {
+    state.fixes = (state.fixes || []).filter(function (x) { return x.natural !== natural; }); fixLocalWrite();
+    try { Promise.resolve(sb.from('ai_fix').delete().eq('natural', natural)).catch(function () {}); } catch (e) { /* 무시 */ }
+  }
+  var fixUi = { all: false, all2: false };
+  function fixRowHtml(f) {
+    var x = f.kind === 'ask' || f.kind === 'say';
+    return '<div class="fixrow"><button class="fixrow-main" data-act="say" data-text="' + esc(f.natural) + '">' +
+      (x ? '<span class="xchip ' + f.kind + '">' + (f.kind === 'ask' ? '질문' : '대답') + '</span>' : '') +
+      '<span class="zh">' + esc(f.natural) + '</span>' +
+      (f.pinyin ? '<span class="py">' + esc(f.pinyin) + '</span>' : '') + (f.ko ? '<span class="why">' + esc(f.ko) + '</span>' : '') +
+      (f.mine ? '<span class="mine">내가 한 말 · ' + esc(f.mine) + '</span>' : '') +
+      (f.why ? '<span class="why">' + esc(f.why) + '</span>' : '') + '</button>' +
+      '<button class="fixrow-x" data-act="ai-fix-del" data-t="' + esc(f.natural) + '" aria-label="삭제">' + I.close + '</button></div>';
+  }
+  function fixBlock(list, title, note, key) {
+    if (!list.length) return '';
+    var all = fixUi[key], shown = all ? list : list.slice(0, 5);
+    return '<div class="section-title" style="margin-top:28px">' + title + ' ' + list.length + '</div>' +
+      '<p class="hsk-note under-title">' + note + '</p><div class="fixlist">' + shown.map(fixRowHtml).join('') + '</div>' +
+      (list.length > 5 ? '<button class="link-btn" style="margin-top:6px" data-act="ai-fix-more" data-k="' + key + '">' + (all ? '접기' : '전체 보기 (' + list.length + ')') + '</button>' : '');
+  }
+  function aiFixSection() {
+    var fx = aiFixes();
+    var fixes = fx.filter(function (f) { return !f.kind || f.kind === 'fix'; });
+    var exprs = fx.filter(function (f) { return f.kind === 'ask' || f.kind === 'say'; });
+    return fixBlock(exprs, 'AI 대화에서 모은 표현', '대화에서 자주 묻고 답할 만한 말을 모았어요. 눌러서 소리를 듣고 따라 말해 보세요.', 'all2') +
+      fixBlock(fixes, 'AI 선생님이 고쳐 준 문장', 'AI 대화에서 고쳐 받은 문장이에요. 눌러서 소리를 듣고 따라 말해 보세요.', 'all');
   }
   function aiOn() { return !!(sb && !isGuest() && !state.entErr && state.ai && isPro()); }
   function aiBal() { return state.ai ? state.ai.monthly + state.ai.topup : 0; }
@@ -741,7 +798,7 @@
   function dialogSection() {
     var ds = window.DIALOGS || [];
     if (!ds.length) return '';
-    return aiEntry() + '<div class="section-title" style="margin-top:28px">상황 대화 연습</div>' +
+    return aiEntry() + aiFixSection() + '<div class="section-title" style="margin-top:28px">상황 대화 연습</div>' +
       (isPro() ? '' : '<p class="hsk-note under-title">첫 번째 대화는 무료로 계속 연습할 수 있어요. 나머지는 멤버십이 필요해요.</p>') + '<ul class="list">' + ds.map(function (d) {
       var done = state.profile.dlg.indexOf(d.id) >= 0;
       return '<li><button class="item" data-act="dialog-start" data-id="' + d.id + '"><span class="txt"><div class="t">' + esc(d.title) + '</div>' +
@@ -1412,8 +1469,19 @@
     var leave = a.leave ? '<div class="ac-leave"><div class="ac-leave-b"><b>대화를 마칠까요?</b><span>지금까지 ' + a.turns + '번 주고받았어요. ' + (a.turns * AI_CHAT_COST) + '크레딧이 쓰였고, 마치면 정리 화면으로 가요.</span>' +
       '<div class="ac-leave-btns"><button class="btn gray" data-act="ac-leave-no">계속하기</button><button class="btn" data-act="ac-leave-yes">마치기</button></div></div></div>' : '';
     return '<div class="screen ac"><div class="topbar ac-top"><button class="icon-btn" data-act="ac-leave" aria-label="그만하기">' + I.close + '</button>' +
-      '<span class="ac-tchip">' + esc(a.scenario.title) + '</span><span class="ac-count">남은 ' + aiBal() + '</span></div>' +
+      '<span class="ac-tchip">' + esc(a.scenario.title) + '</span><span class="ac-count">남은 크레딧 ' + aiBal() + '</span></div>' +
       '<div class="scroll ac-log">' + log + '</div>' + foot + leave + '</div>';
+  }
+  function acWrapHtml(a) {
+    var w = a.wrap;
+    if (!w) return '';
+    var head = '<div class="section-title" style="margin-top:20px">자주 쓸 만한 표현</div>';
+    if (w.busy) return head + '<div class="acb them typing" style="align-self:flex-start"><span class="ai-dots"><i></i><i></i><i></i></span></div><p class="hsk-note under-title">이번 대화에서 다시 쓸 만한 말을 고르고 있어요…</p>';
+    if (w.err) return head + '<p class="hsk-note under-title">표현을 고르지 못했어요. 다음 대화에서는 꼭 모아 드릴게요.</p>';
+    return head + '<p class="hsk-note under-title">복습 탭에 저장했어요. 눌러서 소리를 들어 보세요.</p><div class="fixlist">' + (w.items || []).map(function (x) {
+      return '<div class="fixrow"><button class="fixrow-main" data-act="say" data-text="' + esc(x.zh) + '"><span class="xchip ' + (x.kind === 'ask' ? 'ask' : 'say') + '">' + (x.kind === 'ask' ? '질문' : '대답') + '</span><span class="zh">' + esc(x.zh) + '</span>' +
+        (x.py ? '<span class="py">' + esc(x.py) + '</span>' : '') + (x.ko ? '<span class="why">' + esc(x.ko) + '</span>' : '') + '</button></div>';
+    }).join('') + '</div>';
   }
   function acEnd(a) {
     var fx = a.fixes.length ? a.fixes.map(function (f) {
@@ -1424,7 +1492,7 @@
       '<div class="scroll" style="padding-top:4px"><h1 class="big-title" style="margin-top:0">대화 끝! 수고했어요</h1>' +
       '<p class="sub-title">' + esc(a.scenario.title) + '</p>' +
       '<div class="ac-settle"><div><span>주고받은 횟수</span><b>' + a.turns + '번</b></div><div><span>사용한 크레딧</span><b>' + (a.turns * AI_CHAT_COST) + '</b></div><div><span>남은 크레딧</span><b>' + aiBal() + '</b></div></div>' +
-      '<div class="section-title" style="margin-top:8px">이렇게 고쳐 보세요</div>' + fx + '<div style="height:96px"></div></div>' +
+      '<div class="section-title" style="margin-top:8px">이렇게 고쳐 보세요</div>' + (a.fixes.length ? '<p class="hsk-note under-title">복습 탭에도 모아 뒀어요.</p>' : '') + fx + acWrapHtml(a) + '<div style="height:96px"></div></div>' +
       '<div class="footer fc-foot"><button class="btn gray" data-act="ac-leave-yes">닫기</button><button class="btn" data-act="ac-again">한 번 더 하기</button></div></div>';
   }
   async function acCall(body) {
@@ -1433,6 +1501,19 @@
     var d = r.data || {};
     if (typeof d.monthly === 'number' && typeof d.topup === 'number' && state.ai) { state.ai.monthly = d.monthly; state.ai.topup = d.topup; }
     return d;
+  }
+  // 대화를 마칠 때: 이번 대화에서 자주 묻고 답할 만한 표현을 골라 복습 탭에 모아 둬요(크레딧 없음)
+  async function acWrap(a) {
+    if (!a || a.wrap || !aiOn() || !a.sid || !(a.turns >= 1)) return;
+    a.wrap = { busy: true }; render();
+    try {
+      var d = await acCall({ action: 'chat_wrap', sid: a.sid });
+      if (d.ok && d.result && d.result.items && d.result.items.length) {
+        a.wrap = { items: d.result.items };
+        d.result.items.slice().reverse().forEach(function (x) { aiFixAdd({ natural: x.zh, pinyin: x.py, ko: x.ko, kind: x.kind === 'ask' ? 'ask' : 'say' }); });
+      } else a.wrap = { err: true };
+    } catch (e) { if (window.console) console.error(e); a.wrap = { err: true }; }
+    if (state.ac === a && a.mode === 'end' && state.screen === 'aichat') render();
   }
   async function acStart() {
     var a = state.ac;
@@ -1490,7 +1571,7 @@
       a.turns = d.turns;
       if (t.fix) {
         // 고칠 말이 있으면 AI의 다음 말은 잠시 붙잡아 두고, 고친 문장을 먼저 따라 말해 본 뒤에 이어 가요
-        mine.fix = t.fix; a.fixes.push({ mine: text, natural: t.fix.natural, pinyin: t.fix.pinyin, why: t.fix.why });
+        mine.fix = t.fix; a.fixes.push({ mine: text, natural: t.fix.natural, pinyin: t.fix.pinyin, why: t.fix.why }); aiFixAdd({ mine: text, natural: t.fix.natural, pinyin: t.fix.pinyin, why: t.fix.why });
         a.pending = { reply: t.reply, sug: t.suggestions || [], end: !!d.end };
         a.rep = { zh: t.fix.natural, py: t.fix.pinyin, heard: '', res: null };
         render(); acScroll();
@@ -3037,6 +3118,8 @@
           if (fm && fm.fix) { state.ac.rep = { zh: fm.fix.natural, py: fm.fix.pinyin, heard: '', res: null }; render(); acScroll(); setTimeout(function () { speak(fm.fix.natural, 0.8); }, 200); }
         }
         break;
+      case 'ai-fix-del': aiFixDel(el.getAttribute('data-t')); render(); break;
+      case 'ai-fix-more': var fk = el.getAttribute('data-k') || 'all'; fixUi[fk] = !fixUi[fk]; render(); break;
       case 'ac-showko': if (state.ac) { var sk = state.ac.msgs[+el.getAttribute('data-i')]; if (sk) { sk.showKo = !sk.showKo; render(); } } break;
       case 'ac-ko': if (state.ac && state.ac.mode === 'chat' && !state.ac.busy && !state.ac.ended) { state.ac.ko = { opts: null, heard: '', busy: false }; render(); acScroll(); } break;
       case 'ac-ko-close': if (state.ac) { acStop(); state.ac.ko = null; state.ac.koSend = false; state.ac.live = ''; render(); acScroll(); } break;
@@ -3073,10 +3156,10 @@
         break;
       case 'ac-leave-no': if (state.ac) { state.ac.leave = false; render(); } break;
       case 'ac-leave-yes':
-        if (state.ac && state.ac.mode === 'chat' && state.ac.turns > 0) { state.ac.mode = 'end'; state.ac.leave = false; acStop(); render(); window.scrollTo(0, 0); }
+        if (state.ac && state.ac.mode === 'chat' && state.ac.turns > 0) { state.ac.mode = 'end'; state.ac.leave = false; acStop(); render(); window.scrollTo(0, 0); acWrap(state.ac); }
         else { acStop(); state.ac = null; go('tab', { tab: 'review' }); }
         break;
-      case 'ac-finish': if (state.ac) { state.ac.mode = 'end'; acStop(); render(); window.scrollTo(0, 0); } break;
+      case 'ac-finish': if (state.ac) { state.ac.mode = 'end'; acStop(); render(); window.scrollTo(0, 0); acWrap(state.ac); } break;
       case 'ac-again': state.ac = { mode: 'pick', topic: '' }; render(); window.scrollTo(0, 0); break;
       case 'buy-pack': buyPack(id); break;
       case 'open-privacy': go('privacy', { privFrom: state.screen === 'login' ? 'login' : 'tab' }); break;
