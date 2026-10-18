@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v54';
+  var APP_VERSION = 'v55';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -351,7 +351,8 @@
   function nickname() { return (state.profile && state.profile.nickname || '').trim(); }
 
   /* ---------- 멤버십 (무료 3강 / 월 구독 / 평생) ---------- */
-  var FREE_LESSONS = 3, PRICE_MONTH = 1990, PRICE_LIFE = 19900;
+  var FREE_LESSONS = 3, PRICE_MONTH = 2990, PRICE_LIFE = 19900, WAS_MONTH = 4900, WAS_LIFE = 39000;
+  function offPct(was, now) { return Math.round((1 - now / was) * 100); }
   function won(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '원'; }
   // 이용권 정보(state.ent)를 서버에서 가져와요. 못 가져오면(네트워크·표 없음) 잠그지 않아요.
   async function loadEnt() {
@@ -1563,20 +1564,22 @@
       '<p class="sub-title">1~' + FREE_LESSONS + '강과 HSK 1급은 무료예요. 멤버십이면 이렇게 쓸 수 있어요.</p>' + why +
       (pro ? '<div class="pay-status"><b>' + esc(m.t) + '</b><span>' + esc(m.s) + '</span></div>' : '') +
       '<ul class="perks">' +
-        '<li>' + I.check + LESSONS.length + '강 전체 레슨</li>' +
-        '<li>' + I.check + 'HSK 1~4급 단어</li>' +
+        '<li>' + I.check + LESSONS.length + '강 전체 레슨 <em class="perk-tag">계속 업데이트돼요</em></li>' +
+        '<li>' + I.check + '개정된 신 HSK 3.0 · 1~4급 단어 <em class="perk-tag">최신 개정판</em></li>' +
         '<li>' + I.check + '스피드 퀴즈 · 상황 대화 무제한</li>' +
         '<li>' + I.check + '복습 알림 · 1분 중국어 알림</li>' +
       '</ul>' +
       '<div class="plans">' +
         '<div class="plan best"><span class="pl-badge">가장 추천</span><div class="pl-n">평생 이용</div>' +
+          '<div class="pl-was"><s>' + won(WAS_LIFE) + '</s><span class="pl-off">' + offPct(WAS_LIFE, PRICE_LIFE) + '% 할인</span></div>' +
           '<div class="pl-p">' + won(PRICE_LIFE) + '<small>한 번만</small></div>' +
-          '<div class="pl-s">월 구독 10개월 값이면 평생 쓸 수 있어요.<br>이후엔 추가 비용이 없어요.</div>' +
+          '<div class="pl-s">월 구독 약 7개월 값으로 평생 쓸 수 있어요.<br>이후엔 추가 비용이 없고, 새 레슨도 계속 열려요.</div>' +
           '<button class="btn pl-main" data-act="buy" data-id="lifetime">평생 이용 시작하기</button></div>' +
-        '<div class="plan"><div class="pl-n">월 구독</div><div class="pl-p">' + won(PRICE_MONTH) + '<small>/월</small></div><div class="pl-s">부담 없이 한 달씩, 언제든 그만둘 수 있어요</div>' +
+        '<div class="plan"><div class="pl-n">월 구독</div><div class="pl-was"><s>' + won(WAS_MONTH) + '</s><span class="pl-off">' + offPct(WAS_MONTH, PRICE_MONTH) + '% 할인</span></div><div class="pl-p">' + won(PRICE_MONTH) + '<small>/월</small></div><div class="pl-s">커피 한 잔보다 저렴하게, 한 달씩 언제든 그만둘 수 있어요</div>' +
           '<button class="btn soft" data-act="buy" data-id="monthly">월 구독 시작하기</button></div>' +
       '</div>' +
-      '<div class="notice pay-test">지금은 테스트 모드예요. 실제로 결제되지 않고, 누르면 바로 이용권이 열려요.</div>' +
+      '<div class="notice pay-test"><span>지금은 테스트 모드예요. 실제로 결제되지 않고, 누르면 바로 이용권이 열려요.</span>' +
+        (state.ent ? '<button class="btn sm soft" data-act="test-reset">복구하기</button>' : '') + '</div>' +
       '<div class="section-title" style="margin-top:24px">쿠폰</div>' +
       '<div class="coupon-row"><input id="coupon" class="coupon-in" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="쿠폰 번호 입력" aria-label="쿠폰 번호">' +
       '<button class="btn sm" data-act="coupon-redeem">등록</button></div>' +
@@ -1607,6 +1610,19 @@
       render();
       toast(plan === 'lifetime' ? '평생 이용이 시작됐어요 (테스트)' : '월 구독이 시작됐어요 (테스트)');
     } catch (e) { if (window.console) console.error(e); toast('처리하지 못했어요. 잠시 후 다시 시도해 주세요'); }
+  }
+  // 테스트용: 이용권을 지우고 무료 상태로 되돌려요 (서버가 테스트 모드일 때만 허용)
+  async function resetPlan() {
+    if (needLoginPay()) return;
+    try {
+      var res = await sb.rpc('test_reset');
+      if (res.error) throw res.error;
+      var d = res.data || {};
+      if (!d.ok) { toast(COUPON_ERR[d.error] || '복구하지 못했어요'); return; }
+      await loadEnt();
+      render();
+      toast('무료 버전으로 돌아왔어요');
+    } catch (e) { if (window.console) console.error(e); toast('복구하지 못했어요. 잠시 후 다시 시도해 주세요'); }
   }
   async function redeemCoupon() {
     if (needLoginPay()) return;
@@ -1764,6 +1780,7 @@
       '<div class="scroll" style="padding-top:4px">' +
       '<h1 class="big-title" style="margin-top:0">HSK ' + lv + '급 단어</h1>' +
       '<p class="sub-title" id="hsk-prog">' + list.length + '개 중 ' + k + '개 익혔어요</p>' +
+      '<div class="hsk-new"><em class="perk-tag" style="margin:0">개정된 신 HSK 3.0</em> 새 시험 기준 단어예요</div>' +
       '<div class="hsk-btns"><button class="btn" data-act="hsk-study" data-id="' + lv + '">카드 학습</button>' +
       '<button class="btn gray" data-act="hsk-quiz" data-id="' + lv + '">퀴즈</button></div>' +
       '<div class="seg-row"><button class="seg-b' + (!h.unknownOnly ? ' on' : '') + '" data-act="hsk-filter" data-v="all">전체</button>' +
@@ -2438,6 +2455,7 @@
       case 'open-pay': go('pay', { payWhy: null }); break;
       case 'buy': buyPlan(id); break;
       case 'coupon-redeem': redeemCoupon(); break;
+      case 'test-reset': resetPlan(); break;
       case 'open-privacy': go('privacy', { privFrom: state.screen === 'login' ? 'login' : 'tab' }); break;
       case 'delete-account':
         askConfirm({ title: '계정을 삭제할까요?', body: '계정과 모든 학습 기록, 설정이 사라지고 되돌릴 수 없어요.', ok: '계속하기', cancel: '취소', danger: true, m: 'shy' }, function () {

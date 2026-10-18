@@ -307,3 +307,21 @@ begin
 end;
 $$;
 revoke all on function public.make_coupons(int, int, int) from public, anon, authenticated;
+
+-- v55: 테스트용 복구 — 내 이용권을 지우고 무료 상태로 되돌려요 (테스트 모드일 때만)
+create or replace function public.test_reset()
+returns jsonb
+language plpgsql security definer set search_path = public
+as $$
+declare v_uid uuid := auth.uid();
+begin
+  if v_uid is null then raise exception 'not_authenticated'; end if;
+  if coalesce((select value from app_settings where key = 'payment_test_mode'), 'false') <> 'true' then
+    return jsonb_build_object('ok', false, 'error', 'test_mode_off');
+  end if;
+  delete from entitlements where user_id = v_uid;
+  return jsonb_build_object('ok', true);
+end;
+$$;
+revoke all on function public.test_reset() from public, anon;
+grant execute on function public.test_reset() to authenticated;

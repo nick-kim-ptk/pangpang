@@ -64,7 +64,7 @@
       mascot: 'love',
       icon: '❤️',
       title: '좋아하는 것',
-      sub: '喜欢으로 취향 말하기',
+      sub: '좋아하는 것 말하기',
       pattern: { zh: '我喜欢___。', py: 'Wǒ xǐhuan ___.', ko: '저는 ___을(를) 좋아해요' },
       tip: '「我喜欢…」로 답해 보세요',
       words: [
@@ -107,7 +107,7 @@
       mascot: 'idea',
       icon: '💭',
       title: '하고 싶은 것',
-      sub: '想으로 바람 말하기',
+      sub: '하고 싶은 것 말하기',
       pattern: { zh: '我想___。', py: 'Wǒ xiǎng ___.', ko: '저는 ___하고 싶어요' },
       tip: '「我想…」로 답해 보세요',
       words: [
@@ -234,7 +234,7 @@
       mascot: 'bag',
       icon: '🧭',
       title: '장소와 길 묻기',
-      sub: '在와 怎么走',
+      sub: '위치 말하기, 길 묻기',
       pattern: { zh: '___在___。', py: '___ zài ___.', ko: '___은(는) ___에 있어요' },
       tip: '「在…」를 넣어 답해 보세요',
       words: [
@@ -277,7 +277,7 @@
       mascot: 'laptop',
       icon: '🚪',
       title: '把자문',
-      sub: '“~을 ~하다” 말하기',
+      sub: '“~을 ~하다” 문장 만들기',
       pattern: { zh: '我把___放在___了。', py: 'Wǒ bǎ ___ fàng zài ___ le.', ko: '저는 ___을 ___에 뒀어요' },
       tip: '「我把…」로 답해 보세요',
       words: [
@@ -320,7 +320,7 @@
       mascot: 'book',
       icon: '✈️',
       title: '해 본 적 있어요',
-      sub: '过로 경험 말하기',
+      sub: '경험 말하기',
       pattern: { zh: '我去过___。', py: 'Wǒ qùguo ___.', ko: '저는 ___에 가 본 적 있어요' },
       tip: '「동사 + 过」로 답해 보세요',
       words: [
@@ -450,7 +450,7 @@
     },
 
     {
-      id: 'family', icon: '👨‍👩‍👧', title: '가족 소개', sub: '有로 가족 말하기',
+      id: 'family', icon: '👨‍👩‍👧', title: '가족 소개', sub: '가족 말하기',
       pattern: { zh: '我家有___口人。', py: 'Wǒ jiā yǒu ___ kǒu rén.', ko: '우리 가족은 ___명이에요' },
       tip: '「我有…」「我家有…」로 답해 보세요',
       words: [
@@ -553,7 +553,7 @@
     },
 
     {
-      id: 'can', icon: '🙆', title: '할 수 있어요', sub: '会·能·可以 구분하기',
+      id: 'can', icon: '🙆', title: '할 수 있어요', sub: '할 수 있다 표현 구분하기',
       pattern: { zh: '我会___。', py: 'Wǒ huì ___.', ko: '저는 ___할 줄 알아요' },
       tip: '「我会…」「我能…」로 답해 보세요',
       words: [
@@ -583,7 +583,7 @@
     },
 
     {
-      id: 'doing', icon: '🎬', title: '지금 하는 일', sub: '在로 진행 말하기',
+      id: 'doing', icon: '🎬', title: '지금 하는 일', sub: '지금 하고 있는 일 말하기',
       pattern: { zh: '我在___。', py: 'Wǒ zài ___.', ko: '저는 ___하는 중이에요' },
       tip: '「我在…」로 답해 보세요',
       words: [
@@ -615,7 +615,7 @@
     },
 
     {
-      id: 'le', icon: '✅', title: '했어요', sub: '了로 끝난 일 말하기',
+      id: 'le', icon: '✅', title: '했어요', sub: '끝난 일 말하기',
       pattern: { zh: '我___了。', py: 'Wǒ ___ le.', ko: '저는 ___했어요' },
       tip: '동사 뒤에 「了」를 붙여 답해 보세요',
       words: [
@@ -645,7 +645,7 @@
     },
 
     {
-      id: 'bi', icon: '⚖️', title: '비교하기', sub: '比로 두 가지 견주기',
+      id: 'bi', icon: '⚖️', title: '비교하기', sub: '두 가지 비교하기',
       pattern: { zh: '___比___ ___。', py: '___ bǐ ___ ___.', ko: '___은(는) ___보다 ~해요' },
       tip: '「A 比 B + 형용사」로 답해 보세요',
       words: [
@@ -711,7 +711,7 @@
     },
 
     {
-      id: 'plan', icon: '🗺️', title: '앞으로의 계획', sub: '打算으로 계획 말하기',
+      id: 'plan', icon: '🗺️', title: '앞으로의 계획', sub: '앞으로의 계획 말하기',
       pattern: { zh: '我打算___。', py: 'Wǒ dǎsuàn ___.', ko: '저는 ___할 계획이에요' },
       tip: '「我打算…」로 답해 보세요',
       words: [
@@ -1105,7 +1105,7 @@
     },
 
     {
-      id: 'need', icon: '📝', title: '해야 해요', sub: '得·应该·不用',
+      id: 'need', icon: '📝', title: '해야 해요', sub: '해야 한다, 안 해도 된다',
       pattern: { zh: '我得___。', py: 'Wǒ děi ___.', ko: '저는 ___해야 해요' },
       tip: '「我得…」「我应该…」로 답해 보세요',
       words: [
@@ -1301,7 +1301,7 @@
     },
 
     {
-      id: 'because', icon: '❓', title: '이유 말하기', sub: '因为…所以…',
+      id: 'because', icon: '❓', title: '이유 말하기', sub: '이유와 결과 말하기',
       pattern: { zh: '因为___，所以___。', py: 'Yīnwèi ___, suǒyǐ ___.', ko: '___이기 때문에 ___해요' },
       tip: '「因为…所以…」로 답해 보세요',
       words: [
@@ -1329,7 +1329,7 @@
     },
 
     {
-      id: 'although', icon: '↔️', title: '하지만', sub: '虽然…但是…',
+      id: 'although', icon: '↔️', title: '하지만', sub: '반대되는 내용 이어 말하기',
       pattern: { zh: '虽然___，但是___。', py: 'Suīrán ___, dànshì ___.', ko: '비록 ___하지만 ___해요' },
       tip: '「虽然…但是…」로 답해 보세요',
       words: [
@@ -1357,7 +1357,7 @@
     },
 
     {
-      id: 'already', icon: '⏳', title: '벌써, 아직', sub: '已经·还没·刚',
+      id: 'already', icon: '⏳', title: '벌써, 아직', sub: '이미 했는지, 아직인지 말하기',
       pattern: { zh: '我已经___了。', py: 'Wǒ yǐjīng ___ le.', ko: '저는 이미 ___했어요' },
       tip: '「已经」「还没…呢」로 답해 보세요',
       words: [
@@ -1413,7 +1413,7 @@
     },
 
     {
-      id: 'if', icon: '🤔', title: '만약에', sub: '如果…就…',
+      id: 'if', icon: '🤔', title: '만약에', sub: '~라면 어떻게 할지 말하기',
       pattern: { zh: '如果___，我就___。', py: 'Rúguǒ ___, wǒ jiù ___.', ko: '만약 ___하면, 저는 ___할 거예요' },
       tip: '「如果…就…」로 답해 보세요',
       words: [
@@ -1469,7 +1469,7 @@
     },
 
     {
-      id: 'opinion', icon: '💬', title: '내 생각 말하기', sub: '我觉得…',
+      id: 'opinion', icon: '💬', title: '내 생각 말하기', sub: '내 의견 말하기',
       pattern: { zh: '我觉得___。', py: 'Wǒ juéde ___.', ko: '저는 ___라고 생각해요' },
       tip: '「我觉得…」「我同意」로 답해 보세요',
       words: [
@@ -1497,7 +1497,7 @@
     },
 
     {
-      id: 'result', icon: '🎯', title: '결과 말하기', sub: '听懂了, 找到了',
+      id: 'result', icon: '🎯', title: '결과 말하기', sub: '끝까지 해냈다고 말하기',
       pattern: { zh: '我听懂了。', py: 'Wǒ tīngdǒng le.', ko: '알아들었어요' },
       tip: '「听懂了」「找到了」처럼 동사 뒤에 결과를 붙여 보세요',
       words: [
@@ -1525,7 +1525,7 @@
     },
 
     {
-      id: 'change', icon: '📈', title: '점점 변해요', sub: '越来越…',
+      id: 'change', icon: '📈', title: '점점 변해요', sub: '점점 달라지는 것 말하기',
       pattern: { zh: '___越来越___了。', py: '___ yuè lái yuè ___ le.', ko: '___은(는) 점점 ___해져요' },
       tip: '「越来越…」로 답해 보세요',
       words: [
@@ -1553,7 +1553,7 @@
     },
 
     {
-      id: 'passive', icon: '🌀', title: '~당했어요', sub: '被자문',
+      id: 'passive', icon: '🌀', title: '~당했어요', sub: '남에게 당한 일 말하기',
       pattern: { zh: '我的___被___了。', py: 'Wǒ de ___ bèi ___ le.', ko: '제 ___이(가) ___당했어요' },
       tip: '「被」를 써서 답해 보세요',
       words: [
