@@ -564,12 +564,12 @@ notify pgrst, 'reload schema';
 create table if not exists public.ai_fix (
   id         bigint generated always as identity primary key,
   user_id    uuid not null references auth.users(id) on delete cascade,
-  natural    text not null,
+  zh         text not null,
   pinyin     text not null default '',
   why        text not null default '',
   mine       text not null default '',
   created_at timestamptz not null default now(),
-  unique (user_id, natural)
+  unique (user_id, zh)
 );
 alter table public.ai_fix enable row level security;
 drop policy if exists "ai_fix own select" on public.ai_fix;

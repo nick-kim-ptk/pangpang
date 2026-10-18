@@ -1289,3 +1289,22 @@ u.miss { text-decoration: underline wavy #ef5350; text-underline-offset: 4px; co
 .xchip { justify-self: start; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 800; margin-bottom: 2px; }
 .xchip.ask { background: var(--soft-2); color: var(--ink-2); }
 .xchip.say { background: var(--y); color: var(--on-yellow); }
+
+/* v71: 추천 문장 — 한 줄짜리 칩으로 줄이기 */
+.ac-sug { gap: 8px; }
+.ac-sug-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.ac-sug-h .acs-show { height: 28px; padding: 0 12px; font-size: 12px; }
+.acs-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.acs-chip { max-width: 100%; height: 38px; padding: 0 14px; border: 0; border-radius: 999px; background: var(--card); color: var(--ink); font: inherit; font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; box-shadow: inset 0 0 0 1.5px var(--line); }
+.acs-chip.on { background: var(--y); color: var(--on-yellow); box-shadow: none; }
+.ac-sug > .acs-ans { padding: 10px 14px; border-radius: 14px; background: var(--card); box-shadow: inset 0 0 0 1.5px var(--line); }
+
+/* v72: 추천 문장을 대화 안(내 말 쪽)의 목록으로 */
+.acsug { align-self: flex-end; width: 100%; max-width: 92%; display: grid; justify-items: end; gap: 8px; margin-top: 2px; }
+.acsug-l { font-size: 12px; font-weight: 800; color: var(--ink-3); } .acsug-l small { font-weight: 600; margin-left: 4px; }
+.acsg { max-width: 100%; display: grid; justify-items: end; gap: 4px; padding: 10px 14px 8px; border-radius: 20px 20px 6px 20px; background: var(--card); box-shadow: inset 0 0 0 1.5px var(--amber); text-align: right; }
+.acsg.on { background: var(--soft); }
+.acsg-main { padding: 0; border: 0; background: none; color: var(--ink); font: inherit; font-size: 16px; font-weight: 700; line-height: 1.45; text-align: right; word-break: keep-all; cursor: pointer; }
+.acsg-ans { display: grid; gap: 1px; justify-items: end; padding-top: 2px; }
+.acsg-ans .zh { font-size: 18px; font-weight: 700; line-height: 1.4; } .acsg-ans .py { font-size: 13px; font-weight: 700; color: var(--amber-ink); }
+.acsg-show { padding: 2px 0; border: 0; background: none; color: var(--ink-3); font: inherit; font-size: 12px; font-weight: 800; cursor: pointer; }

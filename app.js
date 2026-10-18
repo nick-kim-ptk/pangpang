@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v70';
+  var APP_VERSION = 'v72';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -401,10 +401,10 @@
     var local = fixLocalRead();
     state.fixes = local;
     try {
-      var r = await sb.from('ai_fix').select('natural,pinyin,why,mine,kind,ko,created_at').order('created_at', { ascending: false }).limit(200);
+      var r = await sb.from('ai_fix').select('zh,pinyin,why,mine,kind,ko,created_at').order('created_at', { ascending: false }).limit(200);
       if (r && !r.error && Array.isArray(r.data)) {
         var seen = {}, out = [];
-        r.data.concat(local).forEach(function (x) { if (x && x.natural && !seen[x.natural]) { seen[x.natural] = 1; out.push({ natural: x.natural, pinyin: x.pinyin || '', why: x.why || '', mine: x.mine || '', kind: x.kind || 'fix', ko: x.ko || '', at: x.created_at || x.at || '' }); } });
+        r.data.map(function (x) { return x && x.zh ? Object.assign({}, x, { natural: x.zh }) : x; }).concat(local).forEach(function (x) { if (x && x.natural && !seen[x.natural]) { seen[x.natural] = 1; out.push({ natural: x.natural, pinyin: x.pinyin || '', why: x.why || '', mine: x.mine || '', kind: x.kind || 'fix', ko: x.ko || '', at: x.created_at || x.at || '' }); } });
         state.fixes = out.slice(0, 200); fixLocalWrite();
       }
     } catch (e) { /* 표가 아직 없으면 이 기기에만 저장돼요 */ }
@@ -415,12 +415,12 @@
     list.unshift({ natural: f.natural, pinyin: f.pinyin || '', why: f.why || '', mine: f.mine || '', kind: f.kind || 'fix', ko: f.ko || '', at: new Date().toISOString() });
     state.fixes = list.slice(0, 200); fixLocalWrite();
     try {
-      Promise.resolve(sb.from('ai_fix').upsert({ user_id: state.user.id, natural: f.natural, pinyin: f.pinyin || '', why: f.why || '', mine: f.mine || '', kind: f.kind || 'fix', ko: f.ko || '' }, { onConflict: 'user_id,natural' })).catch(function () {});
+      Promise.resolve(sb.from('ai_fix').upsert({ user_id: state.user.id, zh: f.natural, pinyin: f.pinyin || '', why: f.why || '', mine: f.mine || '', kind: f.kind || 'fix', ko: f.ko || '' }, { onConflict: 'user_id,zh' })).catch(function () {});
     } catch (e) { /* 무시 */ }
   }
   function aiFixDel(natural) {
     state.fixes = (state.fixes || []).filter(function (x) { return x.natural !== natural; }); fixLocalWrite();
-    try { Promise.resolve(sb.from('ai_fix').delete().eq('natural', natural)).catch(function () {}); } catch (e) { /* 무시 */ }
+    try { Promise.resolve(sb.from('ai_fix').delete().eq('zh', natural)).catch(function () {}); } catch (e) { /* 무시 */ }
   }
   var fixUi = { all: false, all2: false };
   function fixRowHtml(f) {
@@ -1447,7 +1447,7 @@
   }
   function acChat(a) {
     var log = a.msgs.map(acBubble).join('') + (a.busy ? '<div class="acb them typing"><span class="ai-dots"><i></i><i></i><i></i></span></div>' : '');
-    var foot;
+    var foot, sug = '';
     if (a.ended) {
       foot = '<div class="ac-foot"><button class="btn" data-act="ac-finish">대화 마치고 정리 보기</button></div>';
     } else if (a.rep) {
@@ -1456,21 +1456,21 @@
       foot = '<div class="ac-foot">' + acKoBox(a) + '</div>';
     } else {
       a.shown = a.shown || {};
-      var sug = !a.busy && a.sug.length ? '<div class="ac-sug"><div class="ac-sug-l">이렇게 말해볼 수 있어요 <small>누르면 중국어로 들려줘요</small></div>' +
+      sug = !a.busy && a.sug.length ? '<div class="acsug"><div class="acsug-l">이렇게 말해볼 수 있어요 <small>눌러서 듣기</small></div>' +
         a.sug.map(function (x, i) {
           var on = !!a.shown[i];
-          return '<div class="acs' + (on ? ' on' : '') + '"><div class="acs-row"><button class="acs-main" data-act="ac-sug" data-i="' + i + '">' + esc(x.ko || x.zh) + '</button>' +
-            '<button class="acs-show" data-act="ac-sug-show" data-i="' + i + '">' + (on ? '가리기' : '답변 보기') + '</button></div>' +
-            (on ? '<div class="acs-ans"><span class="zh">' + esc(x.zh) + '</span>' + (x.py ? '<span class="py">' + esc(x.py) + '</span>' : '') + '</div>' : '') + '</div>';
+          return '<div class="acsg' + (on ? ' on' : '') + '"><button class="acsg-main" data-act="ac-sug" data-i="' + i + '">' + esc(x.ko || x.zh) + '</button>' +
+            (on ? '<div class="acsg-ans"><span class="zh">' + esc(x.zh) + '</span>' + (x.py ? '<span class="py">' + esc(x.py) + '</span>' : '') + '</div>' : '') +
+            '<button class="acsg-show" data-act="ac-sug-show" data-i="' + i + '">' + (on ? '답변 가리기' : '답변 보기') + '</button></div>';
         }).join('') + '</div>' : '';
-      foot = '<div class="ac-foot">' + sug + (a.low ? '<div class="notice ac-low">크레딧이 모자라요. 마이 화면에서 충전하거나, 대화를 마치고 정리를 볼 수 있어요.</div>' : '') +
+      foot = '<div class="ac-foot">' + (a.low ? '<div class="notice ac-low">크레딧이 모자라요. 마이 화면에서 충전하거나, 대화를 마치고 정리를 볼 수 있어요.</div>' : '') +
         acMicBox(a, '누른 채로 말하고, 끝나면 손을 떼세요', acHasSR() ? 'both' : 'zh') + '</div>';
     }
     var leave = a.leave ? '<div class="ac-leave"><div class="ac-leave-b"><b>대화를 마칠까요?</b><span>지금까지 ' + a.turns + '번 주고받았어요. ' + (a.turns * AI_CHAT_COST) + '크레딧이 쓰였고, 마치면 정리 화면으로 가요.</span>' +
       '<div class="ac-leave-btns"><button class="btn gray" data-act="ac-leave-no">계속하기</button><button class="btn" data-act="ac-leave-yes">마치기</button></div></div></div>' : '';
     return '<div class="screen ac"><div class="topbar ac-top"><button class="icon-btn" data-act="ac-leave" aria-label="그만하기">' + I.close + '</button>' +
       '<span class="ac-tchip">' + esc(a.scenario.title) + '</span><span class="ac-count">남은 크레딧 ' + aiBal() + '</span></div>' +
-      '<div class="scroll ac-log">' + log + '</div>' + foot + leave + '</div>';
+      '<div class="scroll ac-log">' + log + sug + '</div>' + foot + leave + '</div>';
   }
   function acWrapHtml(a) {
     var w = a.wrap;
