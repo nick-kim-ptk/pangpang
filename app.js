@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v66';
+  var APP_VERSION = 'v67';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -1343,6 +1343,37 @@
     return '<div class="ac-micbox"><div id="ac-live" class="live' + (a.listening ? (a.live ? '' : ' wait') : ' hint') + '">' + esc(a.listening ? (a.live || '듣고 있어요…') : (a.busy ? '' : hint)) + '</div>' +
       '<button id="ac-mic" class="mic' + (a.listening ? ' on' : '') + '" data-achold="1" aria-label="누른 채로 말하기"' + (a.busy ? ' disabled' : '') + '>' + I.mic + '</button></div>';
   }
+  // 말이 안 나올 때: 한국어로 말하면 쉬운 중국어 문장을 알려 줘요(무료). 고르면 따라 말해 본 뒤 대화에 보내요
+  function acKoBox(a) {
+    var k = a.ko, opts = k.opts || [];
+    var list = opts.map(function (o, i) {
+      return '<div class="ac-ko-opt"><div class="ac-ko-t"><div class="zh">' + esc(o.zh) + '</div>' + (o.py ? '<div class="py">' + esc(o.py) + '</div><div class="kr">' + esc(kr(o.py)) + '</div>' : '') +
+        (o.ko ? '<div class="ko">' + esc(o.ko) + '</div>' : '') + '</div>' +
+        '<button class="round-btn" data-act="say" data-text="' + esc(o.zh) + '" aria-label="듣기">' + I.spk + '</button></div>' +
+        '<button class="btn ac-ko-use" data-act="ac-ko-pick" data-i="' + i + '">이 문장으로 말해 보기</button>';
+    }).join('');
+    return '<div class="ac-rep ac-ko"><div class="ac-ko-head"><div class="ac-rep-l">' + (opts.length ? '이렇게 말해 보세요' : '하고 싶은 말을 한국어로 해 보세요') + '</div><button class="ac-ko-x" data-act="ac-ko-close">대화로 돌아가기</button></div>' +
+      (k.heard ? '<div class="ac-ko-heard">내가 한 말 · ' + esc(k.heard) + '</div>' : '') +
+      (k.busy ? '<div class="acb them typing" style="align-self:flex-start"><span class="ai-dots"><i></i><i></i><i></i></span></div>' : list) +
+      (k.busy ? '' : acMicBox(a, opts.length ? '다른 말이 하고 싶으면 다시 한국어로 말해 보세요' : '버튼을 누른 채로 한국어로 말하고, 끝나면 손을 떼세요')) +
+      '</div>';
+  }
+  async function acKoRun(text) {
+    var a = state.ac;
+    if (!a || !a.ko || a.ko.busy) return;
+    a.ko.heard = text; a.ko.busy = true; a.live = ''; render(); acScroll();
+    try {
+      var d = await acCall({ action: 'ko2zh', sid: a.sid, ko: text });
+      if (!a.ko) return;
+      a.ko.busy = false;
+      if (!d.ok) { toast(d.error === 'bad_session' ? '이 대화는 이미 끝났어요' : (AI_ERR[d.error] || 'AI가 응답하지 못했어요. 한 번 더 말해 주세요')); render(); return; }
+      a.ko.opts = (d.result && d.result.options) || [];
+      render(); acScroll();
+    } catch (e) {
+      if (window.console) console.error(e);
+      if (a.ko) { a.ko.busy = false; toast('연결하지 못했어요. 한 번 더 말해 주세요'); render(); }
+    }
+  }
   function acRepBox(a) {
     var r = a.rep, res = r.res;
     return '<div class="ac-rep"><div class="ac-rep-l">이 문장을 따라 말해 보세요</div>' +
@@ -1351,7 +1382,7 @@
       (res ? '<div class="ac-rep-res ' + res + '"><b>' + (res === 'ok' ? '잘했어요!' : '조금 달랐어요') + '</b><span>들린 말 · ' + esc(r.heard) + '</span></div>' : '') +
       (res === 'ok' ? '' : acMicBox(a, '버튼을 누른 채로 말하고, 끝나면 손을 떼세요')) +
       '<div class="ac-rep-btns">' + (res ? '<button class="btn gray" data-act="ac-rep-again">다시 해 보기</button>' : '') +
-      '<button class="btn' + (res === 'ok' ? '' : ' gray') + '" data-act="ac-rep-close">' + (a.pending ? '다음 대화로' : '대화로 돌아가기') + '</button></div></div>';
+      '<button class="btn' + (res === 'ok' ? '' : ' gray') + '" data-act="ac-rep-close">' + (a.pending ? '다음 대화로' : a.koSend ? (res === 'ok' ? '이 말로 대화하기' : '다른 문장 보기') : '대화로 돌아가기') + '</button></div></div>';
   }
   function acChat(a) {
     var log = a.msgs.map(acBubble).join('') + (a.busy ? '<div class="acb them typing"><span class="ai-dots"><i></i><i></i><i></i></span></div>' : '');
@@ -1360,6 +1391,8 @@
       foot = '<div class="ac-foot"><button class="btn" data-act="ac-finish">대화 마치고 정리 보기</button></div>';
     } else if (a.rep) {
       foot = '<div class="ac-foot">' + acRepBox(a) + '</div>';
+    } else if (a.ko) {
+      foot = '<div class="ac-foot">' + acKoBox(a) + '</div>';
     } else {
       a.shown = a.shown || {};
       var sug = !a.busy && a.sug.length ? '<div class="ac-sug"><div class="ac-sug-l">이렇게 말해볼 수 있어요 <small>누르면 중국어로 들려줘요</small></div>' +
@@ -1371,6 +1404,7 @@
         }).join('') + '</div>' : '';
       foot = '<div class="ac-foot">' + sug + (a.low ? '<div class="notice ac-low">크레딧이 모자라요. 마이 화면에서 충전하거나, 대화를 마치고 정리를 볼 수 있어요.</div>' : '') +
         acMicBox(a, '버튼을 누른 채로 중국어로 말하고, 끝나면 손을 떼세요') +
+        (acHasSR() && !a.busy ? '<button class="ac-ko-open" data-act="ac-ko">중국어로 뭐라고 할지 모르겠어요 · 한국어로 말하기</button>' : '') +
         (a.turns > 0 ? '<button class="link-btn ac-fin" data-act="ac-finish">대화 마치기 · ' + a.turns + '번 · ' + (a.turns * AI_CHAT_COST) + '크레딧 사용</button>' : '') + '</div>';
     }
     var leave = a.leave ? '<div class="ac-leave"><div class="ac-leave-b"><b>대화를 마칠까요?</b><span>지금까지 ' + a.turns + '번 주고받았어요. ' + (a.turns * AI_CHAT_COST) + '크레딧이 쓰였고, 마치면 정리 화면으로 가요.</span>' +
@@ -1481,13 +1515,13 @@
   }
   function acMicDown() {
     var a = state.ac;
-    if (!a || a.mode !== 'chat' || a.busy || a.ended || acRec) return;
+    if (!a || a.mode !== 'chat' || a.busy || a.ended || acRec || (a.ko && a.ko.busy)) return;
     var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) return;
     stopSpeak();
     acHolding = true;
     var r = new SR(), got = '', errCode = '';
-    acRec = r; r.lang = 'zh-CN'; r.interimResults = true; r.continuous = false; r.maxAlternatives = 1;
+    acRec = r; r.lang = (a.ko && !a.rep) ? 'ko-KR' : 'zh-CN'; r.interimResults = true; r.continuous = false; r.maxAlternatives = 1;
     var live = function () { var m = document.getElementById('ac-mic'), lv = document.getElementById('ac-live'); if (m) m.classList.toggle('on', !!a.listening); if (lv) { lv.textContent = a.listening ? (a.live || '듣고 있어요…') : ''; lv.classList.remove('hint'); lv.classList.toggle('wait', !a.live); } };
     r.onstart = function () { a.listening = true; a.live = ''; live(); if (!acHolding) { try { r.stop(); } catch (e) { /* 무시 */ } } };
     r.onresult = function (e) { got = e.results[e.results.length - 1][0].transcript; a.live = got; live(); };
@@ -1496,7 +1530,7 @@
       if (acRec === r) acRec = null;
       a.listening = false; acHolding = false;
       if (state.ac !== a || state.screen !== 'aichat') return;
-      if (got) { a.live = ''; if (a.rep) acRepDone(got); else acSend(got); return; }
+      if (got) { a.live = ''; if (a.rep) acRepDone(got); else if (a.ko) acKoRun(got); else acSend(got); return; }
       a.live = '';
       if (errCode === 'not-allowed' || errCode === 'service-not-allowed') toast('마이크 권한을 허용해 주세요');
       else if (errCode === 'network') toast('음성 인식 서버에 연결하지 못했어요');
@@ -2999,9 +3033,24 @@
           if (fm && fm.fix) { state.ac.rep = { zh: fm.fix.natural, py: fm.fix.pinyin, heard: '', res: null }; render(); acScroll(); setTimeout(function () { speak(fm.fix.natural, 0.8); }, 200); }
         }
         break;
+      case 'ac-ko': if (state.ac && state.ac.mode === 'chat' && !state.ac.busy && !state.ac.ended) { state.ac.ko = { opts: null, heard: '', busy: false }; render(); acScroll(); } break;
+      case 'ac-ko-close': if (state.ac) { acStop(); state.ac.ko = null; state.ac.koSend = false; state.ac.live = ''; render(); acScroll(); } break;
+      case 'ac-ko-pick':
+        if (state.ac && state.ac.ko && state.ac.ko.opts) {
+          var ko_o = state.ac.ko.opts[+el.getAttribute('data-i')];
+          if (ko_o) { acStop(); state.ac.koOpts = state.ac.ko.opts; state.ac.koHeard = state.ac.ko.heard; state.ac.ko = null; state.ac.koSend = true; state.ac.rep = { zh: ko_o.zh, py: ko_o.py, heard: '', res: null }; render(); acScroll(); setTimeout(function () { speak(ko_o.zh, 0.8); }, 200); }
+        }
+        break;
       case 'ac-rep-again': if (state.ac && state.ac.rep) { state.ac.rep.res = null; state.ac.rep.heard = ''; render(); acScroll(); } break;
       case 'ac-rep-close':
-        if (state.ac) {
+        if (state.ac && state.ac.koSend) {
+          // 한국어로 고른 문장: 잘 따라 말했으면 그 말로 대화를 이어 가고, 아니면 고르던 화면으로 돌아가요
+          acStop();
+          var kz = state.ac.rep, kok = kz && kz.res === 'ok';
+          state.ac.koSend = false; state.ac.rep = null;
+          if (kok) { state.ac.ko = null; acSend(kz.zh); }
+          else { state.ac.ko = { opts: state.ac.koOpts || [], heard: state.ac.koHeard || '', busy: false }; render(); acScroll(); }
+        } else if (state.ac) {
           acStop();
           if (state.ac.pending) {
             // 따라 말을 잘했으면, 고친 문장이 내 말로 대화에 올라간 뒤 AI가 다시 질문해요
