@@ -528,3 +528,34 @@ end;
 $$;
 revoke all on function public.test_topup(text) from public, anon;
 grant execute on function public.test_topup(text) to authenticated;
+-- ===== v60: AI 선생님 — '왜 이렇게 써요?' 설명 저장 + 가이드형 자유 대화 =====
+-- 앞에서 v57(pangpang-all.sql)을 먼저 실행한 프로젝트에서 실행하세요. 여러 번 실행해도 안전해요.
+
+-- 정답 문장 설명 저장소: 한 문장을 AI가 한 번 설명하면 모두가 다시 써요. 앱에서는 읽을 수 없어요.
+create table if not exists public.ai_explain (
+  zh         text primary key,
+  data       jsonb not null,
+  created_at timestamptz not null default now()
+);
+alter table public.ai_explain enable row level security;
+
+-- 자유 대화 한 판의 기록(서버 전용): 앱에서는 읽고 쓸 수 없어요.
+create table if not exists public.ai_chat (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid not null references auth.users(id) on delete cascade,
+  scenario   text,
+  msgs       jsonb not null default '[]'::jsonb,
+  turns      int not null default 0,
+  done       boolean not null default false,
+  created_at timestamptz not null default now()
+);
+alter table public.ai_chat enable row level security;
+create index if not exists ai_chat_user_idx on public.ai_chat (user_id, created_at desc);
+
+-- 서버 함수(service_role)가 내부 함수를 쓸 수 있게 확실히 허용해요
+grant execute on function public._is_member(uuid) to service_role;
+grant execute on function public._ai_sync(uuid) to service_role;
+grant execute on function public.ai_spend(uuid, int, text) to service_role;
+grant execute on function public.ai_refund(uuid, int, int, text) to service_role;
+
+notify pgrst, 'reload schema';

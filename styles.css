@@ -1150,3 +1150,52 @@ u.miss { text-decoration: underline wavy #ef5350; text-underline-offset: 4px; co
 .member-card.on { background: var(--mc-bg); color: var(--mc-ink); box-shadow: inset 0 0 0 1.5px var(--mc-line); }
 .member-card.on .mc-ai { border-top-color: var(--mc-line); background: var(--mc-sub); }
 .member-card.on .mc-go, .member-card.on .mc-ai-go { background: var(--mc-chip); color: var(--mc-chip-ink); }
+/* v61: 왜 이렇게 써요? · AI 자유 대화 */
+.why-btn { margin-top: 8px; padding: 6px 12px; border: 0; border-radius: 999px; background: rgba(26,33,57,.08); color: inherit; font: inherit; font-size: 13px; font-weight: 800; cursor: pointer; }
+.why-box { margin-top: 10px; padding: 10px 12px; border-radius: 14px; background: rgba(255,255,255,.65); color: var(--navy); font-size: 13px; line-height: 1.5; }
+.why-box.busy, .why-box.err { display: flex; align-items: center; gap: 8px; font-weight: 700; } .why-box.err { color: #c2402a; }
+.why-lab { font-size: 12px; font-weight: 800; margin-bottom: 4px; opacity: .75; }
+.why-list { margin: 0; padding-left: 18px; display: grid; gap: 4px; word-break: keep-all; }
+:root[data-theme="dark"] .why-box { background: rgba(26,33,57,.12); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]):not([data-theme="dark"]) .why-box { background: rgba(26,33,57,.12); } }
+.ai-entry { display: grid; gap: 4px; width: 100%; margin-top: 20px; padding: 16px 18px; border: 0; border-radius: 20px; background: var(--mc-bg); color: var(--mc-ink); text-align: left; font: inherit; cursor: pointer; box-shadow: inset 0 0 0 1.5px var(--mc-line); }
+.ae-t { display: flex; align-items: center; gap: 8px; font-size: 18px; font-weight: 800; letter-spacing: -.02em; }
+.ae-t em { font-style: normal; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 999px; background: var(--mc-chip); color: var(--mc-chip-ink); }
+.ae-s { font-size: 13px; opacity: .8; }
+.ac-bal { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 12px; font-size: 13px; color: var(--ink-3); } .ac-bal b { color: var(--ink); font-size: 14px; }
+.item.sel { background: var(--soft); }
+.link-btn.inl { padding: 0 4px; display: inline; font-weight: 800; color: var(--ink); text-decoration: underline; }
+.screen.ac { position: relative; }
+.ac-log { display: flex; flex-direction: column; gap: 10px; padding-top: 6px; padding-bottom: 12px; }
+.acb { max-width: 90%; border-radius: 20px; }
+.acb.them { align-self: flex-start; display: flex; gap: 8px; align-items: flex-start; padding: 12px 10px 12px 16px; background: var(--card); box-shadow: inset 0 0 0 1.5px var(--line); border-top-left-radius: 6px; }
+.acb.typing { padding: 16px 18px; }
+.acb-main { flex: 1; min-width: 0; }
+.acb .zh { font-size: 22px; font-weight: 700; line-height: 1.35; }
+.acb.them .py { font-size: 15px; font-weight: 700; color: var(--amber-ink); margin-top: 2px; }
+.acb.them .kr { font-size: 13px; color: var(--ink-3); }
+.acb.them .ko { font-size: 14px; color: var(--ink-2); margin-top: 4px; word-break: keep-all; }
+.acb.me { align-self: flex-end; padding: 10px 16px; background: var(--y); color: var(--on-yellow, var(--navy)); border-top-right-radius: 6px; }
+.acfix { align-self: flex-end; max-width: 90%; margin-top: -2px; padding: 10px 14px; border-radius: 16px; background: var(--soft-2); color: var(--ink); }
+.acfix.sm { align-self: stretch; max-width: none; margin-bottom: 10px; }
+.acfix-l { font-size: 12px; font-weight: 800; color: var(--amber-ink); }
+.acfix-n { display: grid; gap: 1px; width: 100%; margin-top: 4px; padding: 0; border: 0; background: none; text-align: left; color: inherit; font: inherit; cursor: pointer; }
+.acfix-n .zh { font-size: 19px; font-weight: 700; } .acfix-n .py { font-size: 13px; font-weight: 700; color: var(--amber-ink); }
+.acfix-w { margin-top: 4px; font-size: 13px; line-height: 1.5; color: var(--ink-2); word-break: keep-all; }
+.ac-foot { position: sticky; bottom: 0; z-index: 20; display: grid; gap: 8px; padding: 10px 16px calc(12px + var(--safe-b)); background: linear-gradient(transparent, var(--bg) 14px); }
+.ac-sug { display: grid; gap: 6px; }
+.ac-sug-l { font-size: 13px; font-weight: 800; color: var(--ink-2); } .ac-sug-l small { font-weight: 600; color: var(--ink-3); margin-left: 4px; }
+.acs { display: grid; gap: 1px; width: 100%; padding: 9px 14px; border: 0; border-radius: 16px; background: var(--card); color: var(--ink); text-align: left; font: inherit; cursor: pointer; box-shadow: inset 0 0 0 1.5px var(--line); }
+.acs:active { background: var(--soft); }
+.acs .zh { font-size: 17px; font-weight: 700; } .acs .py { font-size: 12.5px; font-weight: 700; color: var(--amber-ink); } .acs .ko { font-size: 13px; color: var(--ink-3); }
+.ac-in { display: flex; gap: 8px; align-items: center; }
+.ac-in input { flex: 1; min-width: 0; height: 50px; border: 0; border-radius: 999px; padding: 0 18px; background: var(--card); color: var(--ink); font-family: var(--zh); font-size: 17px; box-shadow: inset 0 0 0 1.5px var(--line); }
+.ac-in input:focus { outline: none; box-shadow: 0 0 0 2px var(--navy); }
+.ac-mic { flex: none; width: 50px; height: 50px; border: 0; border-radius: 50%; background: var(--soft-2); color: var(--ink); display: grid; place-items: center; cursor: pointer; }
+.ac-mic svg { width: 24px; height: 24px; } .ac-mic.on { background: var(--red); color: #fff; }
+.ac-send { flex: none; width: 76px; height: 50px; }
+.ac-leave { position: absolute; inset: 0; z-index: 40; display: flex; align-items: flex-end; background: rgba(10,14,28,.45); }
+.ac-leave-b { width: 100%; display: grid; gap: 6px; padding: 22px 20px calc(18px + var(--safe-b)); border-radius: 28px 28px 0 0; background: var(--card); color: var(--ink); } .ac-leave-b b { font-size: 18px; } .ac-leave-b span { font-size: 14px; color: var(--ink-2); }
+.ac-leave-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+.ac-foot { grid-template-columns: minmax(0, 1fr); box-sizing: border-box; width: 100%; }
+.ac-in, .ac-sug { min-width: 0; }

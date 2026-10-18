@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v60';
+  var APP_VERSION = 'v61';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -463,7 +463,7 @@
 
   /* ---------- 화면 이동 ---------- */
   // 뒤로 가기: 폰의 뒤로 제스처·버튼(기록)과 화면 왼쪽 가장자리에서 오른쪽으로 미는 동작을 같이 처리해요
-  var SUBSCREEN = { pay: 1, privacy: 1, login: 1, intro: 1, practice: 1, quiz: 1, stats: 1, done: 1, hsk: 1, hskstudy: 1, feedback: 1, speed: 1, account: 1, coupon: 1, aicharge: 1 };
+  var SUBSCREEN = { pay: 1, privacy: 1, login: 1, intro: 1, practice: 1, quiz: 1, stats: 1, done: 1, hsk: 1, hskstudy: 1, feedback: 1, speed: 1, account: 1, coupon: 1, aicharge: 1, aichat: 1 };
   var inSub = false, ignorePop = 0, backAnim = false;
   function syncHistory(screen) {
     try {
@@ -480,7 +480,12 @@
     if (state.modal) { closeModal(); return; }
     var sc = state.screen;
     if (sc === 'practice' && state.s && state.s.wordsOpen) { state.s.wordsOpen = false; render(); return; }
-    if (sc === 'practice') quitPractice();
+    if (sc === 'aichat') {
+      var ac = state.ac;
+      if (ac && ac.mode === 'chat' && !ac.ended && ac.sid && !ac.leave) { ac.leave = true; render(); return; }
+      acStop(); go('tab');
+    }
+    else if (sc === 'practice') quitPractice();
     else if (sc === 'quiz') { stopSpeak(); go(state.z && state.z.hsk ? 'hsk' : 'tab'); }
     else if (sc === 'hskstudy') { stopSpeak(); clearTimeout(hskTimer); store.saveProfile(); go('hsk'); }
     else if (sc === 'hsk') go('tab');
@@ -494,7 +499,7 @@
   window.addEventListener('popstate', function () {
     if (ignorePop > 0) { ignorePop--; return; }
     if (!inSub) return;
-    if (state.modal || state.screen === 'practice' || state.screen === 'quiz' || state.screen === 'hskstudy') {
+    if (state.modal || state.screen === 'practice' || state.screen === 'quiz' || state.screen === 'hskstudy' || (state.screen === 'aichat' && state.ac && state.ac.mode === 'chat')) {
       try { history.pushState({ pp: 1 }, ''); } catch (e) { /* 무시 */ }   // 그 자리에 머물며 확인 창만 보여요
       goBack();
       return;
@@ -735,7 +740,7 @@
   function dialogSection() {
     var ds = window.DIALOGS || [];
     if (!ds.length) return '';
-    return '<div class="section-title" style="margin-top:28px">상황 대화 연습</div>' +
+    return aiEntry() + '<div class="section-title" style="margin-top:28px">상황 대화 연습</div>' +
       (isPro() ? '' : '<p class="hsk-note under-title">첫 번째 대화는 무료로 계속 연습할 수 있어요. 나머지는 멤버십이 필요해요.</p>') + '<ul class="list">' + ds.map(function (d) {
       var done = state.profile.dlg.indexOf(d.id) >= 0;
       return '<li><button class="item" data-act="dialog-start" data-id="' + d.id + '"><span class="txt"><div class="t">' + esc(d.title) + '</div>' +
@@ -1013,7 +1018,7 @@
   function answerCard(q, label) {
     return '<div class="answer" style="margin-top:20px"><div class="body">' +
       '<div class="py" style="margin-bottom:4px">' + esc(label) + '</div>' +
-      '<div class="zh">' + esc(q.a.zh) + '</div><div class="py">' + esc(q.a.py) + '</div><div class="kr">' + esc(kr(q.a.py)) + '</div>' + koBlock(state.s, q.a.ko, 'ko a-ko') + '</div>' +
+      '<div class="zh">' + esc(q.a.zh) + '</div><div class="py">' + esc(q.a.py) + '</div><div class="kr">' + esc(kr(q.a.py)) + '</div>' + koBlock(state.s, q.a.ko, 'ko a-ko') + aiWhy(q) + '</div>' +
       '<button class="round-btn" data-act="hear-a" aria-label="정답 듣기">' + I.spk + '</button></div>';
   }
 
@@ -1251,6 +1256,190 @@
   }
 
   function isLifetime() { return !!sb && !state.entErr && !!state.ent && state.ent.plan === 'lifetime'; }
+  /* ---------- AI 선생님: '왜 이렇게 써요?' 설명 (정답 문장마다, 크레딧 없음) ---------- */
+  function aiWhy(q) {
+    var s = state.s;
+    if (!aiOn() || !s || !q || !q.a) return '';
+    var r = (s.why || {})[q.a.zh], h;
+    if (r && r.busy) h = '<div class="why-box busy"><span class="ai-dots"><i></i><i></i><i></i></span>설명을 불러오는 중…</div>';
+    else if (r && r.res) h = '<div class="why-box"><div class="why-lab">왜 이렇게 써요?' + (r.mock ? ' · 테스트' : '') + '</div><ul class="why-list">' + r.res.points.map(function (p) { return '<li>' + esc(p) + '</li>'; }).join('') + '</ul></div>';
+    else if (r && r.err) h = '<div class="why-box err">' + esc(r.err) + '</div>';
+    else h = '<button class="why-btn" data-act="ai-why">왜 이렇게 써요?</button>';
+    return h;
+  }
+  async function aiWhyLoad() {
+    var s = state.s;
+    if (!s || !aiOn() || !s.cur) return;
+    var q = s.cur, key = q.a.zh;
+    s.why = s.why || {};
+    if (s.why[key] && s.why[key].busy) return;
+    s.why[key] = { busy: true }; render();
+    try {
+      var r = await sb.functions.invoke('ai-coach', { body: { action: 'explain', zh: q.a.zh, ko: q.a.ko } });
+      if (r.error) throw r.error;
+      var d = r.data || {};
+      s.why[key] = d.ok ? { res: d.result, mock: !!d.mock } : { err: d.error === 'limit' ? '오늘은 새 설명을 더 만들 수 없어요. 내일 다시 눌러 주세요.' : (AI_ERR[d.error] || '설명을 가져오지 못했어요. 잠시 후 다시 해 주세요.') };
+    } catch (e) {
+      if (window.console) console.error(e);
+      s.why[key] = { err: '연결하지 못했어요. 잠시 후 다시 해 주세요.' };
+    }
+    if (state.s === s && state.screen === 'practice') render();
+  }
+
+  /* ---------- AI 자유 대화 (가이드형): 상황을 고르면 AI가 먼저 말을 걸고, 뭐라고 말할지 알려 줘요 ---------- */
+  var AI_CHAT_COST = 10, acRec = null;
+  function aiEntry() {
+    if (!aiOn()) return '';
+    return '<button class="ai-entry" data-act="ac-open"><span class="ae-t">AI 자유 대화<em>NEW</em></span>' +
+      '<span class="ae-s">AI 선생님과 6번 주고받아요. 뭐라고 말할지 알려 줘요 · ' + AI_CHAT_COST + '크레딧</span></button>';
+  }
+  function acStop() {
+    if (acRec) { try { acRec.abort(); } catch (e) { /* 무시 */ } acRec = null; }
+    stopSpeak();
+  }
+  function acScroll() { try { window.scrollTo(0, document.body.scrollHeight); } catch (e) { /* 무시 */ } }
+  function viewAiChat() {
+    var a = state.ac;
+    if (!aiOn() || !a) return '<div class="screen"><div class="topbar"><button class="icon-btn" data-act="back" aria-label="뒤로">' + I.back + '</button></div><div class="scroll"><p class="sub-title">멤버십이 있을 때 쓸 수 있어요.</p></div></div>';
+    return a.mode === 'pick' ? acPick(a) : a.mode === 'end' ? acEnd(a) : acChat(a);
+  }
+  function acPick(a) {
+    var bal = aiBal(), can = bal >= AI_CHAT_COST;
+    var rows = (window.DIALOGS || []).map(function (d) {
+      return '<li><button class="item' + (a.sel === d.id ? ' sel' : '') + '" data-act="ac-pick" data-id="' + esc(d.id) + '"><span class="txt"><div class="t">' + esc(d.title) + '</div><div class="s">' + esc(d.intro) + '</div></span>' +
+        '<span class="chip ' + (a.sel === d.id ? 'y' : 'soft') + '">' + (a.sel === d.id ? '선택됨' : '고르기') + '</span></button></li>';
+    }).join('');
+    return '<div class="screen"><div class="topbar"><button class="icon-btn" data-act="back" aria-label="뒤로">' + I.back + '</button></div>' +
+      '<div class="scroll" style="padding-top:4px"><h1 class="big-title" style="margin-top:0">AI 자유 대화</h1>' +
+      '<p class="sub-title">상황을 고르면 AI 선생님이 먼저 말을 걸어요. 내가 할 수 있는 말을 같이 알려 주니까 막혀도 괜찮아요.</p>' +
+      '<div class="ac-bal"><span>한 판 ' + AI_CHAT_COST + '크레딧 · 최대 6번 주고받기</span><b>남은 ' + bal + '</b></div>' +
+      (can ? '' : '<div class="notice" style="margin-bottom:12px">크레딧이 부족해요. <button class="link-btn inl" data-act="open-aicharge">충전하기</button></div>') +
+      '<ul class="list">' + rows + '</ul><div style="height:96px"></div></div>' +
+      '<div class="footer"><button class="btn" data-act="ac-start"' + (a.sel && can && !a.busy ? '' : ' disabled') + '>' + (a.busy ? '대화를 준비하고 있어요…' : '시작하기 · ' + AI_CHAT_COST + '크레딧') + '</button></div></div>';
+  }
+  function acBubble(m) {
+    if (m.who === 'me') {
+      return '<div class="acb me"><div class="zh">' + esc(m.zh) + '</div></div>' +
+        (m.fix ? '<div class="acfix"><div class="acfix-l">이렇게 말하면 더 자연스러워요</div>' +
+          '<button class="acfix-n" data-act="say" data-text="' + esc(m.fix.natural) + '"><span class="zh">' + esc(m.fix.natural) + '</span>' + (m.fix.pinyin ? '<span class="py">' + esc(m.fix.pinyin) + '</span>' : '') + '</button>' +
+          (m.fix.why ? '<div class="acfix-w">' + esc(m.fix.why) + '</div>' : '') + '</div>' : '');
+    }
+    return '<div class="acb them"><div class="acb-main"><div class="zh">' + esc(m.zh) + '</div>' + (m.py ? '<div class="py">' + esc(m.py) + '</div><div class="kr">' + esc(kr(m.py)) + '</div>' : '') +
+      (m.ko ? '<div class="ko">' + esc(m.ko) + '</div>' : '') + '</div>' +
+      '<button class="round-btn" data-act="say" data-text="' + esc(m.zh) + '" aria-label="듣기">' + I.spk + '</button></div>';
+  }
+  function acChat(a) {
+    var log = a.msgs.map(acBubble).join('') + (a.busy ? '<div class="acb them typing"><span class="ai-dots"><i></i><i></i><i></i></span></div>' : '');
+    var foot;
+    if (a.ended) {
+      foot = '<div class="ac-foot"><button class="btn" data-act="ac-finish">대화 마치고 정리 보기</button></div>';
+    } else {
+      var sug = !a.busy && a.sug.length ? '<div class="ac-sug"><div class="ac-sug-l">이렇게 말해볼 수 있어요 <small>눌러서 따라 해 보세요</small></div>' +
+        a.sug.map(function (x, i) { return '<button class="acs" data-act="ac-sug" data-i="' + i + '"><span class="zh">' + esc(x.zh) + '</span>' + (x.py ? '<span class="py">' + esc(x.py) + '</span>' : '') + (x.ko ? '<span class="ko">' + esc(x.ko) + '</span>' : '') + '</button>'; }).join('') + '</div>' : '';
+      foot = '<div class="ac-foot">' + sug +
+        '<div class="ac-in"><input id="ac-in" lang="zh-CN" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="중국어로 말하거나 입력해요" value="' + esc(a.input || '') + '"' + (a.busy ? ' disabled' : '') + '>' +
+        '<button id="ac-mic" class="ac-mic' + (a.listening ? ' on' : '') + '" data-act="ac-mic" aria-label="말하기"' + (a.busy ? ' disabled' : '') + '>' + I.mic + '</button>' +
+        '<button class="btn ac-send" data-act="ac-send"' + (a.busy ? ' disabled' : '') + '>보내기</button></div></div>';
+    }
+    var leave = a.leave ? '<div class="ac-leave"><div class="ac-leave-b"><b>지금 나갈까요?</b><span>나가면 이 판은 끝나고, 쓴 크레딧은 돌아오지 않아요.</span>' +
+      '<div class="ac-leave-btns"><button class="btn gray" data-act="ac-leave-no">계속하기</button><button class="btn" data-act="ac-leave-yes">나가기</button></div></div></div>' : '';
+    return '<div class="screen ac"><div class="topbar"><button class="icon-btn" data-act="ac-leave" aria-label="그만하기">' + I.close + '</button>' +
+      '<span class="chip soft">' + esc(a.scenario.title) + '</span><span class="chip" style="min-width:48px;justify-content:center">' + a.turns + '/' + a.max + '</span></div>' +
+      '<div class="scroll ac-log">' + log + '</div>' + foot + leave + '</div>';
+  }
+  function acEnd(a) {
+    var fx = a.fixes.length ? a.fixes.map(function (f) {
+      return '<div class="acfix sm"><div class="acfix-l">내가 한 말 · ' + esc(f.mine) + '</div><button class="acfix-n" data-act="say" data-text="' + esc(f.natural) + '"><span class="zh">' + esc(f.natural) + '</span>' + (f.pinyin ? '<span class="py">' + esc(f.pinyin) + '</span>' : '') + '</button>' +
+        (f.why ? '<div class="acfix-w">' + esc(f.why) + '</div>' : '') + '</div>';
+    }).join('') : '<p class="sub-title" style="margin:0">고칠 곳 없이 잘 말했어요!</p>';
+    return '<div class="screen"><div class="topbar"><button class="icon-btn" data-act="ac-leave-yes" aria-label="닫기">' + I.close + '</button></div>' +
+      '<div class="scroll" style="padding-top:4px"><h1 class="big-title" style="margin-top:0">대화 끝! 수고했어요</h1>' +
+      '<p class="sub-title">' + esc(a.scenario.title) + ' · ' + a.turns + '번 말했어요</p>' +
+      '<div class="section-title" style="margin-top:8px">이렇게 고쳐 보세요</div>' + fx + '<div style="height:96px"></div></div>' +
+      '<div class="footer fc-foot"><button class="btn gray" data-act="ac-leave-yes">닫기</button><button class="btn" data-act="ac-again">한 번 더 · ' + AI_CHAT_COST + '크레딧</button></div></div>';
+  }
+  async function acCall(body) {
+    var r = await sb.functions.invoke('ai-coach', { body: body });
+    if (r.error) throw r.error;
+    var d = r.data || {};
+    if (typeof d.monthly === 'number' && typeof d.topup === 'number' && state.ai) { state.ai.monthly = d.monthly; state.ai.topup = d.topup; }
+    return d;
+  }
+  async function acStart() {
+    var a = state.ac;
+    if (!a || a.busy || !a.sel || !aiOn() || aiBal() < AI_CHAT_COST) return;
+    var d0 = (window.DIALOGS || []).filter(function (d) { return d.id === a.sel; })[0];
+    if (!d0) return;
+    a.busy = true; render();
+    try {
+      var d = await acCall({ action: 'chat_start', scenario: { id: d0.id, title: d0.title, intro: d0.intro } });
+      a.busy = false;
+      if (!d.ok) { toast(AI_ERR[d.error] || '대화를 시작하지 못했어요. 잠시 후 다시 해 주세요'); render(); return; }
+      state.ac = { mode: 'chat', scenario: { id: d0.id, title: d0.title }, sid: d.sid, msgs: [Object.assign({ who: 'them' }, d.turn.reply)], sug: d.turn.suggestions || [], turns: 0, max: d.max_turns || 6, input: '', busy: false, ended: false, fixes: [] };
+      render(); acScroll();
+      setTimeout(function () { if (state.screen === 'aichat' && state.ac && state.ac.sid === d.sid) speak(d.turn.reply.zh, 0.85); }, 350);
+    } catch (e) {
+      if (window.console) console.error(e);
+      a.busy = false; toast('연결하지 못했어요. 잠시 후 다시 해 주세요');
+      loadAi().then(function () { if (state.ac === a) render(); });
+    }
+  }
+  async function acSend() {
+    var a = state.ac;
+    if (!a || a.mode !== 'chat' || a.busy || a.ended) return;
+    var inp = document.getElementById('ac-in');
+    var text = String((inp && inp.value) || a.input || '').trim().slice(0, 120);
+    if (!text) { toast('말하거나 입력해 주세요'); return; }
+    acStop();
+    var mine = { who: 'me', zh: text };
+    a.msgs.push(mine); a.input = ''; a.sug = []; a.busy = true; a.listening = false; render(); acScroll();
+    try {
+      var d = await acCall({ action: 'chat_turn', sid: a.sid, answer: text });
+      a.busy = false;
+      if (!d.ok) {
+        a.msgs.pop(); a.input = text; a.sug = a.lastSug || [];
+        toast(d.error === 'bad_session' ? '이 대화는 이미 끝났어요' : (AI_ERR[d.error] || 'AI가 응답하지 못했어요. 한 번 더 보내 주세요'));
+        if (d.error === 'bad_session') a.ended = true;
+        render(); return;
+      }
+      var t = d.turn;
+      if (t.fix) { mine.fix = t.fix; a.fixes.push({ mine: text, natural: t.fix.natural, pinyin: t.fix.pinyin, why: t.fix.why }); }
+      a.msgs.push(Object.assign({ who: 'them' }, t.reply));
+      a.turns = d.turns; a.sug = t.suggestions || []; a.lastSug = a.sug; a.ended = !!d.end;
+      render(); acScroll();
+      setTimeout(function () { if (state.screen === 'aichat' && state.ac === a) speak(t.reply.zh, 0.85); }, 250);
+    } catch (e) {
+      if (window.console) console.error(e);
+      a.busy = false; a.msgs.pop(); a.input = text; a.sug = a.lastSug || [];
+      toast('연결하지 못했어요. 한 번 더 보내 주세요'); render();
+    }
+  }
+  function acMic() {
+    var a = state.ac;
+    if (!a || a.busy || a.ended) return;
+    var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { toast('이 브라우저는 음성 인식을 지원하지 않아요. 글자로 입력해 주세요'); return; }
+    if (acRec) { try { acRec.stop(); } catch (e) { /* 무시 */ } return; }
+    stopSpeak();
+    var r = new SR(), got = '';
+    acRec = r; r.lang = 'zh-CN'; r.interimResults = true; r.continuous = false; r.maxAlternatives = 1;
+    var mark = function (on) { var m = document.getElementById('ac-mic'); if (m) m.classList.toggle('on', on); };
+    r.onstart = function () { a.listening = true; mark(true); };
+    r.onresult = function (e) {
+      got = e.results[e.results.length - 1][0].transcript;
+      a.input = got; var i = document.getElementById('ac-in'); if (i) i.value = got;
+    };
+    r.onerror = function (e) {
+      if (e.error === 'not-allowed' || e.error === 'service-not-allowed') toast('마이크 권한을 허용해 주세요');
+      else if (e.error === 'network') toast('음성 인식 서버에 연결하지 못했어요');
+    };
+    r.onend = function () {
+      if (acRec === r) acRec = null;
+      a.listening = false; mark(false);
+      if (!got && state.screen === 'aichat') toast('목소리가 잘 안 들렸어요. 다시 눌러 말해 보세요');
+    };
+    try { r.start(); } catch (e) { acRec = null; }
+  }
   function viewAiCharge() {
     if (!aiOn()) return '<div class="screen"><div class="topbar"><button class="icon-btn" data-act="back" aria-label="뒤로">' + I.back + '</button></div><div class="scroll"><p class="sub-title">멤버십이 있을 때 쓸 수 있어요.</p></div></div>';
     var packs = AI_PACKS.map(function (k) {
@@ -1445,6 +1634,7 @@
     else if (state.screen === 'account') html = viewAccount();
     else if (state.screen === 'coupon') html = viewCoupon();
     else if (state.screen === 'aicharge') html = viewAiCharge();
+    else if (state.screen === 'aichat') html = viewAiChat();
     else if (state.screen === 'pay') html = viewPay();
     else if (state.screen === 'speed') html = viewSpeed();
     else if (state.screen === 'hskstudy') html = viewHskStudy();
@@ -1945,8 +2135,12 @@
       reportError('feedback: ' + (err && err.message), err && err.stack);
     }
   }
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && e.target && e.target.id === 'ac-in' && !e.isComposing) { e.preventDefault(); acSend(); }
+  });
   document.addEventListener('input', function (e) {
     var t = e.target;
+    if (t && t.id === 'ac-in' && state.ac) { state.ac.input = String(t.value || ''); return; }
     if (t && t.id === 'w-search') { wordsUi.q = String(t.value || ''); refreshWordsList(); return; }
     if (!t || t.id !== 'fb-text' || !state.fb) return;
     state.fb.text = String(t.value || '');
@@ -2698,6 +2892,24 @@
       case 'open-account': go('account'); break;
       case 'open-coupon': go('coupon'); break;
       case 'open-aicharge': go('aicharge'); break;
+      case 'ai-why': aiWhyLoad(); break;
+      case 'ac-open': state.ac = { mode: 'pick', sel: null }; go('aichat'); break;
+      case 'ac-pick': if (state.ac) { state.ac.sel = id; render(); } break;
+      case 'ac-start': acStart(); break;
+      case 'ac-send': acSend(); break;
+      case 'ac-mic': acMic(); break;
+      case 'ac-sug':
+        if (state.ac && state.ac.sug[+el.getAttribute('data-i')]) {
+          var sg = state.ac.sug[+el.getAttribute('data-i')];
+          state.ac.input = sg.zh; var ai = document.getElementById('ac-in'); if (ai) { ai.value = sg.zh; ai.focus(); }
+          speak(sg.zh, 0.8);
+        }
+        break;
+      case 'ac-leave': if (state.ac) { state.ac.leave = true; render(); } break;
+      case 'ac-leave-no': if (state.ac) { state.ac.leave = false; render(); } break;
+      case 'ac-leave-yes': acStop(); state.ac = null; go('tab', { tab: 'review' }); break;
+      case 'ac-finish': if (state.ac) { state.ac.mode = 'end'; acStop(); render(); window.scrollTo(0, 0); } break;
+      case 'ac-again': state.ac = { mode: 'pick', sel: null }; render(); window.scrollTo(0, 0); break;
       case 'buy-pack': buyPack(id); break;
       case 'open-privacy': go('privacy', { privFrom: state.screen === 'login' ? 'login' : 'tab' }); break;
       case 'delete-account':
