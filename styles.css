@@ -953,3 +953,12 @@ u.miss { text-decoration: underline wavy #ef5350; text-underline-offset: 4px; co
   .lg-bub { display: none; }
 }
 .lg-cta .g-btn.loading:disabled { opacity: 1; }
+
+/* ---------- v48 개인정보·계정 삭제 ---------- */
+.me-links { display: flex; justify-content: center; gap: 20px; padding: 14px 0 4px; }
+.me-links button { border: 0; background: none; color: var(--ink-2); font: inherit; font-size: 13px; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; padding: 6px 2px; }
+.me-links button.warn { color: #d2455a; }
+.legal h2 { font-size: 16px; font-weight: 800; letter-spacing: -.02em; margin: 22px 0 6px; color: var(--ink); }
+.legal p:not(.sub-title) { margin: 0; font-size: 15px; line-height: 1.7; color: var(--ink-2); }
+.lg-legal { margin: 2px 0 0; text-align: center; font-size: 12px; line-height: 1.5; color: #8791ad; }
+.lg-legal button { border: 0; background: none; color: #a7b0cc; font: inherit; font-weight: 600; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; padding: 0; }

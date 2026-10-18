@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v47';
+  var APP_VERSION = 'v48';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -238,7 +238,8 @@
       if (d.err || pendingSaves > 0 || gen !== saveGen || state.screen !== 'tab') return;
       var before = JSON.stringify([state.progress, state.done, state.daily]);
       applyRemote(d, true);
-      if (JSON.stringify([state.progress, state.done, state.daily]) === before) return;
+      var rch = await pullResume();
+      if (!rch && JSON.stringify([state.progress, state.done, state.daily]) === before) return;
       var sc = document.querySelector ? document.querySelector('.scroll') : null;
       var top = sc ? sc.scrollTop : 0;
       render();
@@ -383,7 +384,7 @@
 
   /* ---------- 화면 이동 ---------- */
   // 뒤로 가기: 폰의 뒤로 제스처·버튼(기록)과 화면 왼쪽 가장자리에서 오른쪽으로 미는 동작을 같이 처리해요
-  var SUBSCREEN = { login: 1, intro: 1, practice: 1, quiz: 1, stats: 1, done: 1, hsk: 1, hskstudy: 1, feedback: 1, speed: 1 };
+  var SUBSCREEN = { privacy: 1, login: 1, intro: 1, practice: 1, quiz: 1, stats: 1, done: 1, hsk: 1, hskstudy: 1, feedback: 1, speed: 1 };
   var inSub = false, ignorePop = 0, backAnim = false;
   function syncHistory(screen) {
     try {
@@ -404,6 +405,7 @@
     else if (sc === 'hskstudy') { stopSpeak(); clearTimeout(hskTimer); store.saveProfile(); go('hsk'); }
     else if (sc === 'hsk') go('tab');
     else if (sc === 'login') loginLater();
+    else if (sc === 'privacy') go(state.privFrom === 'login' ? 'login' : 'tab');
     else if (sc === 'speed') { stopSpeed(); go('tab'); }
     else if (sc === 'done') go('tab', { tab: 'home' });
     else if (sc === 'intro' || sc === 'stats' || sc === 'feedback') go('tab');
@@ -548,7 +550,7 @@
             : '천천히, 그래도 매일<br><b>계속 연습하면서 중국어를 배워요!</b>') + '</p>' +
         '</div>' +
       '</div>' +
-      '<div class="lg-cta">' + cta + later + '</div>' +
+      '<div class="lg-cta">' + cta + later + (local ? '' : '<p class="lg-legal">계속하면 <button data-act="open-privacy">개인정보처리방침</button>에 동의한 것으로 봐요.</p>') + '</div>' +
     '</div>';
   }
 
@@ -1090,6 +1092,7 @@
       '<div class="me-actions">' +
         (sb ? '<button class="btn gray" data-act="logout">로그아웃</button>'
             : '<button class="btn gray" data-act="reset-local">기록 모두 지우기</button>') +
+      '<div class="me-links"><button data-act="open-privacy">개인정보처리방침</button>' + (sb ? '<button data-act="delete-account" class="warn">계정 삭제</button>' : '') + '</div>' +
       '</div>' +
       '</div>' + navHtml() + '</div>';
   }
@@ -1177,6 +1180,7 @@
     else if (state.screen === 'stats') html = viewStats();
     else if (state.screen === 'hsk') html = viewHsk();
     else if (state.screen === 'feedback') html = viewFeedback();
+    else if (state.screen === 'privacy') html = viewPrivacy();
     else if (state.screen === 'speed') html = viewSpeed();
     else if (state.screen === 'hskstudy') html = viewHskStudy();
     else if (state.screen === 'done') html = viewDone();
@@ -1482,6 +1486,48 @@
   /* ---------- 의견 보내기 (Supabase feedback — 관리자는 대시보드에서만 확인) ---------- */
   var FB_CATS = [['idea', '아이디어'], ['bug', '불편·오류'], ['praise', '칭찬'], ['etc', '기타']];
   var FB_MAX = 1000, fbLast = 0;
+  var PRIVACY = [
+    ['수집하는 정보', 'Google 로그인 시 이메일 주소와 계정 식별값을 받아요. 앱을 쓰는 동안 닉네임, 하루 목표, 화면·소리 설정, 즐겨찾기 같은 설정과 학습 기록(푼 문제, 완료한 레슨, 하루 학습량, 복습 일정, 이어하기 위치)이 저장돼요. 의견 보내기를 쓰면 내용·이메일·앱 버전이, 오류가 나면 오류 내용과 기기·브라우저 정보가 함께 저장될 수 있어요.'],
+    ['이용 목적', '로그인 유지, 학습 기록 저장과 기기 간 동기화, 복습 알림 발송, 앱 개선과 오류 수정에만 써요. 광고에 쓰거나 다른 곳에 팔지 않아요.'],
+    ['마이크와 음성', '말하기 연습은 마이크와 기기(브라우저)의 음성 인식 기능을 써요. 팽팽이는 녹음 파일을 저장하지 않아요. 다만 음성 인식은 기기 제조사나 브라우저 회사(예: Google)의 서버에서 처리될 수 있어요.'],
+    ['알림', '복습 알림을 켜면 알림을 보내기 위한 기기 주소(푸시 구독 정보)와 알림 시간이 저장돼요. 설정에서 언제든 끌 수 있어요.'],
+    ['이 기기에 저장되는 정보', '로그인 전에 한 학습, 이어하기 기록, 설정은 이 기기의 브라우저 저장공간에 보관돼요. 로그인하면 계정으로 옮겨져요.'],
+    ['맡겨 두는 곳', '로그인과 데이터 저장은 Supabase, 앱 배포는 GitHub Pages, 로그인 인증은 Google을 이용해요. 각 서비스의 서버는 해외에 있을 수 있어요.'],
+    ['보관과 삭제', '정보는 계정을 유지하는 동안 보관해요. 마이 화면의 “계정 삭제”를 누르면 계정과 학습 기록, 설정, 알림 구독이 바로 삭제되고 되돌릴 수 없어요. 이미 보낸 의견·오류 기록은 개인을 알아볼 수 없는 상태로 남을 수 있어요.'],
+    ['문의', '궁금한 점이나 삭제·정정 요청은 마이 화면의 “의견 보내기”로 남겨 주세요.']
+  ];
+  function viewPrivacy() {
+    return '<div class="screen"><div class="topbar"><button class="icon-btn" data-act="back" aria-label="뒤로">' + I.back + '</button></div>' +
+      '<div class="scroll legal" style="padding-top:4px"><h1 class="big-title" style="margin-top:0">개인정보처리방침</h1>' +
+      '<p class="sub-title">시행일 2026년 10월 18일</p>' +
+      PRIVACY.map(function (x, i) { return '<h2>' + (i + 1) + '. ' + esc(x[0]) + '</h2><p>' + esc(x[1]) + '</p>'; }).join('') +
+      '</div></div>';
+  }
+  async function deleteAccount() {
+    var uid = state.user && state.user.id;
+    var res = await sb.rpc('delete_my_account');
+    if (res.error) { toast('삭제하지 못했어요. 잠시 후 다시 시도해 주세요'); return; }
+    stopSpeak();
+    try {
+      if ('serviceWorker' in navigator && navigator.serviceWorker.getRegistration) {
+        var reg = await navigator.serviceWorker.getRegistration();
+        var sub = reg && reg.pushManager ? await reg.pushManager.getSubscription() : null;
+        if (sub) await sub.unsubscribe();
+      }
+    } catch (e) { /* 알림 구독 해제는 못 해도 넘어가요 */ }
+    try { await sb.auth.signOut({ scope: 'local' }); } catch (e) { /* 이미 지워진 계정이라 실패할 수 있어요 */ }
+    try {
+      localStorage.removeItem(LOCAL_KEY); localStorage.removeItem(GUEST_KEY);
+      var m = readResume();
+      Object.keys(m).forEach(function (k) { if (k.indexOf(uid + '|') === 0) delete m[k]; });
+      writeResume(m);
+    } catch (e) {}
+    state.user = { id: 'guest', email: '' };
+    await store.load();
+    state.tab = 'home';
+    go('tab', { tab: 'home' });
+    toast('계정을 삭제했어요');
+  }
   function viewFeedback() {
     var f = state.fb || (state.fb = { cat: 'idea', text: '', sending: false, sent: false });
     var top = '<div class="topbar"><button class="icon-btn" data-act="back" aria-label="뒤로">' + I.back + '</button></div>';
@@ -1783,11 +1829,47 @@
       committed: s.committed, solvedCommitted: s.solvedCommitted, cleared: !!s.cleared, doneMarked: !!s.doneMarked, at: Date.now()
     };
     writeResume(m);
+    pushResume(s.kind, s.lessonId, m[resumeKey(s.kind, s.lessonId)]);
   }
   function clearResume(kind, lessonId) {
     if (!lessonId) return;
     var m = readResume(), k = resumeKey(kind, lessonId);
     if (m[k]) { delete m[k]; writeResume(m); }
+    dropResume(kind, lessonId);
+  }
+  // 이어하기 기록을 서버에도 저장해서 다른 기기에서도 같은 진행도가 보이게 해요 (로그인한 경우만)
+  function remoteOk() { return !!sb && !!state.user && state.user.id !== 'local' && !isGuest(); }
+  var resumeTimers = {};
+  function pushResume(kind, lessonId, data) {
+    if (!remoteOk()) return;
+    var rk = kind + '|' + lessonId, uid = state.user.id;
+    clearTimeout(resumeTimers[rk]);
+    resumeTimers[rk] = setTimeout(function () {
+      try {
+        Promise.resolve(sb.from('resume_state').upsert({ user_id: uid, rkey: rk, data: data, updated_at: new Date().toISOString() }, { onConflict: 'user_id,rkey' })).catch(function () {});
+      } catch (e) { /* 표가 아직 없어도 앱은 그대로 써요 */ }
+    }, 1500);
+  }
+  function dropResume(kind, lessonId) {
+    if (!remoteOk()) return;
+    var rk = kind + '|' + lessonId;
+    clearTimeout(resumeTimers[rk]);
+    try { Promise.resolve(sb.from('resume_state').delete().eq('user_id', state.user.id).eq('rkey', rk)).catch(function () {}); } catch (e) {}
+  }
+  // 서버 기록을 가져와 이 기기 기록과 합쳐요 (더 최근 것을 사용). 바뀐 게 있으면 true
+  async function pullResume() {
+    if (!remoteOk()) return false;
+    try {
+      var res = await sb.from('resume_state').select('rkey,data');
+      if (res.error || !res.data) return false;
+      var m = readResume(), changed = false, uid = state.user.id;
+      res.data.forEach(function (r) {
+        var k = uid + '|' + r.rkey, cur = m[k];
+        if (r.data && (!cur || (r.data.at || 0) > (cur.at || 0))) { m[k] = r.data; changed = true; }
+      });
+      if (changed) writeResume(m);
+      return changed;
+    } catch (e) { return false; }
   }
   function startLessonSession(kind, lessonId) {
     var snap = readResume()[resumeKey(kind, lessonId)];
@@ -2174,6 +2256,7 @@
       if (state.user && state.user.id === u.id) return;
       state.user = u;
       await store.load();
+      await pullResume();
       var moved = mergeGuest();
       if (window.location.search || window.location.hash) {
         history.replaceState(null, '', window.location.pathname);
@@ -2210,6 +2293,12 @@
         break;
       case 'google': signIn(); break;
       case 'lg-later': loginLater(); break;
+      case 'open-privacy': go('privacy', { privFrom: state.screen === 'login' ? 'login' : 'tab' }); break;
+      case 'delete-account':
+        askConfirm({ title: '계정을 삭제할까요?', body: '계정과 모든 학습 기록, 설정이 사라지고 되돌릴 수 없어요.', ok: '계속하기', cancel: '취소', danger: true, m: 'shy' }, function () {
+          askConfirm({ title: '정말 삭제할까요?', body: '삭제하면 복구할 수 없어요. 그래도 삭제할까요?', ok: '계정 삭제', cancel: '그만둘게요', danger: true, m: 'shy' }, deleteAccount);
+        });
+        break;
       case 'lg-tap':
         el.classList.remove('tap'); void el.offsetWidth; el.classList.add('tap');
         try { if (navigator.vibrate) navigator.vibrate(8); } catch (e2) {}

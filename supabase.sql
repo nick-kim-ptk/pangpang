@@ -115,3 +115,38 @@ create policy "insert own feedback" on feedback for insert to authenticated
   with check ((select auth.uid()) = user_id);
 -- 조회 정책은 일부러 없음: 앱 사용자는 남의 의견도, 자기 의견도 읽을 수 없고
 -- 운영자(나)만 Supabase 대시보드 > Table Editor > feedback 에서 볼 수 있어요.
+
+
+-- ===== v48: 이어하기 기록 동기화 + 계정 삭제 =====
+create table if not exists public.resume_state (
+  user_id    uuid not null references auth.users(id) on delete cascade,
+  rkey       text not null,                 -- 예: 'lesson|week'
+  data       jsonb not null,
+  updated_at timestamptz not null default now(),
+  primary key (user_id, rkey)
+);
+alter table public.resume_state enable row level security;
+drop policy if exists "own resume" on public.resume_state;
+create policy "own resume" on public.resume_state
+  for all to authenticated
+  using ((select auth.uid()) = user_id)
+  with check ((select auth.uid()) = user_id);
+
+-- 내 계정 삭제: 로그인한 본인만 자기 계정을 지울 수 있어요. (service_role 키는 앱에 넣지 않아요)
+-- progress / lesson_done / daily_log / push_subscriptions / resume_state 는 on delete cascade 로 같이 지워지고,
+-- feedback / app_errors 의 user_id 는 null 이 돼요.
+create or replace function public.delete_my_account()
+returns void
+language plpgsql
+security definer
+set search_path = public, auth
+as $$
+begin
+  if auth.uid() is null then
+    raise exception 'not authenticated';
+  end if;
+  delete from auth.users where id = auth.uid();
+end;
+$$;
+revoke all on function public.delete_my_account() from public, anon;
+grant execute on function public.delete_my_account() to authenticated;
