@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v73';
+  var APP_VERSION = 'v74';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -633,6 +633,13 @@
 
   /* ---------- 캐릭터 ---------- */
   function ms(name) { return (window.MASCOT && window.MASCOT[name]) || 'img/' + name + '.webp'; }
+  // 팽팽 캐릭터 모션 (CSS만으로 움직여요): hello 인사 / book 학습 / ai 튜터
+  function ppm(kind, w) {
+    var P = 'img/pm/', st = ' style="--w:' + w + 'px"';
+    if (kind === 'hello') return '<div class="ppm ppm-hello"' + st + ' role="img" aria-label="인사하는 달팽이"><div class="ppm__shadow"></div><div class="ppm__body"><img src="' + P + 'hello-body.webp" alt=""><img class="ppm__blink" src="' + P + 'hello-blink.webp" alt=""></div><img class="ppm__nihao" src="' + P + 'hello-nihao.webp" alt=""><img class="ppm__annyeong" src="' + P + 'hello-annyeong.webp" alt=""></div>';
+    if (kind === 'book') return '<div class="ppm ppm-book"' + st + ' role="img" aria-label="책 읽는 달팽이"><div class="ppm__shadow"></div><div class="ppm__body"><div class="ppm__breath"><img src="' + P + 'book-body.webp" alt=""><img class="ppm__blink" src="' + P + 'book-blink.webp" alt=""></div></div><span class="ppm__g" style="--c:#FFF6E4; --d:0s">文</span><span class="ppm__g" style="--c:#FFD45E; --d:-2.67s">A</span><span class="ppm__g" style="--c:#B9E3FF; --d:-1.34s">字</span></div>';
+    return '<div class="ppm ppm-ai"' + st + ' role="img" aria-label="AI 튜터 달팽이"><div class="ppm__shadow"></div><div class="ppm__body"><img src="' + P + 'ai-body.webp" alt=""><img class="ppm__blink" src="' + P + 'ai-blink.webp" alt=""><div class="ppm__scan"></div><span class="ppm__ring"></span><span class="ppm__ring" style="--d:1s"></span></div><img class="ppm__marks" src="' + P + 'ai-marks.webp" alt=""></div>';
+  }
   function mascot(name, cls) {
     return '<img class="mascot' + (cls ? ' ' + cls : '') + '" src="' + ms(name) + '" alt="" draggable="false">';
   }
@@ -929,7 +936,7 @@
 
     return '<div class="screen"><div class="scroll with-nav">' +
       '<div class="tab-head"><div><h1 class="big-title">단어장</h1>' +
-      '<p class="sub-title" style="margin-bottom:0">배운 단어가 쌓여요.<br>눌러서 들어 보세요.</p></div>' + mascot('book') + '</div>' +
+      '<p class="sub-title" style="margin-bottom:0">배운 단어가 쌓여요.<br>눌러서 들어 보세요.</p></div>' + ppm('book', 92) + '</div>' +
       '<div class="stats">' +
         '<div class="stat"><b>' + learned.length + '/' + LESSONS.length + '</b><span>배운 레슨</span></div>' +
         '<div class="stat"><b>' + wordCount + '</b><span>배운 단어</span></div>' +
@@ -1152,12 +1159,12 @@
     if (r && r.busy) return '<div class="ai-card busy"><span class="ai-dots"><i></i><i></i><i></i></span>AI 선생님이 보고 있어요…</div>';
     if (r && r.res) {
       var v = r.res, lab = v.verdict === 'good' ? '아주 좋아요' : v.verdict === 'fix' ? '이렇게 고쳐 보세요' : '조금 더 자연스럽게';
-      return '<div class="ai-card ' + esc(v.verdict) + '"><div class="ai-top"><span class="ai-lab">AI 선생님 · ' + lab + '</span><span class="ai-bal">남은 ' + aiBal() + '</span></div>' +
+      return '<div class="ai-card ' + esc(v.verdict) + '"><div class="ai-top"><span class="ai-lab">AI 선생님 · ' + lab + '</span><span class="ai-bal">남은 크레딧 ' + aiBal() + '</span></div>' +
         '<button class="ai-nat" data-act="say" data-text="' + esc(v.natural) + '"><span class="zh">' + esc(v.natural) + '</span>' + (v.pinyin ? '<span class="py">' + esc(v.pinyin) + '</span>' : '') + (v.pinyin && kr(v.pinyin) ? '<span class="kr">' + esc(kr(v.pinyin)) + '</span>' : '') + '</button>' +
         (v.why ? '<p class="ai-why">' + esc(v.why) + '</p>' : '') + '</div>';
     }
     if (r && r.err) return '<div class="ai-card err">' + esc(r.err) + '</div>';
-    return '<button class="ai-btn" data-act="ai-correct"><span>AI 선생님 호출</span><em>1크레딧</em><span class="ai-bal">남은 ' + aiBal() + '</span></button>';
+    return '<button class="ai-btn" data-act="ai-correct"><span>AI 선생님 호출</span><em>1크레딧</em><span class="ai-bal">남은 크레딧 ' + aiBal() + '</span></button>';
   }
   async function aiCorrect() {
     var s = state.s;
@@ -1378,8 +1385,11 @@
   var AI_CHAT_COST = 2, acRec = null;   // 한 번 주고받을 때마다 2크레딧
   function aiEntry() {
     if (!aiOn()) return '';
-    return '<button class="ai-entry" data-act="ac-open"><span class="ae-t">AI 자유 대화<em>NEW</em></span>' +
-      '<span class="ae-s">AI 선생님과 부담 없이 편하게 대화를 주고 받을 수 있어요.</span></button>';
+    return '<div class="ai-hero" data-act="ac-open" role="button" tabindex="0" aria-label="AI 자유 대화 시작">' +
+      '<div class="ai-hero-art">' + ppm('ai', 124) + '</div>' +
+      '<div class="ai-hero-txt"><span class="ai-hero-chip">대표 기능</span><h2>AI 자유 대화</h2>' +
+      '<p>AI 선생님과 부담 없이 편하게 대화를 주고 받을 수 있어요.</p></div>' +
+      '<div class="ai-hero-foot"><span class="ai-hero-bal">남은 크레딧 ' + aiBal() + '</span><button class="ai-hero-go" data-act="ac-open">대화 시작하기</button></div></div>';
   }
   function acStop() {
     acHolding = false;
@@ -1400,7 +1410,7 @@
     return '<div class="screen"><div class="topbar"><button class="icon-btn" data-act="back" aria-label="뒤로">' + I.back + '</button></div>' +
       '<div class="scroll" style="padding-top:4px"><h1 class="big-title" style="margin-top:0">AI 자유 대화</h1>' +
       '<p class="sub-title">하고 싶은 이야기를 적거나 골라 보세요. AI 선생님이 먼저 말을 걸고, 뭐라고 말할지도 같이 알려 줘요. 끝내고 싶을 때 마치면 쓴 만큼만 정산해요.</p>' +
-      '<div class="ac-bal"><span>한 번 주고받을 때마다 ' + AI_CHAT_COST + '크레딧 · 원하는 만큼 이어가요</span><b>남은 ' + bal + '</b></div>' +
+      '<div class="ac-bal"><span>한 번 주고받을 때마다 ' + AI_CHAT_COST + '크레딧 · 원하는 만큼 이어가요</span><b>남은 크레딧 ' + bal + '</b></div>' +
       (can ? '' : '<div class="notice" style="margin-bottom:12px">크레딧이 부족해요. <button class="link-btn inl" data-act="open-aicharge">충전하기</button></div>') +
       '<label class="ac-lab" for="ac-topic">대화 주제</label>' +
       '<input id="ac-topic" class="ac-topic" maxlength="30" autocomplete="off" spellcheck="false" placeholder="예: 내일 친구랑 점심 약속 잡기" value="' + esc(a.topic || '') + '">' +
@@ -1414,6 +1424,7 @@
       return '<div class="acb me' + (m.corrected ? ' fixed' : '') + '">' + (m.corrected ? '<div class="acb-tag">고친 문장으로 다시 말했어요</div>' : '') + '<div class="zh">' + esc(m.zh) + '</div></div>' +
         (m.fix ? '<div class="acfix"><div class="acfix-l">이렇게 말하면 더 자연스러워요</div>' +
           '<button class="acfix-n" data-act="say" data-text="' + esc(m.fix.natural) + '"><span class="zh">' + esc(m.fix.natural) + '</span>' + (m.fix.pinyin ? '<span class="py">' + esc(m.fix.pinyin) + '</span>' : '') + '</button>' +
+          (m.fix.ko ? '<div class="acfix-k">' + esc(m.fix.ko) + '</div>' : '') +
           (m.fix.why ? '<div class="acfix-w">' + esc(m.fix.why) + '</div>' : '') +
           (state.ac && state.ac.pending ? '' : '<button class="acfix-rep" data-act="ac-rep" data-i="' + idx + '">따라 말해 보기</button>') + '</div>' : '');
     }
@@ -1468,7 +1479,7 @@
   function acRepBox(a) {
     var r = a.rep, res = r.res;
     return '<div class="ac-rep"><div class="ac-rep-l">이 문장을 따라 말해 보세요</div>' +
-      '<div class="ac-rep-card"><div class="ac-rep-t"><div class="zh">' + esc(r.zh) + '</div>' + (r.py ? '<div class="py">' + esc(r.py) + '</div><div class="kr">' + esc(kr(r.py)) + '</div>' : '') + '</div>' +
+      '<div class="ac-rep-card"><div class="ac-rep-t"><div class="zh">' + esc(r.zh) + '</div>' + (r.py ? '<div class="py">' + esc(r.py) + '</div><div class="kr">' + esc(kr(r.py)) + '</div>' : '') + (r.ko ? '<div class="acfix-k">' + esc(r.ko) + '</div>' : '') + '</div>' +
       '<button class="round-btn" data-act="say" data-text="' + esc(r.zh) + '" aria-label="듣기">' + I.spk + '</button></div>' +
       (res ? '<div class="ac-rep-res ' + res + '"><b>' + (res === 'ok' ? '잘했어요!' : '조금 달랐어요') + '</b><span>들린 말 · ' + esc(r.heard) + '</span></div>' : '') +
       (res === 'ok' ? '' : acMicBox(a, '버튼을 누른 채로 말하고, 끝나면 손을 떼세요', 'zh')) +
@@ -1516,6 +1527,7 @@
   function acEnd(a) {
     var fx = a.fixes.length ? a.fixes.map(function (f) {
       return '<div class="acfix sm"><div class="acfix-l">내가 한 말 · ' + esc(f.mine) + '</div><button class="acfix-n" data-act="say" data-text="' + esc(f.natural) + '"><span class="zh">' + esc(f.natural) + '</span>' + (f.pinyin ? '<span class="py">' + esc(f.pinyin) + '</span>' : '') + '</button>' +
+        (f.ko ? '<div class="acfix-k">' + esc(f.ko) + '</div>' : '') +
         (f.why ? '<div class="acfix-w">' + esc(f.why) + '</div>' : '') + '</div>';
     }).join('') : '<p class="sub-title" style="margin:0">고칠 곳 없이 잘 말했어요!</p>';
     return '<div class="screen"><div class="topbar"><button class="icon-btn" data-act="ac-leave-yes" aria-label="닫기">' + I.close + '</button></div>' +
@@ -1601,9 +1613,9 @@
       a.turns = d.turns;
       if (t.fix) {
         // 고칠 말이 있으면 AI의 다음 말은 잠시 붙잡아 두고, 고친 문장을 먼저 따라 말해 본 뒤에 이어 가요
-        mine.fix = t.fix; a.fixes.push({ mine: text, natural: t.fix.natural, pinyin: t.fix.pinyin, why: t.fix.why }); aiFixAdd({ mine: text, natural: t.fix.natural, pinyin: t.fix.pinyin, why: t.fix.why });
+        mine.fix = t.fix; a.fixes.push({ mine: text, natural: t.fix.natural, pinyin: t.fix.pinyin, ko: t.fix.ko, why: t.fix.why }); aiFixAdd({ mine: text, natural: t.fix.natural, pinyin: t.fix.pinyin, ko: t.fix.ko, why: t.fix.why });
         a.pending = { reply: t.reply, sug: t.suggestions || [], end: !!d.end };
-        a.rep = { zh: t.fix.natural, py: t.fix.pinyin, heard: '', res: null };
+        a.rep = { zh: t.fix.natural, py: t.fix.pinyin, ko: t.fix.ko, heard: '', res: null };
         render(); acScroll();
         setTimeout(function () { if (state.screen === 'aichat' && state.ac === a && a.rep) speak(t.fix.natural, 0.8); }, 250);
         return;
@@ -1670,8 +1682,8 @@
         '<button class="btn" data-act="buy-pack" data-id="' + k.id + '">' + won(k.price) + '</button></div>';
     }).join('');
     return '<div class="screen"><div class="topbar"><button class="icon-btn" data-act="back" aria-label="뒤로">' + I.back + '</button></div>' +
-      '<div class="scroll" style="padding-top:4px"><h1 class="big-title" style="margin-top:0">AI 선생님 호출</h1>' +
-      '<p class="sub-title">말한 문장을 AI 선생님이 자연스럽게 고쳐 줘요. 한 번 부를 때 1크레딧이 들어요.</p>' +
+      '<div class="scroll" style="padding-top:4px"><h1 class="big-title" style="margin-top:0">AI 대화</h1>' +
+      '<p class="sub-title">AI 선생님과 대화하고, 말한 문장을 자연스럽게 고쳐 받는 데 쓰는 크레딧이에요. 대화는 한 번 주고받을 때 2크레딧, 문장 교정은 1크레딧이 들어요.</p>' +
       '<div class="ai-wallet plain"><div class="aw-top"><span>남은 크레딧</span><b>' + aiBal() + '</b></div><div class="aw-s">이번 달 지급 ' + state.ai.monthly + ' · 충전분 ' + state.ai.topup + '</div></div>' +
       '<ul class="perks"><li>' + I.check + '멤버십이면 매달 ' + (state.ai.grant || 15) + '크레딧을 드려요 (남아도 다음 달로 넘어가지 않아요)</li>' +
       '<li>' + I.check + '충전한 크레딧은 매달 지급분을 다 쓴 뒤에 쓰고, 사라지지 않아요</li></ul>' +
@@ -1693,7 +1705,7 @@
     var ai = aiOn();
     if (isLifetime() && !ai) return '';   // 평생 회원은 아래 메뉴 목록에서 확인해요
     var m = memberLabel(), pro = isPro();
-    var aiRow = ai ? '<button class="mc-ai" data-act="open-aicharge"><span class="mc-ai-t">AI 선생님 호출</span><span class="mc-ai-n">남은 <b>' + aiBal() + '</b></span><span class="mc-ai-go">충전</span></button>' : '';
+    var aiRow = ai ? '<button class="mc-ai" data-act="open-aicharge"><span class="mc-ai-t">AI 대화</span><span class="mc-ai-n">남은 크레딧 <b>' + aiBal() + '</b></span><span class="mc-ai-go">충전</span></button>' : '';
     var head = isLifetime()
       ? '<div class="mc-main"><span class="mc-t">' + esc(m.t) + '</span><span class="mc-s">' + esc(m.s) + '</span></div>'
       : '<button class="mc-main" data-act="open-pay"><span class="mc-t">' + esc(m.t) + '</span><span class="mc-s">' + esc(m.s) + '</span>' +
@@ -1748,7 +1760,7 @@
     var solved = Object.keys(state.progress).filter(function (k) { return QMAP[k] && state.progress[k].box >= 4; }).length;
     return '<div class="screen"><div class="scroll with-nav">' +
       '<div class="tab-head"><div><h1 class="big-title">' + (nickname() ? esc(nickname()) + '님,<br>' : '') + '오늘도 화이팅!</h1>' +
-      '<p class="sub-title" style="margin-bottom:0">내 학습 기록이에요.</p></div>' + mascot('wink') + '</div>' +
+      '<p class="sub-title" style="margin-bottom:0">내 학습 기록이에요.</p></div>' + ppm('hello', 100) + '</div>' +
       meCard(initial, email) + memberCard() +
       '<div class="stats">' +
         '<div class="stat"><b>' + learned.length + '/' + LESSONS.length + '</b><span>배운 레슨</span></div>' +
@@ -2179,7 +2191,7 @@
         '<li>' + I.check + '개정된 신 HSK 3.0 · 1~4급 단어 <em class="perk-tag">최신 개정판</em></li>' +
         '<li>' + I.check + '스피드 퀴즈 · 모든 상황 대화 무제한</li>' +
         '<li>' + I.check + '복습 알림 · 1분 중국어 알림</li>' +
-        '<li>' + I.check + 'AI 선생님 호출 · 매달 15크레딧 지급</li>' +
+        '<li>' + I.check + 'AI 대화 · 매달 15크레딧 지급</li>' +
       '</ul>' +
       (pro ? '' : '<div class="plans">' +
         '<div class="plan best"><span class="pl-badge">가장 추천</span><div class="pl-n">1년 이용 + 2개월 무료</div>' +
@@ -3145,7 +3157,7 @@
       case 'ac-rep':
         if (state.ac) {
           var fm = state.ac.msgs[+el.getAttribute('data-i')];
-          if (fm && fm.fix) { state.ac.rep = { zh: fm.fix.natural, py: fm.fix.pinyin, heard: '', res: null }; render(); acScroll(); setTimeout(function () { speak(fm.fix.natural, 0.8); }, 200); }
+          if (fm && fm.fix) { state.ac.rep = { zh: fm.fix.natural, py: fm.fix.pinyin, ko: fm.fix.ko, heard: '', res: null }; render(); acScroll(); setTimeout(function () { speak(fm.fix.natural, 0.8); }, 200); }
         }
         break;
       case 'ai-fix-del': aiFixDel(el.getAttribute('data-t')); render(); break;
@@ -3159,7 +3171,7 @@
       case 'ac-ko-pick':
         if (state.ac && state.ac.ko && state.ac.ko.opts) {
           var ko_o = state.ac.ko.opts[+el.getAttribute('data-i')];
-          if (ko_o) { acStop(); state.ac.koOpts = state.ac.ko.opts; state.ac.koHeard = state.ac.ko.heard; state.ac.ko = null; state.ac.koSend = true; state.ac.rep = { zh: ko_o.zh, py: ko_o.py, heard: '', res: null }; render(); acScroll(); setTimeout(function () { speak(ko_o.zh, 0.8); }, 200); }
+          if (ko_o) { acStop(); state.ac.koOpts = state.ac.ko.opts; state.ac.koHeard = state.ac.ko.heard; state.ac.ko = null; state.ac.koSend = true; state.ac.rep = { zh: ko_o.zh, py: ko_o.py, ko: ko_o.ko, heard: '', res: null }; render(); acScroll(); setTimeout(function () { speak(ko_o.zh, 0.8); }, 200); }
         }
         break;
       case 'ac-rep-again': if (state.ac && state.ac.rep) { state.ac.rep.res = null; state.ac.rep.heard = ''; render(); acScroll(); } break;

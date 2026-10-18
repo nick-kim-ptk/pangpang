@@ -59,7 +59,7 @@ const SYSTEM_CHAT = `당신은 한국인 중국어 초보 학습자와 짧은 �
 - suggestions에는 학습자가 다음에 할 수 있는 말 3개를 쉬운 순서로 주세요(서로 다른 내용으로).
 - 대화를 먼저 끝내지 말고 계속 이어 가세요. 학습자가 작별 인사를 하거나 끝내고 싶다고 말할 때만 마무리 인사를 하고 end를 true로 하세요. 그 외에는 false입니다.
 - 반드시 아래 JSON 객체 하나만 출력하세요. 다른 글자나 코드블록은 금지입니다.
-{"reply":{"zh":"중국어","py":"병음(성조 부호)","ko":"한국어 뜻"},"fix":null 또는 {"natural":"자연스러운 중국어","pinyin":"병음","why":"한국어 한 문장"},"suggestions":[{"zh":"","py":"","ko":""}],"end":false}`;
+{"reply":{"zh":"중국어","py":"병음(성조 부호)","ko":"한국어 뜻"},"fix":null 또는 {"natural":"자연스러운 중국어","pinyin":"병음","ko":"natural의 한국어 뜻(자연스러운 한국어 한 문장)","why":"한국어 한 문장"},"suggestions":[{"zh":"","py":"","ko":""}],"end":false}`;
 
 export type Deps = {
   db: any;
@@ -137,7 +137,7 @@ export function parseChat(text: string) {
     if (!zh) return null;
     const sug = (Array.isArray(o.suggestions) ? o.suggestions : [])
       .map((x: any) => ({ zh: str(x?.zh, 120), py: str(x?.py, 300), ko: str(x?.ko, 200) })).filter((x: any) => x.zh).slice(0, 3);
-    const f = o.fix && typeof o.fix === 'object' ? { natural: str(o.fix.natural, 200), pinyin: str(o.fix.pinyin, 300), why: str(o.fix.why, 300) } : null;
+    const f = o.fix && typeof o.fix === 'object' ? { natural: str(o.fix.natural, 200), pinyin: str(o.fix.pinyin, 300), ko: str(o.fix.ko, 200), why: str(o.fix.why, 300) } : null;
     return {
       reply: { zh, py: str(rp.py, 300), ko: str(rp.ko, 200) },
       fix: f && f.natural ? f : null,

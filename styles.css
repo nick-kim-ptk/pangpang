@@ -1320,3 +1320,121 @@ u.miss { text-decoration: underline wavy #ef5350; text-underline-offset: 4px; co
 .aiempty { padding: 28px 16px; border-radius: 18px; background: var(--card); box-shadow: inset 0 0 0 1.5px var(--line); text-align: center; color: var(--ink-3); font-size: 14px; line-height: 1.6; }
 .ai-lock { display: grid; gap: 10px; padding: 22px 20px; border-radius: 22px; background: var(--card); box-shadow: inset 0 0 0 1.5px var(--line); }
 .ai-lock-t { font-size: 18px; font-weight: 800; } .ai-lock p { margin: 0; font-size: 14px; line-height: 1.6; color: var(--ink-2); word-break: keep-all; }
+
+/* v74: 팽팽 캐릭터 모션 (hello / book / ai) — 이미지는 img/pm/ */
+/* ---------- 공통 ---------- */
+.ppm { position: relative; display: inline-block; }
+.ppm img { position: absolute; left: 0; top: 0; width: 100%; height: 100%; user-select: none; -webkit-user-drag: none; pointer-events: none; }
+.ppm__shadow { position: absolute; left: 50%; bottom: -3%; width: 70%; height: 7%; transform: translateX(-50%);
+  border-radius: 50%; background: radial-gradient(closest-side, rgba(0,4,20,.35), transparent); }
+.ppm__blink { opacity: 0; }
+
+/* =========================================================
+   1. HELLO — 인사 말풍선 (你好 / 안녕)
+   ========================================================= */
+.ppm-hello { width: var(--w, 185px); aspect-ratio: 185 / 236; }
+.ppm-hello .ppm__body { position: absolute; inset: 0; transform-origin: 50% 96%; animation: ppmHelloBody 2.8s ease-in-out infinite; }
+.ppm-hello .ppm__blink { animation: ppmHelloBlink 5.6s steps(1) infinite; }
+.ppm-hello .ppm__shadow { animation: ppmHelloShadow 2.8s ease-in-out infinite; }
+/* 말풍선: 꼬리 위치 기준으로 팝 */
+.ppm-hello .ppm__nihao    { transform-origin: 33% 28%; animation: ppmBubbleA 5.6s cubic-bezier(.3,1.5,.5,1) infinite; }
+.ppm-hello .ppm__annyeong { transform-origin: 80% 33%; animation: ppmBubbleB 5.6s cubic-bezier(.3,1.5,.5,1) infinite; }
+
+@keyframes ppmHelloBody {
+  0%, 100% { transform: translateY(0) rotate(0) scale(1); }
+  14%      { transform: translateY(0) scale(1.04, .95); }
+  24%      { transform: translateY(-5%) rotate(-3deg) scale(.97, 1.04); }
+  36%      { transform: translateY(0) rotate(0) scale(1.03, .97); }
+  44%      { transform: translateY(0) scale(1); }
+  70%      { transform: translateY(-1.2%) rotate(1.5deg); }
+}
+@keyframes ppmHelloShadow { 0%, 14%, 36%, 100% { transform: translateX(-50%) scaleX(1); opacity: 1; } 24% { transform: translateX(-50%) scaleX(.8); opacity: .6; } }
+@keyframes ppmHelloBlink { 0% { opacity: 0; } 58% { opacity: 1; } 60.5% { opacity: 0; } 86% { opacity: 1; } 88% { opacity: 0; } 90% { opacity: 1; } 92% { opacity: 0; } }
+/* 你好: 0~ 등장 / 안녕: 50%~ 등장 (번갈아 대화) */
+@keyframes ppmBubbleA {
+  0%   { opacity: 0; transform: scale(.2) rotate(-12deg); }
+  6%   { opacity: 1; transform: scale(1) rotate(0); }
+  40%  { opacity: 1; transform: scale(1) translateY(-2%); }
+  46%  { opacity: 0; transform: scale(.85) translateY(-6%); }
+  100% { opacity: 0; transform: scale(.2); }
+}
+@keyframes ppmBubbleB {
+  0%, 30% { opacity: 0; transform: scale(.2) rotate(12deg); }
+  36%  { opacity: 1; transform: scale(1) rotate(0); }
+  86%  { opacity: 1; transform: scale(1) translateY(-2%); }
+  92%  { opacity: 0; transform: scale(.85) translateY(-6%); }
+  100% { opacity: 0; transform: scale(.2); }
+}
+
+/* =========================================================
+   2. BOOK — 책 읽기 (글자 떠오름)
+   ========================================================= */
+.ppm-book { width: var(--w, 158px); aspect-ratio: 158 / 206; }
+.ppm-book .ppm__body { position: absolute; inset: 0; transform-origin: 50% 98%; animation: ppmBookSway 4s ease-in-out infinite; }
+.ppm-book .ppm__breath { position: absolute; inset: 0; transform-origin: 50% 98%; animation: ppmBookBreath 2s ease-in-out infinite; }
+.ppm-book .ppm__blink { animation: ppmBookBlink 4s steps(1) infinite; }
+.ppm-book .ppm__shadow { animation: ppmBookShadow 2s ease-in-out infinite; }
+.ppm-book .ppm__g { position: absolute; left: 84%; top: 64%; font: calc(var(--w, 158px) * .12)/1 'ZCOOL KuaiLe', sans-serif; color: var(--c);
+  -webkit-text-stroke: calc(var(--w, 158px) * .032) #1A2139; paint-order: stroke fill; opacity: 0; pointer-events: none;
+  animation: ppmBookGlyph 4s var(--d) cubic-bezier(.25,.7,.4,1) infinite; }
+
+@keyframes ppmBookSway   { 0%, 100% { transform: rotate(-2deg); } 50% { transform: rotate(2deg); } }
+@keyframes ppmBookBreath { 0%, 100% { transform: translateY(0) scaleY(1); } 50% { transform: translateY(-1.2%) scaleY(.988); } }
+@keyframes ppmBookShadow { 0%, 100% { transform: translateX(-50%) scaleX(1); } 50% { transform: translateX(-50%) scaleX(.94); } }
+@keyframes ppmBookBlink  { 0% { opacity: 0; } 30% { opacity: 1; } 33% { opacity: 0; } 76% { opacity: 1; } 78.5% { opacity: 0; } 81% { opacity: 1; } 83.5% { opacity: 0; } }
+@keyframes ppmBookGlyph {
+  0%   { opacity: 0; transform: translate(0, 0) scale(.4) rotate(-18deg); }
+  8%   { opacity: 1; }
+  12%  { transform: translate(15%, -60%) scale(1) rotate(-8deg); }
+  36%  { opacity: 1; }
+  55%  { opacity: 0; transform: translate(60%, -280%) scale(1) rotate(6deg); }
+  100% { opacity: 0; transform: translate(60%, -280%); }
+}
+
+/* =========================================================
+   3. AI — AI 튜터 (호버링 + 태블릿 스캔 + 신호)
+   ========================================================= */
+.ppm-ai { width: var(--w, 187px); aspect-ratio: 187 / 213; }
+.ppm-ai .ppm__body { position: absolute; inset: 0; animation: ppmAiHover 3s ease-in-out infinite; }
+.ppm-ai .ppm__blink { animation: ppmAiBlink 4.5s steps(1) infinite; }
+.ppm-ai .ppm__shadow { animation: ppmAiShadow 3s ease-in-out infinite; }
+.ppm-ai .ppm__marks { transform-origin: 85% 25%; animation: ppmAiMarks 1.5s ease-in-out infinite; }
+/* 태블릿 위를 지나가는 빛 (clip-path 로 태블릿 영역만) */
+.ppm-ai .ppm__scan { position: absolute; inset: 0;
+  clip-path: polygon(59% 56.5%, 95.7% 55%, 94.6% 84.5%, 54.5% 89.2%); /* 태블릿 영역 */
+  background: linear-gradient(115deg, transparent 40%, rgba(255,255,255,.75) 50%, transparent 60%) no-repeat;
+  background-size: 250% 100%; animation: ppmAiScan 3s ease-in-out infinite; mix-blend-mode: screen; }
+/* 헤드셋 신호 링 */
+.ppm-ai .ppm__ring { position: absolute; left: 14.5%; top: 47%; width: 10%; aspect-ratio: 1; border-radius: 50%;
+  border: 2px solid rgba(90,190,255,.8); transform: translate(-50%, -50%) scale(.6); opacity: 0;
+  animation: ppmAiRing 2s var(--d, 0s) ease-out infinite; }
+
+@keyframes ppmAiHover  { 0%, 100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(-3.5%) rotate(-1.5deg); } }
+@keyframes ppmAiShadow { 0%, 100% { transform: translateX(-50%) scaleX(1); opacity: 1; } 50% { transform: translateX(-50%) scaleX(.82); opacity: .6; } }
+@keyframes ppmAiBlink  { 0% { opacity: 0; } 40% { opacity: 1; } 43% { opacity: 0; } 82% { opacity: 1; } 84% { opacity: 0; } 86% { opacity: 1; } 88% { opacity: 0; } }
+@keyframes ppmAiMarks  { 0%, 100% { transform: scale(1) rotate(0); opacity: .75; } 30% { transform: scale(1.18) rotate(-6deg); opacity: 1; } 55% { transform: scale(.96); } }
+@keyframes ppmAiScan   { 0%, 30% { background-position: 130% 0; } 70%, 100% { background-position: -30% 0; } }
+@keyframes ppmAiRing   { 0% { opacity: .9; transform: translate(-50%, -50%) scale(.6); } 100% { opacity: 0; transform: translate(-50%, -50%) scale(2.6); } }
+
+/* ---------- 접근성 ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .ppm *, .ppm { animation: none !important; }
+  .ppm-hello .ppm__nihao, .ppm-hello .ppm__annyeong { opacity: 1; }
+  .ppm-book .ppm__g, .ppm-ai .ppm__ring, .ppm-ai .ppm__scan { display: none; }
+}
+.tab-head .ppm { flex: none; margin-right: 4px; margin-bottom: 4px; }
+
+/* AI 대화 탭 — 대표 기능 카드 */
+.ai-hero { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; align-items: center; padding: 18px 18px 16px 12px; border-radius: 28px; background: linear-gradient(172deg, #2A3558 -10%, #1A2139 62%); color: #FFF6E4; cursor: pointer; box-shadow: 0 14px 30px -16px rgba(26,33,57,.7); overflow: hidden; }
+.ai-hero::after { content: ""; position: absolute; right: -40px; top: -50px; width: 170px; height: 170px; border-radius: 50%; background: radial-gradient(closest-side, rgba(90,190,255,.28), transparent); pointer-events: none; }
+.ai-hero-art { display: grid; place-items: end center; padding-bottom: 4px; }
+.ai-hero-txt { min-width: 0; display: grid; gap: 6px; position: relative; z-index: 1; }
+.ai-hero-chip { justify-self: start; padding: 3px 10px; border-radius: 999px; background: var(--y); color: #1A2139; font-size: 11px; font-weight: 800; letter-spacing: .02em; }
+.ai-hero h2 { margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -.03em; line-height: 1.2; color: #FFF6E4; }
+.ai-hero p { margin: 0; font-size: 13.5px; line-height: 1.55; color: #B9C2DE; word-break: keep-all; }
+.ai-hero-foot { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; position: relative; z-index: 1; }
+.ai-hero-bal { font-size: 13px; font-weight: 800; color: #FFD45E; white-space: nowrap; }
+.ai-hero-go { flex: none; height: 46px; padding: 0 22px; border: 0; border-radius: 999px; background: var(--y); color: #1A2139; font: inherit; font-size: 16px; font-weight: 800; cursor: pointer; box-shadow: 0 5px 0 #C9A22C; }
+.ai-hero-go:active { transform: translateY(3px); box-shadow: 0 2px 0 #C9A22C; }
+.ai-hero .ppm__shadow { background: radial-gradient(closest-side, rgba(0,4,20,.5), transparent); }
+.acfix-k { margin-top: 2px; font-size: 13px; color: var(--ink-2); }
