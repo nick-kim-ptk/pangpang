@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v58';
+  var APP_VERSION = 'v59';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -375,7 +375,7 @@
   var AI_PACKS = [{ id: 'p60', credits: 60, price: 1900 }, { id: 'p170', credits: 170, price: 4900 }, { id: 'p360', credits: 360, price: 9900 }];
   var AI_ERR = {
     no_credit: '크레딧이 모두 소진됐어요. 마이 화면의 AI 크레딧에서 충전할 수 있어요.',
-    not_member: 'AI 교정은 멤버십 기능이에요.',
+    not_member: 'AI 선생님 호출은 멤버십 기능이에요.',
     too_fast: '너무 빨리 눌렀어요. 잠시 후 다시 해 주세요.',
     ai_failed: 'AI가 응답하지 못했어요. 크레딧은 돌려드렸어요. 잠시 후 다시 해 주세요.',
     auth: '로그인이 필요해요.'
@@ -1049,18 +1049,22 @@
     return h;
   }
   function aiBlock(q) {
+    var h = aiBlockInner(q);
+    return h ? '<div class="ai-wrap">' + h + '</div>' : '';
+  }
+  function aiBlockInner(q) {
     var s = state.s;
     if (!aiOn() || !s.heard) return '';
     var r = (s.aiRes || {})[q.id + '|' + s.heard];
-    if (r && r.busy) return '<div class="ai-card busy"><span class="ai-dots"><i></i><i></i><i></i></span>선생님이 보고 있어요…</div>';
+    if (r && r.busy) return '<div class="ai-card busy"><span class="ai-dots"><i></i><i></i><i></i></span>AI 선생님이 보고 있어요…</div>';
     if (r && r.res) {
       var v = r.res, lab = v.verdict === 'good' ? '아주 좋아요' : v.verdict === 'fix' ? '이렇게 고쳐 보세요' : '조금 더 자연스럽게';
-      return '<div class="ai-card ' + esc(v.verdict) + '"><div class="ai-top"><span class="ai-lab">AI 교정 · ' + lab + '</span><span class="ai-bal">남은 ' + aiBal() + '</span></div>' +
+      return '<div class="ai-card ' + esc(v.verdict) + '"><div class="ai-top"><span class="ai-lab">AI 선생님 · ' + lab + '</span><span class="ai-bal">남은 ' + aiBal() + '</span></div>' +
         '<button class="ai-nat" data-act="say" data-text="' + esc(v.natural) + '"><span class="zh">' + esc(v.natural) + '</span>' + (v.pinyin ? '<span class="py">' + esc(v.pinyin) + '</span>' : '') + (v.pinyin && kr(v.pinyin) ? '<span class="kr">' + esc(kr(v.pinyin)) + '</span>' : '') + '</button>' +
         (v.why ? '<p class="ai-why">' + esc(v.why) + '</p>' : '') + '</div>';
     }
     if (r && r.err) return '<div class="ai-card err">' + esc(r.err) + '</div>';
-    return '<button class="ai-btn" data-act="ai-correct"><span>AI 교정 받기</span><em>1크레딧</em><span class="ai-bal">남은 ' + aiBal() + '</span></button>';
+    return '<button class="ai-btn" data-act="ai-correct"><span>AI 선생님 호출</span><em>1크레딧</em><span class="ai-bal">남은 ' + aiBal() + '</span></button>';
   }
   async function aiCorrect() {
     var s = state.s;
@@ -1247,22 +1251,16 @@
   }
 
   function isLifetime() { return !!sb && !state.entErr && !!state.ent && state.ent.plan === 'lifetime'; }
-  function aiWalletCard() {
-    if (!aiOn()) return '';
-    return '<div class="ai-wallet"><div class="aw-top"><span>AI 크레딧</span><b>' + aiBal() + '</b></div>' +
-      '<div class="aw-s">이번 달 지급 ' + state.ai.monthly + ' · 충전분 ' + state.ai.topup + '</div>' +
-      '<button class="btn sm" data-act="open-aicharge">충전하기</button></div>';
-  }
   function viewAiCharge() {
     if (!aiOn()) return '<div class="screen"><div class="topbar"><button class="icon-btn" data-act="back" aria-label="뒤로">' + I.back + '</button></div><div class="scroll"><p class="sub-title">멤버십이 있을 때 쓸 수 있어요.</p></div></div>';
     var packs = AI_PACKS.map(function (k) {
-      return '<div class="pack"><div class="pk-n">' + k.credits + '<small>크레딧</small></div><div class="pk-s">교정 ' + k.credits + '회 · 크레딧당 약 ' + (Math.round(k.price / k.credits * 10) / 10) + '원</div>' +
+      return '<div class="pack"><div class="pk-n">' + k.credits + '<small>크레딧</small></div><div class="pk-s">호출 ' + k.credits + '회 · 크레딧당 약 ' + (Math.round(k.price / k.credits * 10) / 10) + '원</div>' +
         '<button class="btn" data-act="buy-pack" data-id="' + k.id + '">' + won(k.price) + '</button></div>';
     }).join('');
     return '<div class="screen"><div class="topbar"><button class="icon-btn" data-act="back" aria-label="뒤로">' + I.back + '</button></div>' +
-      '<div class="scroll" style="padding-top:4px"><h1 class="big-title" style="margin-top:0">AI 크레딧 충전</h1>' +
-      '<p class="sub-title">말한 문장을 AI 선생님이 자연스럽게 고쳐 줘요. 교정 1회에 1크레딧이 들어요.</p>' +
-      '<div class="ai-wallet plain"><div class="aw-top"><span>내 크레딧</span><b>' + aiBal() + '</b></div><div class="aw-s">이번 달 지급 ' + state.ai.monthly + ' · 충전분 ' + state.ai.topup + '</div></div>' +
+      '<div class="scroll" style="padding-top:4px"><h1 class="big-title" style="margin-top:0">AI 선생님 호출</h1>' +
+      '<p class="sub-title">말한 문장을 AI 선생님이 자연스럽게 고쳐 줘요. 한 번 부를 때 1크레딧이 들어요.</p>' +
+      '<div class="ai-wallet plain"><div class="aw-top"><span>남은 크레딧</span><b>' + aiBal() + '</b></div><div class="aw-s">이번 달 지급 ' + state.ai.monthly + ' · 충전분 ' + state.ai.topup + '</div></div>' +
       '<ul class="perks"><li>' + I.check + '멤버십이면 매달 ' + (state.ai.grant || 15) + '크레딧을 드려요 (남아도 다음 달로 넘어가지 않아요)</li>' +
       '<li>' + I.check + '충전한 크레딧은 매달 지급분을 다 쓴 뒤에 쓰고, 사라지지 않아요</li></ul>' +
       '<div class="packs">' + packs + '</div>' +
@@ -1279,10 +1277,16 @@
     } catch (e) { if (window.console) console.error(e); toast('처리하지 못했어요. 잠시 후 다시 시도해 주세요'); }
   }
   function memberCard() {
-    if (!sb || isLifetime()) return '';   // 평생 회원은 아래 메뉴 목록에서 확인해요
-    var m = memberLabel();
-    return '<button class="member-card' + (isPro() ? ' on' : '') + '" data-act="open-pay"><span class="mc-t">' + esc(m.t) + '</span><span class="mc-s">' + esc(m.s) + '</span>' +
-      '<span class="mc-go">' + (isPro() ? '멤버십 관리' : '멤버십 보기') + '</span></button>';
+    if (!sb) return '';
+    var ai = aiOn();
+    if (isLifetime() && !ai) return '';   // 평생 회원은 아래 메뉴 목록에서 확인해요
+    var m = memberLabel(), pro = isPro();
+    var aiRow = ai ? '<button class="mc-ai" data-act="open-aicharge"><span class="mc-ai-t">AI 선생님 호출</span><span class="mc-ai-n">남은 <b>' + aiBal() + '</b></span><span class="mc-ai-go">충전</span></button>' : '';
+    var head = isLifetime()
+      ? '<div class="mc-main"><span class="mc-t">' + esc(m.t) + '</span><span class="mc-s">' + esc(m.s) + '</span></div>'
+      : '<button class="mc-main" data-act="open-pay"><span class="mc-t">' + esc(m.t) + '</span><span class="mc-s">' + esc(m.s) + '</span>' +
+        '<span class="mc-go">' + (pro ? '멤버십 관리' : '멤버십 보기') + '</span></button>';
+    return '<div class="member-card' + (pro ? ' on' : '') + '">' + head + aiRow + '</div>';
   }
   function meCard(initial, email) {
     var nick = nickname();
@@ -1333,7 +1337,7 @@
     return '<div class="screen"><div class="scroll with-nav">' +
       '<div class="tab-head"><div><h1 class="big-title">' + (nickname() ? esc(nickname()) + '님,<br>' : '') + '오늘도 화이팅!</h1>' +
       '<p class="sub-title" style="margin-bottom:0">내 학습 기록이에요.</p></div>' + mascot('wink') + '</div>' +
-      meCard(initial, email) + memberCard() + aiWalletCard() +
+      meCard(initial, email) + memberCard() +
       '<div class="stats">' +
         '<div class="stat"><b>' + learned.length + '/' + LESSONS.length + '</b><span>배운 레슨</span></div>' +
         '<div class="stat"><b>' + wordCount + '</b><span>배운 단어</span></div>' +
@@ -1762,9 +1766,9 @@
         '<li>' + I.check + '개정된 신 HSK 3.0 · 1~4급 단어 <em class="perk-tag">최신 개정판</em></li>' +
         '<li>' + I.check + '스피드 퀴즈 · 모든 상황 대화 무제한</li>' +
         '<li>' + I.check + '복습 알림 · 1분 중국어 알림</li>' +
-        '<li>' + I.check + 'AI 교정 · 매달 15크레딧 지급</li>' +
+        '<li>' + I.check + 'AI 선생님 호출 · 매달 15크레딧 지급</li>' +
       '</ul>' +
-      (isLifetime() ? '' : '<div class="plans">' +
+      (pro ? '' : '<div class="plans">' +
         '<div class="plan best"><span class="pl-badge">가장 추천</span><div class="pl-n">1년 이용 + 2개월 무료</div>' +
           '<div class="pl-was"><s>' + won(WAS_YEAR) + '</s><span class="pl-off">' + offPct(WAS_YEAR, PRICE_LIFE) + '% 할인</span></div>' +
           '<div class="pl-p">' + won(PRICE_LIFE) + '<small>14개월 이용</small></div>' +
@@ -1802,6 +1806,7 @@
   }
   async function buyPlan(plan) {
     if (needLoginPay()) return;
+    if (isPro() && !state.entErr) { toast('이미 이용 중이에요'); render(); return; }
     try {
       var res = await sb.rpc('test_purchase', { p_plan: plan });
       if (res.error) throw res.error;
