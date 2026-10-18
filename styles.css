@@ -1066,3 +1066,8 @@ u.miss { text-decoration: underline wavy #ef5350; text-underline-offset: 4px; co
 .goal-card.over .goal-pct { background: #d4561c; }
 .goal-sub { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 10px; padding: 8px 12px; border-radius: 12px; font-size: 13px; font-weight: 700; color: #fff; background: var(--green); }
 .goal-card.over .goal-sub { background: #d4561c; }
+
+/* v56b: 목표 안내는 띠 없이 글자만 · 월 구독 카드 그림자 제거 */
+.goal-sub, .goal-card.over .goal-sub { background: none; padding: 0; border-radius: 0; margin-top: 10px; color: var(--green-ink, #0b7a4b); }
+.goal-card.over .goal-sub { color: #c2571a; }
+.plan:not(.best) { box-shadow: none; filter: none; }

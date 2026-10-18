@@ -441,7 +441,7 @@
 
   /* ---------- 화면 이동 ---------- */
   // 뒤로 가기: 폰의 뒤로 제스처·버튼(기록)과 화면 왼쪽 가장자리에서 오른쪽으로 미는 동작을 같이 처리해요
-  var SUBSCREEN = { pay: 1, privacy: 1, login: 1, intro: 1, practice: 1, quiz: 1, stats: 1, done: 1, hsk: 1, hskstudy: 1, feedback: 1, speed: 1, account: 1 };
+  var SUBSCREEN = { pay: 1, privacy: 1, login: 1, intro: 1, practice: 1, quiz: 1, stats: 1, done: 1, hsk: 1, hskstudy: 1, feedback: 1, speed: 1, account: 1, coupon: 1 };
   var inSub = false, ignorePop = 0, backAnim = false;
   function syncHistory(screen) {
     try {
@@ -466,7 +466,7 @@
     else if (sc === 'privacy') go(state.privFrom === 'login' ? 'login' : 'tab');
     else if (sc === 'speed') { stopSpeed(); go('tab'); }
     else if (sc === 'done') go('tab', { tab: 'home' });
-    else if (sc === 'intro' || sc === 'stats' || sc === 'feedback' || sc === 'account') go('tab');
+    else if (sc === 'intro' || sc === 'stats' || sc === 'feedback' || sc === 'account' || sc === 'coupon') go('tab');
   }
   window.addEventListener('popstate', function () {
     if (ignorePop > 0) { ignorePop--; return; }
@@ -703,7 +703,7 @@
     }).join('');
     return '<div class="screen"><div class="scroll with-nav" style="padding-top:28px">' +
       '<h1 class="big-title">전체 레슨</h1>' +
-      '<p class="sub-title">' + (isPro() ? '원하는 레슨을 골라 미리 배우거나 다시 연습할 수 있어요.' : '1~' + FREE_LESSONS + '강은 무료예요. 나머지 레슨은 멤버십이 필요해요.') + '</p>' +
+      '<p class="sub-title">' + '배운 내용을 활용해 보며 자연스럽게 익혀가요.' + '</p>' +
       '<div class="lesson-progress"><div class="row"><b>' + n + ' / ' + LESSONS.length + '</b><span>레슨 완료</span></div>' +
       '<div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + pct + '"><i style="width:' + pct + '%"></i></div></div>' +
       '<ul class="list" style="margin-top:16px">' + list + '</ul></div>' + navHtml() + '</div>';
@@ -1151,6 +1151,7 @@
       '<div class="set-row"><div class="set-t">한국어 발음 표기</div>' + seg('set-kr', p.kr ? 'on' : 'off', [['on', '켜짐'], ['off', '꺼짐']]) + '</div>' +
       '<div class="set-row"><div class="set-t">화면</div>' + seg('set-theme', p.theme, [['auto', '자동'], ['light', '라이트'], ['dark', '다크']]) + '</div>' +
       (typeof settingsExtra === 'function' ? settingsExtra() : '') +
+      (sb ? '<div class="set-row"><div class="set-t">쿠폰 등록</div><button class="pill-sm" data-act="open-coupon">입력</button></div>' : '') +
       (sb && !isGuest() ? '<div class="set-row"><div class="set-t">계정 관리</div><button class="pill-sm" data-act="open-account">열기</button></div>' : '') +
       '<div class="set-row"><div class="set-t">의견 보내기</div><button class="pill-sm" data-act="open-feedback">보내기</button></div>' +
       '<div class="set-row"><div class="set-t">앱 버전</div><div class="set-v">' + APP_VERSION + '</div></div></div>';
@@ -1277,6 +1278,7 @@
     else if (state.screen === 'feedback') html = viewFeedback();
     else if (state.screen === 'privacy') html = viewPrivacy();
     else if (state.screen === 'account') html = viewAccount();
+    else if (state.screen === 'coupon') html = viewCoupon();
     else if (state.screen === 'pay') html = viewPay();
     else if (state.screen === 'speed') html = viewSpeed();
     else if (state.screen === 'hskstudy') html = viewHskStudy();
@@ -1608,12 +1610,18 @@
         '<div class="plan"><div class="pl-n">월 구독</div><div class="pl-was"><s>' + won(WAS_MONTH) + '</s><span class="pl-off">' + offPct(WAS_MONTH, PRICE_MONTH) + '% 할인</span></div><div class="pl-p">' + won(PRICE_MONTH) + '<small>/월</small></div><div class="pl-s">커피 한 잔보다 저렴하게, 한 달씩 언제든 그만둘 수 있어요</div>' +
           '<button class="btn soft" data-act="buy" data-id="monthly">월 구독 시작하기</button></div>' +
       '</div>') +
-      '<div class="notice pay-test"><span>지금은 테스트 모드예요. 실제로 결제되지 않고, 누르면 바로 이용권이 열려요.</span>' +
+      '<div class="notice pay-test"><span>지금은 테스트모드입니다. 결제가 되지 않아요.</span>' +
         (state.ent ? '<button class="btn sm soft" data-act="test-reset">복구하기</button>' : '') + '</div>' +
-      (isLifetime() ? '' : '<div class="section-title" style="margin-top:24px">쿠폰</div>' +
+      '<div style="height:24px"></div>' +
+      '</div></div>';
+  }
+  function viewCoupon() {
+    return '<div class="screen"><div class="topbar"><button class="icon-btn" data-act="back" aria-label="뒤로">' + I.back + '</button></div>' +
+      '<div class="scroll" style="padding-top:4px"><h1 class="big-title" style="margin-top:0">쿠폰 등록</h1>' +
+      '<p class="sub-title">쿠폰 번호를 입력하면 1개월 동안 모든 레슨을 쓸 수 있어요.</p>' +
       '<div class="coupon-row"><input id="coupon" class="coupon-in" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="쿠폰 번호 입력" aria-label="쿠폰 번호">' +
       '<button class="btn sm" data-act="coupon-redeem">등록</button></div>' +
-      '<p class="coupon-help">쿠폰을 등록하면 1개월 동안 모든 레슨을 쓸 수 있어요.</p>') +
+      '<p class="coupon-help">이미 이용 중이면 남은 기간 뒤에 이어서 붙어요.</p>' +
       '</div></div>';
   }
   var COUPON_ERR = {
@@ -1625,7 +1633,8 @@
   };
   function needLoginPay() {
     if (!isGuest()) return false;
-    requireLogin('pay', function () { go('pay'); });
+    var back = state.screen === 'coupon' ? 'coupon' : 'pay';
+    requireLogin('pay', function () { go(back); });
     return true;
   }
   async function buyPlan(plan) {
@@ -1666,7 +1675,7 @@
       if (!d.ok) { toast(COUPON_ERR[d.error] || '쿠폰을 등록하지 못했어요'); return; }
       await loadEnt();
       state.payWhy = null;
-      render();
+      go('tab');
       toast('쿠폰이 등록됐어요. ' + fmtDate(d.expires_at) + '까지 이용할 수 있어요');
     } catch (e) { if (window.console) console.error(e); toast('처리하지 못했어요. 잠시 후 다시 시도해 주세요'); }
   }
@@ -2519,6 +2528,7 @@
       case 'coupon-redeem': redeemCoupon(); break;
       case 'test-reset': resetPlan(); break;
       case 'open-account': go('account'); break;
+      case 'open-coupon': go('coupon'); break;
       case 'open-privacy': go('privacy', { privFrom: state.screen === 'login' ? 'login' : 'tab' }); break;
       case 'delete-account':
         askConfirm({ title: '계정을 삭제할까요?', body: '계정과 모든 학습 기록, 설정이 사라지고 되돌릴 수 없어요.', ok: '계속하기', cancel: '취소', danger: true, m: 'shy' }, function () {
