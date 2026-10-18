@@ -377,3 +377,154 @@ end;
 $$;
 revoke all on function public.test_purchase(text) from public, anon;
 grant execute on function public.test_purchase(text) to authenticated;
+-- ===== v57: AI 크레딧 (월 지급 + 충전) =====
+-- 먼저 membership-all.sql(멤버십)이 실행되어 있어야 해요.
+-- 월 지급분(monthly): 이용권이 있는 사람에게 매달 15크레딧, 이월 안 됨 / 충전분(topup): 이월됨
+
+create table if not exists public.ai_wallet (
+  user_id    uuid primary key references auth.users(id) on delete cascade,
+  monthly    int  not null default 0 check (monthly >= 0),
+  topup      int  not null default 0 check (topup >= 0),
+  month_key  text,                                   -- 마지막으로 월 지급을 한 달 (예: 2026-10, 한국 시간 기준)
+  updated_at timestamptz not null default now()
+);
+alter table public.ai_wallet enable row level security;
+drop policy if exists "read own ai wallet" on public.ai_wallet;
+create policy "read own ai wallet" on public.ai_wallet for select to authenticated using ((select auth.uid()) = user_id);
+
+-- 입출금 기록 (지급·충전·사용·환불). 앱에서는 읽기만 돼요.
+create table if not exists public.ai_ledger (
+  id      bigint generated always as identity primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  delta   int  not null,
+  kind    text not null check (kind in ('monthly', 'topup', 'spend', 'refund')),
+  note    text,
+  at      timestamptz not null default now()
+);
+alter table public.ai_ledger enable row level security;
+drop policy if exists "read own ai ledger" on public.ai_ledger;
+create policy "read own ai ledger" on public.ai_ledger for select to authenticated using ((select auth.uid()) = user_id);
+create index if not exists ai_ledger_idx on public.ai_ledger (user_id, at desc);
+
+-- 실제 AI 사용량 기록 (비용을 다시 계산할 때 써요). 앱에서는 읽을 수 없어요.
+create table if not exists public.ai_usage (
+  id         bigint generated always as identity primary key,
+  user_id    uuid not null references auth.users(id) on delete cascade,
+  kind       text not null,
+  model      text,
+  in_tokens  int,
+  out_tokens int,
+  at         timestamptz not null default now()
+);
+alter table public.ai_usage enable row level security;
+
+-- 지금 이용권이 있는지 (내부용)
+create or replace function public._is_member(p_uid uuid)
+returns boolean
+language sql stable security definer set search_path = public
+as $$
+  select exists (
+    select 1 from entitlements e
+    where e.user_id = p_uid and (e.plan = 'lifetime' or (e.expires_at is not null and e.expires_at > now()))
+  );
+$$;
+revoke all on function public._is_member(uuid) from public, anon, authenticated;
+
+-- 월 지급 (내부용): 이용권이 있고 이번 달에 아직 안 받았으면 월 지급분을 15로 채워요
+create or replace function public._ai_sync(p_uid uuid)
+returns public.ai_wallet
+language plpgsql security definer set search_path = public
+as $$
+declare
+  w public.ai_wallet;
+  v_key text := to_char(now() at time zone 'Asia/Seoul', 'YYYY-MM');
+  v_grant int := 15;
+begin
+  insert into ai_wallet (user_id) values (p_uid) on conflict (user_id) do nothing;
+  select * into w from ai_wallet where user_id = p_uid for update;
+  if _is_member(p_uid) and coalesce(w.month_key, '') <> v_key then
+    update ai_wallet set monthly = v_grant, month_key = v_key, updated_at = now() where user_id = p_uid returning * into w;
+    insert into ai_ledger (user_id, delta, kind, note) values (p_uid, v_grant, 'monthly', v_key);
+  end if;
+  return w;
+end;
+$$;
+revoke all on function public._ai_sync(uuid) from public, anon, authenticated;
+
+-- 앱이 부르는 잔액 조회 (이때 월 지급도 같이 해요)
+create or replace function public.ai_wallet_get()
+returns jsonb
+language plpgsql security definer set search_path = public
+as $$
+declare v_uid uuid := auth.uid(); w public.ai_wallet; v_mem boolean;
+begin
+  if v_uid is null then raise exception 'not_authenticated'; end if;
+  w := _ai_sync(v_uid);
+  v_mem := _is_member(v_uid);
+  return jsonb_build_object('ok', true, 'member', v_mem, 'monthly', case when v_mem then w.monthly else 0 end, 'topup', w.topup, 'grant', 15);
+end;
+$$;
+revoke all on function public.ai_wallet_get() from public, anon;
+grant execute on function public.ai_wallet_get() to authenticated;
+
+-- 크레딧 쓰기 (서버 함수 전용): 월 지급분부터 쓰고 모자라면 충전분을 써요
+create or replace function public.ai_spend(p_uid uuid, p_cost int, p_note text default null)
+returns jsonb
+language plpgsql security definer set search_path = public
+as $$
+declare w public.ai_wallet; v_m int; v_t int;
+begin
+  if p_cost is null or p_cost < 1 or p_cost > 50 then return jsonb_build_object('ok', false, 'error', 'bad_cost'); end if;
+  if not _is_member(p_uid) then return jsonb_build_object('ok', false, 'error', 'not_member'); end if;
+  w := _ai_sync(p_uid);
+  if w.monthly + w.topup < p_cost then
+    return jsonb_build_object('ok', false, 'error', 'no_credit', 'monthly', w.monthly, 'topup', w.topup);
+  end if;
+  v_m := least(w.monthly, p_cost);
+  v_t := p_cost - v_m;
+  update ai_wallet set monthly = monthly - v_m, topup = topup - v_t, updated_at = now() where user_id = p_uid returning * into w;
+  insert into ai_ledger (user_id, delta, kind, note) values (p_uid, -p_cost, 'spend', p_note);
+  return jsonb_build_object('ok', true, 'from_monthly', v_m, 'from_topup', v_t, 'monthly', w.monthly, 'topup', w.topup);
+end;
+$$;
+revoke all on function public.ai_spend(uuid, int, text) from public, anon, authenticated;
+grant execute on function public.ai_spend(uuid, int, text) to service_role;
+
+-- 크레딧 돌려주기 (서버 함수 전용): AI 호출이 실패했을 때
+create or replace function public.ai_refund(p_uid uuid, p_from_monthly int, p_from_topup int, p_note text default null)
+returns jsonb
+language plpgsql security definer set search_path = public
+as $$
+declare w public.ai_wallet;
+begin
+  update ai_wallet set monthly = monthly + greatest(coalesce(p_from_monthly, 0), 0), topup = topup + greatest(coalesce(p_from_topup, 0), 0), updated_at = now()
+  where user_id = p_uid returning * into w;
+  insert into ai_ledger (user_id, delta, kind, note) values (p_uid, greatest(coalesce(p_from_monthly, 0), 0) + greatest(coalesce(p_from_topup, 0), 0), 'refund', p_note);
+  return jsonb_build_object('ok', true, 'monthly', w.monthly, 'topup', w.topup);
+end;
+$$;
+revoke all on function public.ai_refund(uuid, int, int, text) from public, anon, authenticated;
+grant execute on function public.ai_refund(uuid, int, int, text) to service_role;
+
+-- 테스트 충전: 테스트 모드이고 이용권이 있을 때만 (실제 결제를 붙이면 영수증 확인 함수로 교체)
+create or replace function public.test_topup(p_pack text)
+returns jsonb
+language plpgsql security definer set search_path = public
+as $$
+declare v_uid uuid := auth.uid(); v_n int; w public.ai_wallet;
+begin
+  if v_uid is null then raise exception 'not_authenticated'; end if;
+  if coalesce((select value from app_settings where key = 'payment_test_mode'), 'false') <> 'true' then
+    return jsonb_build_object('ok', false, 'error', 'test_mode_off');
+  end if;
+  if not _is_member(v_uid) then return jsonb_build_object('ok', false, 'error', 'not_member'); end if;
+  v_n := case p_pack when 'p60' then 60 when 'p170' then 170 when 'p360' then 360 else 0 end;
+  if v_n = 0 then return jsonb_build_object('ok', false, 'error', 'invalid_pack'); end if;
+  w := _ai_sync(v_uid);
+  update ai_wallet set topup = topup + v_n, updated_at = now() where user_id = v_uid returning * into w;
+  insert into ai_ledger (user_id, delta, kind, note) values (v_uid, v_n, 'topup', p_pack);
+  return jsonb_build_object('ok', true, 'monthly', w.monthly, 'topup', w.topup);
+end;
+$$;
+revoke all on function public.test_topup(text) from public, anon;
+grant execute on function public.test_topup(text) to authenticated;
