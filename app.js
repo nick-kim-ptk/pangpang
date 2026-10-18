@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v44';
+  var APP_VERSION = 'v45';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -602,7 +602,7 @@
       '<div class="today' + (due > 0 ? '' : ' done') + '" style="margin-top:0">' +
         '<div class="today-top"><span class="chip ' + (due > 0 ? 'y' : 'green') + '">' + (due > 0 ? '지금 복습할 문제' : '오늘 복습 완료') + '</span>' +
         '<h2 style="font-size:34px">' + due + '개</h2></div>' +
-        '<p class="explain' + (due > 0 ? '' : ' center') + '">' + (due > 0 ? '한 번에 최대 ' + REVIEW_SIZE + '문제씩 해요' : '내일 다시 만나요') + '</p>' +
+        (due > 0 ? '<p class="explain">한 번에 최대 ' + REVIEW_SIZE + '문제씩 해요</p>' : '') +
         mascot(due > 0 ? 'laptop' : 'sleep', 'today-m') +
         (due > 0
           ? '<button class="btn" data-act="review-start">복습 시작</button>'
@@ -626,13 +626,43 @@
     if (past.length) h += '<div class="section-title" style="margin-top:28px">지난 오늘의 한 문장</div><div class="words">' + past.map(phraseRow).join('') + '</div>';
     return h;
   }
+  // 단어장: 레슨이 많아져도 보기 편하도록 레슨별로 접고 펼치고, 검색할 수 있어요
+  var wordsUi = { open: null, q: '' };
+  var CHEV = '<svg class="w-chev" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>';
+  function wordsOrdered() { return learnedLessons().slice().sort(function (a, b) { return LESSONS.indexOf(b) - LESSONS.indexOf(a); }); }
+  function wordsOpenMap() {
+    if (!wordsUi.open) { wordsUi.open = {}; var f = wordsOrdered()[0]; if (f) wordsUi.open[f.id] = true; }
+    return wordsUi.open;
+  }
+  function wordMatch(w, q) {
+    return (w[0] + ' ' + w[1] + ' ' + w[2] + ' ' + kr(w[1])).toLowerCase().indexOf(q) >= 0;
+  }
+  function wordsListHtml() {
+    var q = wordsUi.q.trim().toLowerCase(), open = wordsOpenMap(), out = '', hit = 0;
+    wordsOrdered().forEach(function (l) {
+      var ws = q ? l.words.filter(function (w) { return wordMatch(w, q); }) : l.words;
+      if (!ws.length) return;
+      hit++;
+      var isOpen = q ? true : !!open[l.id];
+      out += '<div class="wl' + (isOpen ? ' open' : '') + '"><button class="wl-head" data-act="w-toggle" data-id="' + l.id + '" aria-expanded="' + (isOpen ? 'true' : 'false') + '">' +
+        '<span class="num">' + (LESSONS.indexOf(l) + 1) + '</span><span class="wl-t">' + esc(l.title) + '</span><span class="wl-n">' + ws.length + '단어</span>' + CHEV + '</button>' +
+        (isOpen ? '<div class="words">' + ws.map(function (w) { return wordRow(w); }).join('') + '</div>' : '') + '</div>';
+    });
+    return hit ? out : '<p class="w-none">' + (q ? '“' + esc(wordsUi.q.trim()) + '”에 맞는 단어가 없어요' : '') + '</p>';
+  }
+  function refreshWordsList() {
+    var el = document.getElementById('w-list');
+    if (el) el.innerHTML = wordsListHtml();
+  }
   function viewWords() {
     var learned = learnedLessons();
     var wordCount = learned.reduce(function (n, l) { return n + l.words.length; }, 0);
-    var body = learned.map(function (l) {
-      return '<div class="section-title" style="margin-top:28px">' + esc(l.title) + '</div>' +
-        '<div class="words">' + l.words.map(function (w) { return wordRow(w); }).join('') + '</div>';
-    }).join('');
+    var body = learned.length
+      ? '<div class="section-title" style="margin-top:28px">배운 단어</div>' +
+        '<div class="w-tools"><input id="w-search" class="w-search" type="search" placeholder="단어 검색 (한자·병음·뜻)" value="' + esc(wordsUi.q) + '" aria-label="단어 검색" autocomplete="off">' +
+        '<button class="pill-sm" data-act="w-all">' + (Object.keys(wordsOpenMap()).some(function (k) { return wordsUi.open[k]; }) ? '모두 접기' : '모두 펼치기') + '</button></div>' +
+        '<div id="w-list">' + wordsListHtml() + '</div>'
+      : '';
 
     return '<div class="screen"><div class="scroll with-nav">' +
       '<div class="tab-head"><div><h1 class="big-title">단어장</h1>' +
@@ -1395,6 +1425,7 @@
   }
   document.addEventListener('input', function (e) {
     var t = e.target;
+    if (t && t.id === 'w-search') { wordsUi.q = String(t.value || ''); refreshWordsList(); return; }
     if (!t || t.id !== 'fb-text' || !state.fb) return;
     state.fb.text = String(t.value || '');
     var c = document.getElementById('fb-count'), b = document.getElementById('fb-send');
@@ -2103,6 +2134,17 @@
         if (state.sp && state.sp.phase === 'run' && state.sp.opts) { var spo = state.sp.opts[parseInt(id, 10)]; state.sp.picked = parseInt(id, 10); speedEnd(state.sp, !!(spo && spo.ok), ''); }
         break;
       case 'speed-next': if (state.sp && state.sp.phase === 'result') speedNext(); break;
+      case 'w-toggle': {
+        var om = wordsOpenMap(); om[id] = !om[id]; refreshWordsList(); break;
+      }
+      case 'w-all': {
+        var om2 = wordsOpenMap(), anyOpen = Object.keys(om2).some(function (k) { return om2[k]; });
+        wordsUi.open = {};
+        if (!anyOpen) learnedLessons().forEach(function (l) { wordsUi.open[l.id] = true; });
+        refreshWordsList();
+        el.textContent = anyOpen ? '모두 펼치기' : '모두 접기';
+        break;
+      }
       case 'speed-ko':
         if (state.sp) {
           state.sp.showKo = true;
