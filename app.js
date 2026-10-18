@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v61';
+  var APP_VERSION = 'v62';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -1291,7 +1291,7 @@
   function aiEntry() {
     if (!aiOn()) return '';
     return '<button class="ai-entry" data-act="ac-open"><span class="ae-t">AI 자유 대화<em>NEW</em></span>' +
-      '<span class="ae-s">AI 선생님과 6번 주고받아요. 뭐라고 말할지 알려 줘요 · ' + AI_CHAT_COST + '크레딧</span></button>';
+      '<span class="ae-s">AI 선생님과 부담 없이 편하게 대화를 주고 받을 수 있어요.</span></button>';
   }
   function acStop() {
     if (acRec) { try { acRec.abort(); } catch (e) { /* 무시 */ } acRec = null; }
@@ -1303,20 +1303,23 @@
     if (!aiOn() || !a) return '<div class="screen"><div class="topbar"><button class="icon-btn" data-act="back" aria-label="뒤로">' + I.back + '</button></div><div class="scroll"><p class="sub-title">멤버십이 있을 때 쓸 수 있어요.</p></div></div>';
     return a.mode === 'pick' ? acPick(a) : a.mode === 'end' ? acEnd(a) : acChat(a);
   }
+  var AC_TOPICS = ['오늘 하루', '좋아하는 음식', '주말 계획', '가족 소개', '취미', '여행 가고 싶은 곳', '날씨', '내 직업', '중국어 공부'];
   function acPick(a) {
-    var bal = aiBal(), can = bal >= AI_CHAT_COST;
-    var rows = (window.DIALOGS || []).map(function (d) {
-      return '<li><button class="item' + (a.sel === d.id ? ' sel' : '') + '" data-act="ac-pick" data-id="' + esc(d.id) + '"><span class="txt"><div class="t">' + esc(d.title) + '</div><div class="s">' + esc(d.intro) + '</div></span>' +
-        '<span class="chip ' + (a.sel === d.id ? 'y' : 'soft') + '">' + (a.sel === d.id ? '선택됨' : '고르기') + '</span></button></li>';
-    }).join('');
+    var bal = aiBal(), can = bal >= AC_COST();
+    var ok = can && String(a.topic || '').trim().length >= 2 && !a.busy;
+    var chips = AC_TOPICS.map(function (t, i) { return '<button class="ac-chip' + (a.topic === t ? ' on' : '') + '" data-act="ac-topic" data-i="' + i + '">' + esc(t) + '</button>'; }).join('');
     return '<div class="screen"><div class="topbar"><button class="icon-btn" data-act="back" aria-label="뒤로">' + I.back + '</button></div>' +
       '<div class="scroll" style="padding-top:4px"><h1 class="big-title" style="margin-top:0">AI 자유 대화</h1>' +
-      '<p class="sub-title">상황을 고르면 AI 선생님이 먼저 말을 걸어요. 내가 할 수 있는 말을 같이 알려 주니까 막혀도 괜찮아요.</p>' +
-      '<div class="ac-bal"><span>한 판 ' + AI_CHAT_COST + '크레딧 · 최대 6번 주고받기</span><b>남은 ' + bal + '</b></div>' +
+      '<p class="sub-title">하고 싶은 이야기를 적거나 골라 보세요. AI 선생님이 먼저 말을 걸고, 뭐라고 말할지도 같이 알려 줘요.</p>' +
+      '<div class="ac-bal"><span>한 판 ' + AC_COST() + '크레딧 · 최대 6번 주고받기</span><b>남은 ' + bal + '</b></div>' +
       (can ? '' : '<div class="notice" style="margin-bottom:12px">크레딧이 부족해요. <button class="link-btn inl" data-act="open-aicharge">충전하기</button></div>') +
-      '<ul class="list">' + rows + '</ul><div style="height:96px"></div></div>' +
-      '<div class="footer"><button class="btn" data-act="ac-start"' + (a.sel && can && !a.busy ? '' : ' disabled') + '>' + (a.busy ? '대화를 준비하고 있어요…' : '시작하기 · ' + AI_CHAT_COST + '크레딧') + '</button></div></div>';
+      '<label class="ac-lab" for="ac-topic">대화 주제</label>' +
+      '<input id="ac-topic" class="ac-topic" maxlength="30" autocomplete="off" spellcheck="false" placeholder="예: 내일 친구랑 점심 약속 잡기" value="' + esc(a.topic || '') + '">' +
+      '<div class="ac-lab" style="margin-top:16px">이런 주제는 어때요?</div><div class="ac-chips">' + chips + '</div>' +
+      '<div style="height:96px"></div></div>' +
+      '<div class="footer"><button id="ac-go" class="btn" data-act="ac-start"' + (ok ? '' : ' disabled') + '>' + (a.busy ? '대화를 준비하고 있어요…' : '시작하기 · ' + AC_COST() + '크레딧') + '</button></div></div>';
   }
+  function AC_COST() { return AI_CHAT_COST; }
   function acBubble(m) {
     if (m.who === 'me') {
       return '<div class="acb me"><div class="zh">' + esc(m.zh) + '</div></div>' +
@@ -1367,15 +1370,14 @@
   }
   async function acStart() {
     var a = state.ac;
-    if (!a || a.busy || !a.sel || !aiOn() || aiBal() < AI_CHAT_COST) return;
-    var d0 = (window.DIALOGS || []).filter(function (d) { return d.id === a.sel; })[0];
-    if (!d0) return;
+    var topic = String((a && a.topic) || '').trim().slice(0, 30);
+    if (!a || a.busy || topic.length < 2 || !aiOn() || aiBal() < AI_CHAT_COST) return;
     a.busy = true; render();
     try {
-      var d = await acCall({ action: 'chat_start', scenario: { id: d0.id, title: d0.title, intro: d0.intro } });
+      var d = await acCall({ action: 'chat_start', scenario: { id: 'free', title: topic, intro: '' } });
       a.busy = false;
       if (!d.ok) { toast(AI_ERR[d.error] || '대화를 시작하지 못했어요. 잠시 후 다시 해 주세요'); render(); return; }
-      state.ac = { mode: 'chat', scenario: { id: d0.id, title: d0.title }, sid: d.sid, msgs: [Object.assign({ who: 'them' }, d.turn.reply)], sug: d.turn.suggestions || [], turns: 0, max: d.max_turns || 6, input: '', busy: false, ended: false, fixes: [] };
+      state.ac = { mode: 'chat', scenario: { id: 'free', title: topic }, sid: d.sid, msgs: [Object.assign({ who: 'them' }, d.turn.reply)], sug: d.turn.suggestions || [], turns: 0, max: d.max_turns || 6, input: '', busy: false, ended: false, fixes: [] };
       render(); acScroll();
       setTimeout(function () { if (state.screen === 'aichat' && state.ac && state.ac.sid === d.sid) speak(d.turn.reply.zh, 0.85); }, 350);
     } catch (e) {
@@ -2136,10 +2138,21 @@
     }
   }
   document.addEventListener('keydown', function (e) {
-    if (e.key === 'Enter' && e.target && e.target.id === 'ac-in' && !e.isComposing) { e.preventDefault(); acSend(); }
+    if (e.key === 'Enter' && e.target && e.isComposing !== true) {
+      if (e.target.id === 'ac-in') { e.preventDefault(); acSend(); }
+      else if (e.target.id === 'ac-topic') { e.preventDefault(); acStart(); }
+    }
   });
   document.addEventListener('input', function (e) {
     var t = e.target;
+    if (t && t.id === 'ac-topic' && state.ac) {
+      state.ac.topic = String(t.value || '');
+      var go1 = document.getElementById('ac-go');
+      if (go1) go1.disabled = !(aiBal() >= AI_CHAT_COST && state.ac.topic.trim().length >= 2 && !state.ac.busy);
+      var chipsOn = document.querySelectorAll ? document.querySelectorAll('.ac-chip.on') : [];
+      for (var ci = 0; ci < chipsOn.length; ci++) chipsOn[ci].classList.remove('on');
+      return;
+    }
     if (t && t.id === 'ac-in' && state.ac) { state.ac.input = String(t.value || ''); return; }
     if (t && t.id === 'w-search') { wordsUi.q = String(t.value || ''); refreshWordsList(); return; }
     if (!t || t.id !== 'fb-text' || !state.fb) return;
@@ -2893,8 +2906,8 @@
       case 'open-coupon': go('coupon'); break;
       case 'open-aicharge': go('aicharge'); break;
       case 'ai-why': aiWhyLoad(); break;
-      case 'ac-open': state.ac = { mode: 'pick', sel: null }; go('aichat'); break;
-      case 'ac-pick': if (state.ac) { state.ac.sel = id; render(); } break;
+      case 'ac-open': state.ac = { mode: 'pick', topic: '' }; go('aichat'); break;
+      case 'ac-topic': if (state.ac) { state.ac.topic = AC_TOPICS[+el.getAttribute('data-i')] || ''; render(); } break;
       case 'ac-start': acStart(); break;
       case 'ac-send': acSend(); break;
       case 'ac-mic': acMic(); break;
@@ -2909,7 +2922,7 @@
       case 'ac-leave-no': if (state.ac) { state.ac.leave = false; render(); } break;
       case 'ac-leave-yes': acStop(); state.ac = null; go('tab', { tab: 'review' }); break;
       case 'ac-finish': if (state.ac) { state.ac.mode = 'end'; acStop(); render(); window.scrollTo(0, 0); } break;
-      case 'ac-again': state.ac = { mode: 'pick', sel: null }; render(); window.scrollTo(0, 0); break;
+      case 'ac-again': state.ac = { mode: 'pick', topic: '' }; render(); window.scrollTo(0, 0); break;
       case 'buy-pack': buyPack(id); break;
       case 'open-privacy': go('privacy', { privFrom: state.screen === 'login' ? 'login' : 'tab' }); break;
       case 'delete-account':
