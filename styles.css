@@ -1103,3 +1103,5 @@ u.miss { text-decoration: underline wavy #ef5350; text-underline-offset: 4px; co
 @keyframes wsup { from { transform: translateY(100%); } }
 @keyframes wsfade { from { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .ws, .ws-scrim { animation: none; } }
+
+.tip-line { margin-top: 10px; }

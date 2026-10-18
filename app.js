@@ -867,7 +867,10 @@
       '<span class="chip" style="min-width:48px;justify-content:center">' + cnt + '</span></div>';
 
     var showAnswer = s.revealed && s.phase === 'ask';
-    var hintBtn = !s.revealed && s.phase === 'ask' ? '<button class="link-btn" data-act="reveal">힌트 보기</button>' : '';
+    // 힌트 보기 → '~로 답해 보세요' 안내만 보여 주고, 그다음 정답 보기 → 예시 답안을 보여 줘요 (상황 대화는 답변 안내 말풍선이 힌트라서 바로 정답 보기)
+    var canAsk = !s.revealed && s.phase === 'ask';
+    var tipFirst = s.kind !== 'dialog' && !!l.tip && !s.hint;
+    var hintBtn = canAsk ? (tipFirst ? '<button class="link-btn" data-act="hint">힌트 보기</button>' : '<button class="link-btn" data-act="reveal">정답 보기</button>') : '';
     var body;
     if (s.kind === 'dialog') {
       // 질문(상대 말풍선) 안에 중국어·병음·발음·뜻을 함께 넣고, 내 답변 안내는 보낼 메시지처럼 아래에 떠올라요
@@ -893,8 +896,9 @@
       (s.showKo ? koBlock(s, q.ko, 'q-ko') : '') + qTools(s) +
       '<div class="q-actions">' +
         '<button class="round-btn" data-act="hear-q" aria-label="질문 다시 듣기">' + I.spk + '</button>' +
-        (l.tip ? '<span class="tip">' + esc(l.tip) + '</span>' : '') + hintBtn +
+        hintBtn +
       '</div>' +
+      (l.tip && s.hint && s.kind !== 'dialog' ? '<div class="tip-line"><span class="tip">' + esc(l.tip) + '</span></div>' : '') +
       (showAnswer ? answerCard(q, '따라 말해 보세요') : '') +
     '</div>';
     }
@@ -2418,7 +2422,7 @@
     }
     s.cur = s.queue[0];
     saveResume(s);
-    s.tries = 0; s.revealed = false; s.showKo = false; s.phase = 'ask'; s.heard = ''; s.pass = false; s.msg = ''; s.live = ''; s.guideOn = false; s.wordsOpen = false;
+    s.tries = 0; s.revealed = false; s.showKo = false; s.phase = 'ask'; s.heard = ''; s.pass = false; s.msg = ''; s.live = ''; s.guideOn = false; s.wordsOpen = false; s.hint = false;
     render();
     sayCurrentQuestion();
   }
@@ -2728,6 +2732,7 @@
       case 'ko': s.showKo = !s.showKo; render(); break;
       case 'hear-q': speak(s.cur.zh); break;
       case 'hear-a': speak(s.cur.a.zh); break;
+      case 'hint': s.hint = true; render(); break;
       case 'reveal': s.revealed = true; render(); break;
       case 'reveal-result': s.revealed = true; render(); break;
       case 'type-mode': stopRec(); s.typing = true; s.listening = false; render(); break;
