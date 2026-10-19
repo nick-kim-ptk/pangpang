@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v87';
+  var APP_VERSION = 'v88';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -468,7 +468,7 @@
     var i = LESSONS.indexOf(lessonById(id));
     return i >= FREE_LESSONS && !isPro();
   }
-  // 무료 체험: 스피드 퀴즈·상황 대화는 1회분, HSK는 1급만
+  // 무료 체험: 스피드 퀴즈는 1회분, HSK는 1급만
   function speedLocked() { return !isPro() && state.profile.speedUsed >= 1; }
   function dialogLocked(id) {   // 첫 번째 상황 대화는 무료로 계속 할 수 있어요
     if (isPro()) return false;
@@ -873,7 +873,6 @@
       weakCard() +
       speedCard() +
       listenCard() +
-      dialogSection() +
       '<div class="section-title">레슨별로 복습하기</div>' +
       (learned.length ? '<ul class="list">' + rows + '</ul>' + (learned.length > take ? '<button class="more-btn" data-act="rlessons-more">더보기 (' + Math.min(7, learned.length - take) + '개 더)</button>' : '')
         : emptyState('empty', { title: '아직 복습할 게 없어요', desc: '첫 레슨을 끝내면\n여기서 복습할 수 있어요' }));
@@ -2267,12 +2266,12 @@
     return '<div class="screen"><div class="topbar"><button class="icon-btn" data-act="back" aria-label="뒤로">' + I.back + '</button></div>' +
       '<div class="scroll" style="padding-top:4px">' +
       '<h1 class="big-title" style="margin-top:0">팽팽이랑 오래 공부하기</h1>' +
-      '<p class="sub-title">1~' + FREE_LESSONS + '강, HSK 1급, 첫 상황 대화는 무료예요. 멤버십이면 이렇게 쓸 수 있어요.</p>' + why +
+      '<p class="sub-title">1~' + FREE_LESSONS + '강, HSK 1급은 무료예요. 멤버십이면 이렇게 쓸 수 있어요.</p>' + why +
       (pro ? '<div class="pay-status"><b>' + esc(m.t) + '</b><span>' + esc(m.s) + '</span></div>' : '') +
       '<ul class="perks">' +
         '<li>' + I.check + LESSONS.length + '강 전체 레슨 <em class="perk-tag">계속 업데이트돼요</em></li>' +
         '<li>' + I.check + '개정된 신 HSK 3.0 · 1~4급 단어 <em class="perk-tag">최신 개정판</em></li>' +
-        '<li>' + I.check + '스피드 퀴즈 · 모든 상황 대화 무제한</li>' +
+        '<li>' + I.check + '스피드 퀴즈 무제한</li>' +
         '<li>' + I.check + '복습 알림 · 1분 중국어 알림</li>' +
         '<li>' + I.check + 'AI 대화 · 매달 15크레딧 지급</li>' +
       '</ul>' +
