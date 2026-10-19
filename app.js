@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v88';
+  var APP_VERSION = 'v89';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -1161,10 +1161,42 @@
       var v = r.res, lab = v.verdict === 'good' ? '아주 좋아요' : v.verdict === 'fix' ? '이렇게 고쳐 보세요' : '조금 더 자연스럽게';
       return '<div class="ai-card ' + esc(v.verdict) + '"><div class="ai-top"><span class="ai-lab">AI 선생님 · ' + lab + '</span><span class="ai-bal">남은 크레딧 ' + aiBal() + '</span></div>' +
         '<button class="ai-nat" data-act="say" data-text="' + esc(v.natural) + '"><span class="zh">' + esc(v.natural) + '</span>' + (v.pinyin ? '<span class="py">' + esc(v.pinyin) + '</span>' : '') + (v.pinyin && kr(v.pinyin) ? '<span class="kr">' + esc(kr(v.pinyin)) + '</span>' : '') + '</button>' +
-        (v.why ? '<p class="ai-why">' + esc(v.why) + '</p>' : '') + '</div>';
+        (v.why ? '<p class="ai-why">' + esc(v.why) + '</p>' : '') + aiFuHtml(r) + '</div>';
     }
-    if (r && r.err) return '<div class="ai-card err">' + esc(r.err) + '</div>';
+    if (r && r.err) return '<div class="ai-card err"><div class="ai-err-row"><span>' + esc(r.err) + '</span>' + (r.retry ? '<button class="ai-retry" data-act="ai-correct">다시 호출하기</button>' : '') + '</div></div>';
     return '<button class="ai-btn" data-act="ai-correct"><span>AI 선생님 호출</span><em>1크레딧</em><span class="ai-bal">남은 크레딧 ' + aiBal() + '</span></button>';
+  }
+  // 교정을 본 뒤 궁금한 점을 한 번만 물어볼 수 있어요(질문 → 답변, 이어서 묻기는 없어요)
+  function aiFuHtml(r) {
+    var f = r.fu;
+    if (f && f.busy) return '<div class="ai-fu"><div class="ai-fu-a busy"><span class="ai-dots"><i></i><i></i><i></i></span>선생님이 답을 쓰고 있어요…</div></div>';
+    if (f && f.ans) return '<div class="ai-fu"><div class="ai-fu-q">내 질문 · ' + esc(f.q) + '</div><div class="ai-fu-a">' + esc(f.ans).replace(/\n/g, '<br>') + '</div></div>';
+    if (r.fuOpen) {
+      return '<div class="ai-fu"><textarea id="ai-fu-in" class="ai-fu-in" rows="2" maxlength="150" placeholder="궁금한 점을 적어 주세요 (한 번만 물어볼 수 있어요)">' + esc(r.fuText || '') + '</textarea>' +
+        (f && f.err ? '<div class="ai-fu-err">' + esc(f.err) + '</div>' : '') +
+        '<div class="ai-fu-btns"><button class="ai-fu-cancel" data-act="ai-fu-close">취소</button><button class="ai-fu-send" data-act="ai-fu-send">질문하기</button></div></div>';
+    }
+    return '<button class="ai-fu-open" data-act="ai-fu-open">다른 질문이 있어요</button>';
+  }
+  function aiFuCur() { var s = state.s; return s && s.aiRes && s.aiFuKey ? s.aiRes[s.aiFuKey] : null; }
+  async function aiFuSend() {
+    var s = state.s, r = aiFuCur();
+    if (!s || !r || !r.res || (r.fu && (r.fu.busy || r.fu.ans))) return;
+    var q = String(r.fuText || '').trim();
+    if (q.length < 2) { toast('궁금한 점을 적어 주세요'); return; }
+    var cur = s.cur;
+    r.fu = { busy: true, q: q }; render();
+    try {
+      var res = await sb.functions.invoke('ai-coach', { body: { action: 'followup', q: q, zh: cur.zh, ko: cur.ko, answer: s.heard, natural: r.res.natural, why: r.res.why } });
+      if (res.error) throw res.error;
+      var d = res.data || {};
+      if (d.ok && d.result && d.result.answer) r.fu = { ans: d.result.answer, q: q };
+      else r.fu = { err: d.error === 'limit' ? '오늘 물어볼 수 있는 횟수를 다 썼어요.' : d.error === 'too_fast' ? '너무 빨리 눌렀어요. 잠시 후 다시 해 주세요.' : '선생님이 답하지 못했어요. 한 번 더 보내 주세요.' };
+    } catch (e) {
+      if (window.console) console.error(e);
+      r.fu = { err: '연결하지 못했어요. 한 번 더 보내 주세요.' };
+    }
+    if (state.s === s && state.screen === 'practice') render();
   }
   async function aiCorrect() {
     var s = state.s;
@@ -1178,10 +1210,11 @@
       if (r.error) throw r.error;
       var d = r.data || {};
       if (typeof d.monthly === 'number' && typeof d.topup === 'number' && state.ai) { state.ai.monthly = d.monthly; state.ai.topup = d.topup; }
-      s.aiRes[key] = d.ok ? { res: d.result } : { err: AI_ERR[d.error] || 'AI 교정을 하지 못했어요. 잠시 후 다시 해 주세요.' };
+      var noRetry = d.error === 'no_credit' || d.error === 'not_member' || d.error === 'auth';
+      s.aiRes[key] = d.ok ? { res: d.result } : noRetry ? { err: AI_ERR[d.error] } : { err: '선생님이 도착하지 않았어요.', retry: true };
     } catch (e) {
       if (window.console) console.error(e);
-      s.aiRes[key] = { err: '연결하지 못했어요. 잠시 후 다시 해 주세요.' };
+      s.aiRes[key] = { err: '선생님이 도착하지 않았어요.', retry: true };
       loadAi().then(function () { if (state.s === s) render(); });
     }
     if (state.s === s && state.screen === 'practice') render();
@@ -2453,7 +2486,7 @@
     }
   }
   // 키보드로 입력할 때: 위쪽 내용은 그대로 보이게 하고, 부가 버튼은 숨겨요
-  var KB_IDS = { typed: 1, 'ac-in': 1, 'ac-ko-in': 1, 'ac-topic': 1 };
+  var KB_IDS = { 'ai-fu-in': 1, typed: 1, 'ac-in': 1, 'ac-ko-in': 1, 'ac-topic': 1 };
   document.addEventListener('focusin', function (e) {
     var id = e.target && e.target.id;
     if (!id || !KB_IDS[id]) return;
@@ -2481,6 +2514,7 @@
       return;
     }
     if (t && t.id === 'ac-ko-in' && state.ac) { state.ac.koIn = String(t.value || ''); return; }
+    if (t && t.id === 'ai-fu-in') { var fr2 = aiFuCur(); if (fr2) fr2.fuText = String(t.value || ''); return; }
     if (t && t.id === 'ac-in' && state.ac) { state.ac.input = String(t.value || ''); return; }
     if (t && t.id === 'w-search') { wordsUi.q = String(t.value || ''); refreshWordsList(); return; }
     if (!t || t.id !== 'fb-text' || !state.fb) return;
@@ -3434,6 +3468,14 @@
       case 'hear-q': speak(s.cur.zh); break;
       case 'hear-a': speak(s.cur.a.zh); break;
       case 'ai-correct': aiCorrect(); break;
+      case 'ai-fu-open':
+        if (state.s && state.s.heard) {
+          var fk = state.s.cur.id + '|' + state.s.heard, fr = state.s.aiRes && state.s.aiRes[fk];
+          if (fr && fr.res && !(fr.fu && fr.fu.ans)) { state.s.aiFuKey = fk; fr.fuOpen = true; render(); setTimeout(function () { var ti = document.getElementById('ai-fu-in'); if (ti) { try { ti.focus(); ti.scrollIntoView({ block: 'center' }); } catch (e) { /* 무시 */ } } }, 120); }
+        }
+        break;
+      case 'ai-fu-close': { var fc = aiFuCur(); if (fc) { fc.fuOpen = false; fc.fu = null; render(); } break; }
+      case 'ai-fu-send': aiFuSend(); break;
       case 'hint': s.hint = true; render(); break;
       case 'reveal': s.revealed = true; render(); break;
       case 'reveal-result': s.revealed = true; render(); break;

@@ -1520,3 +1520,19 @@ body.kb .screen > .mic-area { padding-top: 8px; padding-bottom: calc(10px + var(
 .rd-tips li { font-size: 14px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
 .rd-tips b { font-size: 20px; } .rd-tips .py { font-weight: 800; color: var(--amber-ink); } .rd-tips em { font-style: normal; font-size: 13px; color: var(--ink-2); }
 .rd-note { margin: 8px 2px 0; font-size: 13px; line-height: 1.5; color: var(--ink-3); }
+
+/* v89: 선생님 호출 실패 재호출 / 다른 질문 */
+.ai-err-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.ai-err-row span { min-width: 0; font-weight: 700; }
+.ai-retry { flex: none; border: 0; border-radius: 999px; padding: 8px 14px; background: var(--y); color: var(--on-yellow, #1A2139); font: inherit; font-size: 13.5px; font-weight: 800; cursor: pointer; white-space: nowrap; }
+.ai-fu { margin-top: 12px; display: grid; gap: 8px; }
+.ai-fu-open { margin-top: 12px; width: 100%; height: 44px; border: 0; border-radius: 14px; background: var(--soft); color: var(--ink-2); font: inherit; font-size: 14.5px; font-weight: 800; cursor: pointer; }
+.ai-fu-in { width: 100%; box-sizing: border-box; padding: 12px 14px; border: 0; border-radius: 14px; background: var(--card); box-shadow: inset 0 0 0 1.5px var(--line); color: var(--ink); font: inherit; font-size: 15px; line-height: 1.5; resize: none; outline: none; }
+.ai-fu-in:focus { box-shadow: inset 0 0 0 2px var(--amber); }
+.ai-fu-btns { display: flex; gap: 8px; justify-content: flex-end; }
+.ai-fu-cancel, .ai-fu-send { height: 40px; padding: 0 18px; border: 0; border-radius: 999px; font: inherit; font-size: 14px; font-weight: 800; cursor: pointer; }
+.ai-fu-cancel { background: var(--soft); color: var(--ink-2); } .ai-fu-send { background: var(--navy, #1A2139); color: #fff; }
+.ai-fu-err { font-size: 13px; color: #E5484D; font-weight: 700; }
+.ai-fu-q { font-size: 13px; font-weight: 800; color: var(--ink-3); }
+.ai-fu-a { padding: 12px 14px; border-radius: 14px; background: var(--soft); color: var(--ink); font-size: 14.5px; line-height: 1.6; word-break: keep-all; }
+.ai-fu-a.busy { display: flex; align-items: center; gap: 10px; color: var(--ink-3); }
