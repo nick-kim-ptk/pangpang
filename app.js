@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v92';
+  var APP_VERSION = 'v98';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -187,6 +187,14 @@
             voices.filter(function (x) { return /^zh/i.test(x.lang); })[0];
     if (v) u.voice = v;
     if (onend) { var fired = false; u.onend = u.onerror = function () { if (!fired) { fired = true; onend(); } }; }
+    window.speechSynthesis.speak(u);
+  }
+  function speakKo(text, onend) {
+    if (!('speechSynthesis' in window)) { if (onend) onend(); return; }
+    window.speechSynthesis.cancel();
+    var u = new SpeechSynthesisUtterance(text); u.lang = 'ko-KR'; u.rate = 1.05;
+    var v = voices.filter(function (x) { return /^ko/i.test(x.lang); })[0]; if (v) u.voice = v;
+    var fired = false; u.onend = u.onerror = function () { if (!fired) { fired = true; if (onend) onend(); } };
     window.speechSynthesis.speak(u);
   }
   function stopSpeak() { if ('speechSynthesis' in window) window.speechSynthesis.cancel(); }
@@ -425,7 +433,7 @@
     try { Promise.resolve(sb.from('ai_fix').delete().eq('zh', natural)).catch(function () {}); } catch (e) { /* 무시 */ }
   }
   var fixUi = { seg: 'expr', n: {} };
-  function fixRowHtml(f) {
+  function fixRowHtml(f, noDel) {
     var x = f.kind === 'ask' || f.kind === 'say';
     return '<div class="fixrow"><button class="fixrow-main" data-act="say" data-text="' + esc(f.natural) + '">' +
       (x ? '<span class="xchip ' + f.kind + '">' + (f.kind === 'ask' ? '질문' : '대답') + '</span>' : '') +
@@ -433,10 +441,10 @@
       (f.pinyin ? '<span class="py">' + esc(f.pinyin) + '</span>' : '') + (f.ko ? '<span class="why">' + esc(f.ko) + '</span>' : '') +
       (f.mine ? '<span class="mine">내가 한 말 · ' + esc(f.mine) + '</span>' : '') +
       (f.why ? '<span class="why">' + esc(f.why) + '</span>' : '') + '</button>' +
-      '<button class="fixrow-x" data-act="ai-fix-del" data-t="' + esc(f.natural) + '" aria-label="삭제">' + I.close + '</button></div>';
+      (noDel ? '' : '<button class="fixrow-x" data-act="ai-fix-del" data-t="' + esc(f.natural) + '" aria-label="삭제">' + I.close + '</button>') + '</div>';
   }
-  // AI 대화 탭: '모은 표현'과 '고쳐 준 문장' 두 메뉴. 7개씩 보여 주고 더보기로 늘려요
-  function aiFixSection() {
+  // 전체 보기 화면: '모은 표현'과 '고쳐 준 문장' 두 메뉴. 7개씩 보여 주고 더보기로 늘려요
+  function aiFixFull() {
     var fx = aiFixes();
     var lists = {
       expr: fx.filter(function (f) { return f.kind === 'ask' || f.kind === 'say'; }),
@@ -449,10 +457,23 @@
       '<button role="tab" class="' + (seg === 'fix' ? 'on' : '') + '" data-act="ai-seg" data-k="fix">고쳐 준 문장<b>' + lists.fix.length + '</b></button></div>';
     var note = seg === 'expr' ? '대화에서 자주 묻고 답할 만한 말을 모았어요. 눌러서 소리를 듣고 따라 말해 보세요.' : 'AI 선생님이 고쳐 준 문장이에요. 눌러서 소리를 듣고 따라 말해 보세요.';
     var body = list.length ?
-      '<p class="hsk-note under-title">' + note + '</p><div class="fixlist">' + shown.map(fixRowHtml).join('') + '</div>' +
+      '<p class="hsk-note under-title">' + note + '</p><div class="fixlist">' + shown.map(function (f) { return fixRowHtml(f); }).join('') + '</div>' +
         (list.length > take ? '<button class="more-btn" data-act="ai-fix-more" data-k="' + seg + '">더보기 (' + Math.min(7, list.length - take) + '개 더)</button>' : '')
       : '<div class="aiempty">' + (seg === 'expr' ? '아직 모은 표현이 없어요.<br>AI와 대화하고 마치면 자주 쓸 표현이 여기에 모여요.' : '아직 고쳐 받은 문장이 없어요.<br>대화 중 어색한 말을 하면 AI 선생님이 고쳐 줘요.') + '</div>';
-    return '<div class="section-title" style="margin-top:28px">내가 모은 것</div>' + tabs + body;
+    return tabs + body;
+  }
+  // AI 대화 탭: 모은 표현 최근 5건만 보여 주고, 전체는 '전체 보기'에서 봐요
+  function aiFixSection() {
+    var list = aiFixes().filter(function (f) { return f.kind === 'ask' || f.kind === 'say'; }).slice(0, 5);
+    var head = '<div class="aisec-head"><div class="section-title" style="margin:0">내가 모은 것</div><button class="aisec-all" data-act="open-aiall">전체 보기</button></div>';
+    var body = list.length ?
+      '<p class="hsk-note under-title">대화에서 자주 묻고 답할 만한 말이에요. 눌러서 소리를 듣고 따라 말해 보세요.</p><div class="fixlist">' + list.map(function (f) { return fixRowHtml(f, true); }).join('') + '</div>'
+      : '<div class="aiempty">아직 모은 표현이 없어요.<br>AI와 대화하고 마치면 자주 쓸 표현이 여기에 모여요.</div>';
+    return '<div style="margin-top:28px"></div>' + head + body;
+  }
+  function viewAiAll() {
+    return '<div class="screen"><div class="topbar"><button class="icon-btn" data-act="back" aria-label="뒤로">' + I.back + '</button></div>' +
+      '<div class="scroll" style="padding-top:4px"><h1 class="big-title" style="margin-top:0">내가 모은 것</h1>' + aiFixFull() + '<div style="height:60px"></div></div></div>';
   }
   function aiOn() { return !!(sb && !isGuest() && !state.entErr && state.ai && isPro()); }
   function aiBal() { return state.ai ? state.ai.monthly + state.ai.topup : 0; }
@@ -527,7 +548,7 @@
 
   /* ---------- 화면 이동 ---------- */
   // 뒤로 가기: 폰의 뒤로 제스처·버튼(기록)과 화면 왼쪽 가장자리에서 오른쪽으로 미는 동작을 같이 처리해요
-  var SUBSCREEN = { pay: 1, privacy: 1, login: 1, intro: 1, practice: 1, quiz: 1, stats: 1, done: 1, hsk: 1, hskstudy: 1, feedback: 1, speed: 1, account: 1, coupon: 1, aicharge: 1, aichat: 1 };
+  var SUBSCREEN = { pay: 1, privacy: 1, login: 1, intro: 1, practice: 1, quiz: 1, stats: 1, done: 1, hsk: 1, hskstudy: 1, feedback: 1, speed: 1, account: 1, coupon: 1, aicharge: 1, aichat: 1, aiall: 1, prefs: 1 };
   var inSub = false, ignorePop = 0, backAnim = false;
   function syncHistory(screen) {
     try {
@@ -559,7 +580,8 @@
     else if (sc === 'privacy') go(state.privFrom === 'login' ? 'login' : 'tab');
     else if (sc === 'speed') { stopSpeed(); go('tab'); }
     else if (sc === 'done') go('tab', { tab: 'home' });
-    else if (sc === 'intro' || sc === 'stats' || sc === 'feedback' || sc === 'account' || sc === 'coupon' || sc === 'aicharge') go('tab');
+    else if (sc === 'feedback' || sc === 'account' || sc === 'coupon') go('prefs');
+    else if (sc === 'intro' || sc === 'stats' || sc === 'aicharge' || sc === 'aiall' || sc === 'prefs') go('tab');
   }
   window.addEventListener('popstate', function () {
     if (ignorePop > 0) { ignorePop--; return; }
@@ -769,8 +791,10 @@
     ["작은 꾸준함이,", "너만의 실력이 되도록"],
     ["느려도 괜찮아,", "너만의 속도로."]
   ];
-  var greetIdx = Math.floor(Math.random() * GREETS.length);
-  function pickGreet() { var n = Math.floor(Math.random() * (GREETS.length - 1)); greetIdx = n >= greetIdx ? n + 1 : n; }   // 직전과 다른 멘트
+  // 멘트는 하루에 한 번만 바뀌어요(날짜로 정해서, 하루 종일 같은 멘트가 나와요)
+  function greetFor(d) { var h = 0, k = dayStr(d); for (var i = 0; i < k.length; i++) h = (h * 31 + k.charCodeAt(i)) >>> 0; return h % GREETS.length; }
+  var greetIdx = greetFor(new Date());
+  function refreshGreet() { greetIdx = greetFor(new Date()); }
   function viewHome() {
     var next = nextLesson();
     var due = dueRows().length;
@@ -779,8 +803,7 @@
 
     var nick = nickname();
     var gl = Math.max(GREETS[greetIdx][0].length, GREETS[greetIdx][1].length);   // 두 줄이 한 줄씩 들어가도록 글자 크기를 길이에 맞춰요
-    var head = '<div class="home-greet"><h1 style="font-size:min(32px, calc((100vw - 56px) / ' + (gl * 0.95).toFixed(1) + '))">' + esc(GREETS[greetIdx][0]) + '<br>' + esc(GREETS[greetIdx][1]) +
-      (st > 0 ? ' <span class="chip y streak-chip">' + st + '일 연속</span>' : '') + '</h1></div>';
+    var head = '<div class="home-greet"><h1 style="font-size:min(32px, calc((100vw - 56px) / ' + (gl * 0.95).toFixed(1) + '))">' + esc(GREETS[greetIdx][0]) + '<br>' + esc(GREETS[greetIdx][1]) + '</h1></div>';
 
     var ans = todayAnswers(), goal = state.profile.goal;
     // 목표를 넘기면 150%처럼 그대로 보여 주고, 막대도 목표선(100%)을 넘어 계속 길어져요 (최대 300%까지)
@@ -811,7 +834,7 @@
 
     var nextTarget = done ? next : (next ? LESSONS[LESSONS.indexOf(next) + 1] : null);
     var nextCard = nextTarget ? '<div class="next-card"><span class="nc-num">' + (LESSONS.indexOf(nextTarget) + 1) + '</span>' +
-      '<div class="nc-txt"><div class="nc-lab">' + (done ? '다음 레슨' : '그다음 레슨') + '</div><b>' + esc(nextTarget.title) + '</b><div class="s">' + esc(nextTarget.sub) + '</div></div>' +
+      '<div class="nc-txt"><div class="nc-lab">' + '다음 레슨' + '</div><b>' + esc(nextTarget.title) + '</b><div class="s">' + esc(nextTarget.sub) + '</div></div>' +
       '<button class="btn sm" data-act="open-lesson" data-id="' + nextTarget.id + '">' + (done ? '배우기' : '미리 보기') + '</button></div>' : '';
 
     var reviewCard = due > 0 ? '<div class="review-card"><div class="lead">' + mascot('laptop') +
@@ -856,7 +879,7 @@
       var locked = lessonLocked(l.id);
       return '<li><button class="item' + (isDone && !locked ? '' : ' off') + (locked ? ' locked' : '') + '" data-act="open-lesson" data-id="' + l.id + '">' +
         '<span class="num">' + (i + 1) + '</span><span class="txt"><div class="t">' + esc(l.title) + '</div><div class="s">' + esc(l.sub) + '</div></span>' +
-        (locked ? '<span class="chip lockchip">' + I.lock + 'PRO</span>' : isDone ? '<span class="chip green">' + I.check + '완료</span>' : '<span class="chips-end">' + (next && next.id === l.id ? '<span class="chip y">NEW</span>' : '') +
+        (locked ? '<span class="chip lockchip">' + I.lock + 'PRO</span>' : isDone ? '<span class="chip green">' + I.check + '완료</span>' : '<span class="chips-end">' +
           (pc > 0 ? '<span class="chip soft pct">' + pc + '%</span>' : '') + '</span>') +
         '</button></li>';
     }).join('');
@@ -1892,20 +1915,32 @@
     var on = state.profile.input === v;
     return '<button class="radio-o' + (on ? ' on' : '') + '" role="radio" aria-checked="' + on + '" data-act="set-input" data-v="' + v + '"><i></i><span><b>' + t + '</b><small>' + sub + '</small></span></button>';
   }
+  // 마이페이지에는 자주 바꾸는 세 가지만 두고, 나머지는 '환경 설정' 화면에서 관리해요
   function settingsCard() {
     var p = state.profile;
     return '<div class="section-title" style="margin-top:24px">설정</div><div class="set-card">' +
       '<div class="set-row"><div class="set-t">하루 목표</div>' + seg('set-goal', p.goal, [[20, '20'], [50, '50'], [100, '100']]) + '</div>' +
       '<div class="set-row col"><div class="set-t">답하는 방법</div><div class="radio-list" role="radiogroup" aria-label="답하는 방법">' +
         inputOpt('voice', '말로 답하기', '마이크에 대고 말해요 · 기본') + inputOpt('type', '키보드로 답하기 · 야외 모드', '소리 내기 어려운 곳에서 글자로 입력해요') + '</div></div>' +
-      '<div class="set-row"><div class="set-t">효과음·진동</div>' + seg('set-sound', p.sound ? 'on' : 'off', [['on', '켜짐'], ['off', '꺼짐']]) + '</div>' +
       '<div class="set-row"><div class="set-t">한국어 발음 표기</div>' + seg('set-kr', p.kr ? 'on' : 'off', [['on', '켜짐'], ['off', '꺼짐']]) + '</div>' +
-      '<div class="set-row"><div class="set-t">화면</div>' + seg('set-theme', p.theme, [['auto', '자동'], ['light', '라이트'], ['dark', '다크']]) + '</div>' +
-      (typeof settingsExtra === 'function' ? settingsExtra() : '') +
-      (sb ? '<div class="set-row"><div class="set-t">쿠폰 등록</div><button class="pill-sm" data-act="open-coupon">입력</button></div>' : '') +
-      (sb && !isGuest() ? '<div class="set-row"><div class="set-t">계정 관리</div><button class="pill-sm" data-act="open-account">열기</button></div>' : '') +
-      '<div class="set-row"><div class="set-t">의견 보내기</div><button class="pill-sm" data-act="open-feedback">보내기</button></div>' +
-      '<div class="set-row"><div class="set-t">앱 버전</div><div class="set-v">' + APP_VERSION + '</div></div></div>';
+      '<button class="set-row set-link" data-act="open-prefs"><span class="set-t">환경 설정</span><span class="set-arrow" aria-hidden="true">›</span></button></div>';
+  }
+  function viewPrefs() {
+    var p = state.profile;
+    var extra = typeof settingsExtra === 'function' ? settingsExtra() : '';
+    return '<div class="screen"><div class="topbar"><button class="icon-btn" data-act="back" aria-label="뒤로">' + I.back + '</button></div>' +
+      '<div class="scroll" style="padding-top:4px"><h1 class="big-title" style="margin-top:0">환경 설정</h1>' +
+      '<div class="section-title" style="margin-top:8px">소리 · 화면</div><div class="set-card">' +
+        '<div class="set-row"><div class="set-t">효과음·진동</div>' + seg('set-sound', p.sound ? 'on' : 'off', [['on', '켜짐'], ['off', '꺼짐']]) + '</div>' +
+        '<div class="set-row"><div class="set-t">화면</div>' + seg('set-theme', p.theme, [['auto', '자동'], ['light', '라이트'], ['dark', '다크']]) + '</div></div>' +
+      (extra ? '<div class="section-title" style="margin-top:24px">알림 · 앱 설치</div><div class="set-card">' + extra + '</div>' : '') +
+      ((sb ? 1 : 0) ? '<div class="section-title" style="margin-top:24px">이용권 · 계정</div><div class="set-card">' +
+        '<div class="set-row"><div class="set-t">쿠폰 등록</div><button class="pill-sm" data-act="open-coupon">입력</button></div>' +
+        (!isGuest() ? '<div class="set-row"><div class="set-t">계정 관리</div><button class="pill-sm" data-act="open-account">열기</button></div>' : '') + '</div>' : '') +
+      '<div class="section-title" style="margin-top:24px">도움말</div><div class="set-card">' +
+        '<div class="set-row"><div class="set-t">의견 보내기</div><button class="pill-sm" data-act="open-feedback">보내기</button></div>' +
+        '<div class="set-row"><div class="set-t">앱 버전</div><div class="set-v">' + APP_VERSION + '</div></div></div>' +
+      '<div style="height:40px"></div></div></div>';
   }
   function viewMe() {
     var learned = learnedLessons();
@@ -2031,6 +2066,8 @@
     else if (state.screen === 'account') html = viewAccount();
     else if (state.screen === 'coupon') html = viewCoupon();
     else if (state.screen === 'aicharge') html = viewAiCharge();
+    else if (state.screen === 'aiall') html = viewAiAll();
+    else if (state.screen === 'prefs') html = viewPrefs();
     else if (state.screen === 'aichat') html = viewAiChat();
     else if (state.screen === 'pay') html = viewPay();
     else if (state.screen === 'speed') html = viewSpeed();
@@ -2430,7 +2467,7 @@
       if (!d.ok) { toast(COUPON_ERR[d.error] || '쿠폰을 등록하지 못했어요'); return; }
       await loadEnt();
       state.payWhy = null;
-      go('tab');
+      go('prefs');
       toast('쿠폰이 등록됐어요. ' + fmtDate(d.expires_at) + '까지 이용할 수 있어요');
     } catch (e) { if (window.console) console.error(e); toast('처리하지 못했어요. 잠시 후 다시 시도해 주세요'); }
   }
@@ -2745,7 +2782,6 @@
       state.progress[it.id] = row; store.saveProgress([row]);
     }
     render();
-    setTimeout(function () { if (state.z === z && state.screen === 'quiz') speak(it.zh); }, 250);
   }
   function quizNext() {
     var z = state.z;
@@ -2792,9 +2828,11 @@
     if (z.picked !== null && z.kind === 'listen') {
       reveal = '<div class="qz-reveal"><div class="zh">' + esc(it.zh) + '</div><div class="py">' + esc(it.py) + '</div><div class="kr">' + esc(kr(it.py)) + '</div></div>';
     }
+    var verdict = z.picked !== null
+      ? '<div class="qz-verdict ' + (it.options[z.picked].ok ? 'ok' : 'no') + '" role="status">' + (it.options[z.picked].ok ? '맞았어요!' : '틀렸어요!') + '</div>' : '';
     var foot = z.picked !== null
       ? '<div class="footer"><button class="btn ' + (it.options[z.picked].ok ? 'green' : '') + '" data-act="quiz-next">' + (z.i + 1 >= z.items.length ? '결과 보기' : '다음') + '</button></div>' : '';
-    return '<div class="screen">' + top + '<div class="qz-wrap">' + prompt + opts + reveal +
+    return '<div class="screen">' + top + '<div class="qz-wrap">' + prompt + verdict + opts + reveal +
       (z.picked !== null && z.combo >= 2 ? '<div class="qz-combo">연속 ' + z.combo + '번 정답</div>' : '') + '</div>' + foot + '</div>';
   }
 
@@ -3314,6 +3352,8 @@
       case 'open-account': go('account'); break;
       case 'open-coupon': go('coupon'); break;
       case 'open-aicharge': go('aicharge'); break;
+      case 'open-aiall': go('aiall'); break;
+      case 'open-prefs': go('prefs'); break;
       case 'ai-why': aiWhyLoad(); break;
       case 'ac-open': state.ac = { mode: 'pick', topic: '' }; go('aichat'); break;
       case 'ac-topic': if (state.ac) { state.ac.topic = AC_TOPICS[+el.getAttribute('data-i')] || ''; render(); } break;
@@ -3401,7 +3441,7 @@
         break;
       case 'tab':
         if (id === 'me' && isGuest()) { requireLogin('me', function () { go('tab'); }); break; }
-        if (id === 'home' && state.tab !== 'home') pickGreet();
+        if (id === 'home' && state.tab !== 'home') refreshGreet();
         state.editNick = false; state.tab = id; render(); window.scrollTo(0, 0);
         refreshQuiet();
         break;
@@ -3456,7 +3496,7 @@
       case 'open-feedback': go('feedback', { fb: { cat: 'idea', text: '', sending: false, sent: false } }); break;
       case 'fb-cat': if (state.fb) { state.fb.cat = el.getAttribute('data-v'); render(); } break;
       case 'fb-send': sendFeedback(); break;
-      case 'fb-done': go('tab'); break;
+      case 'fb-done': go('prefs'); break;
       case 'focus-tag': startFocus(id); break;
       case 'review-lesson': startLessonSession('review', id); break;
 

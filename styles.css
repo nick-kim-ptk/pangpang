@@ -1541,3 +1541,25 @@ body.kb .screen > .mic-area { padding-top: 8px; padding-bottom: calc(10px + var(
 /* v92: 인사 멘트는 항상 두 줄, 연속 일수 칩은 아래 줄 */
 .home-greet h1 { white-space: nowrap; }
 .home-greet h1 .streak-chip { display: table; margin: 8px 0 0; }
+
+/* v93: AI 대화 탭 '내가 모은 것' 머리줄 */
+.aisec-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+.aisec-all { flex: none; border: 0; border-radius: 999px; padding: 7px 14px; background: var(--soft); color: var(--ink); font: inherit; font-size: 13.5px; font-weight: 800; cursor: pointer; }
+
+/* v94: 마이페이지 '환경 설정' 이동 줄 */
+.set-row.set-link { width: 100%; border: 0; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.set-arrow { font-size: 22px; line-height: 1; color: var(--ink-3); font-weight: 700; }
+
+/* v96 퀴즈 결과 말풍선 */
+.qz-verdict { text-align: center; font-weight: 800; font-size: 20px; margin: 4px 0 12px; animation: qzv .25s ease-out; }
+.qz-verdict.ok { color: #16a34a; }
+.qz-verdict.no { color: #dc2626; }
+@keyframes qzv { from { transform: scale(.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+/* v98 퀴즈 결과 글자 효과 (소리는 짧은 효과음만) */
+.qz-verdict { font-size: 26px; letter-spacing: -0.5px; animation: none; }
+.qz-verdict.ok { animation: qzpop .55s cubic-bezier(.2,1.6,.4,1) both; }
+.qz-verdict.no { animation: qzshake .45s ease-in-out both; }
+@keyframes qzpop { 0% { transform: scale(.3) rotate(-8deg); opacity: 0; } 60% { transform: scale(1.25) rotate(3deg); opacity: 1; } 100% { transform: scale(1) rotate(0); } }
+@keyframes qzshake { 0% { transform: translateY(-10px); opacity: 0; } 25% { transform: translateX(-8px); opacity: 1; } 50% { transform: translateX(8px); } 75% { transform: translateX(-4px); } 100% { transform: translateX(0); } }
+@media (prefers-reduced-motion: reduce) { .qz-verdict.ok, .qz-verdict.no { animation: none; } }
