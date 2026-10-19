@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v86';
+  var APP_VERSION = 'v87';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -1485,8 +1485,8 @@
     var r = a.rep, res = r.res;
     return '<div class="ac-rep"><div class="ac-rep-l">이 문장을 따라 말해 보세요</div>' +
       '<div class="ac-rep-card"><div class="ac-rep-t"><div class="zh">' + esc(r.zh) + '</div>' + (r.py ? '<div class="py">' + esc(r.py) + '</div><div class="kr">' + esc(kr(r.py)) + '</div>' : '') + (r.ko ? '<div class="acfix-k">' + esc(r.ko) + '</div>' : '') + '</div>' +
-      '<button class="round-btn" data-act="say" data-text="' + esc(r.zh) + '" aria-label="듣기">' + I.spk + '</button></div>' +
-      (res ? '<div class="ac-rep-res ' + res + '"><b>' + (res === 'ok' ? '잘했어요!' : '조금 달랐어요') + '</b><span>들린 말 · ' + esc(r.heard) + '</span></div>' : '') +
+      '<div class="rep-spk"><button class="round-btn" data-act="say" data-text="' + esc(r.zh) + '" aria-label="듣기">' + I.spk + '</button><button class="rep-slow" data-act="say-slow" data-text="' + esc(r.zh) + '" aria-label="천천히 듣기">🐢 천천히</button></div></div>' +
+      (res ? '<div class="ac-rep-res ' + res + '"><b>' + (res === 'ok' ? '잘했어요!' : '조금 달랐어요') + '</b><span>들린 말 · ' + esc(r.heard) + '</span></div>' + (res === 'no' ? acRepDiffHtml(r) + (r.tries >= 2 ? '<p class="rd-note">인식기가 완벽하지 않아서, 맞게 말해도 다르게 들릴 수 있어요. 천천히 듣고 또박또박 따라 해 보세요. 충분히 했다면 넘어가도 괜찮아요.</p>' : '') : '') : '') +
       (res === 'ok' ? '' : acMicBox(a, '버튼을 누른 채로 말하고, 끝나면 손을 떼세요', 'zh')) +
       '<div class="ac-rep-btns">' + (res ? '<button class="btn gray" data-act="ac-rep-again">다시 해 보기</button>' : '') +
       '<button class="btn' + (res === 'ok' ? '' : ' gray') + '" data-act="ac-rep-close">' + (a.pending ? '다음 대화로' : a.koSend ? (res === 'ok' ? '이 말로 대화하기' : '다른 문장 보기') : '대화로 돌아가기') + '</button></div></div>';
@@ -1660,12 +1660,60 @@
   function acRepDone(text) {
     var a = state.ac;
     if (!a || !a.rep) return;
-    var T = Grade.normalize(a.rep.zh), H = Grade.normalize(text), L = [], i, j;
+    var alts = Array.isArray(text) ? text : [text], best = null, k;
+    for (k = 0; k < alts.length; k++) {   // 인식기가 후보를 여러 개 주면 가장 잘 맞는 걸로 봐요
+      var d = acDiff(a.rep.zh, alts[k]);
+      if (!best || d.ratio > best.d.ratio) best = { d: d, t: alts[k] };
+    }
+    var T = Grade.normalize(a.rep.zh), n = T.length, need = n >= 6 ? 0.7 : 0.8;
+    var ok = n > 0 && best.d.ratio >= need && Grade.normalize(best.t).length <= n * 1.6;
+    a.rep.heard = best.t; a.rep.res = ok ? 'ok' : 'no'; a.rep.marks = best.d.marks; a.rep.tries = ok ? 0 : (a.rep.tries || 0) + 1; a.live = '';
+    render(); acScroll();
+  }
+  // 목표 문장과 들린 말을 글자 단위로 비교해요(어디가 달랐는지 보여 주려고)
+  function acDiff(target, heard) {
+    var T = Grade.normalize(target), H = Grade.normalize(heard), L = [], i, j;
     for (i = 0; i <= T.length; i++) { L.push([]); for (j = 0; j <= H.length; j++) L[i].push(0); }
     for (i = T.length - 1; i >= 0; i--) for (j = H.length - 1; j >= 0; j--) L[i][j] = T.charAt(i) === H.charAt(j) ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
-    var ok = T.length > 0 && L[0][0] / T.length >= 0.8 && H.length <= T.length * 1.6;
-    a.rep.heard = text; a.rep.res = ok ? 'ok' : 'no'; a.live = '';
-    render(); acScroll();
+    var marks = []; i = 0; j = 0;
+    while (i < T.length) {
+      if (j < H.length && T.charAt(i) === H.charAt(j) && L[i][j] === L[i + 1][j + 1] + 1) { marks.push(true); i++; j++; }
+      else if (j < H.length && L[i][j + 1] >= L[i + 1][j]) j++;
+      else { marks.push(false); i++; }
+    }
+    return { ratio: T.length ? L[0][0] / T.length : 0, marks: marks };
+  }
+  var TONE_TIP = { 1: '1성 · 높고 평평하게', 2: '2성 · 쭉 올려요', 3: '3성 · 푹 내렸다 올려요', 4: '4성 · 위에서 뚝 떨어져요', 5: '경성 · 가볍고 짧게' };
+  function pyTone(syl) {
+    if (/[āēīōūǖ]/i.test(syl)) return 1;
+    if (/[áéíóúǘ]/i.test(syl)) return 2;
+    if (/[ǎěǐǒǔǚ]/i.test(syl)) return 3;
+    if (/[àèìòùǜ]/i.test(syl)) return 4;
+    return 5;
+  }
+  // 놓친 글자를 색으로 보여 주고, 그 글자의 병음과 성조 요령을 알려 줘요
+  function acRepDiffHtml(r) {
+    var chars = [], k = 0, miss = [];
+    var syl = String(r.py || '').replace(/[，。！？、,.!?;；:：…—\-]/g, ' ').split(/\s+/).filter(Boolean);
+    var hz = [];
+    String(r.zh).split('').forEach(function (ch) { if (Grade.normalize(ch).length) hz.push(ch); });
+    var map = syl.length === hz.length;
+    var hi = 0;
+    String(r.zh).split('').forEach(function (ch) {
+      var nl = Grade.normalize(ch).length;
+      if (!nl) { chars.push('<span>' + esc(ch) + '</span>'); return; }
+      var good = true, q;
+      for (q = 0; q < nl; q++) { if (r.marks && r.marks[k + q] === false) good = false; }
+      k += nl;
+      if (!good) miss.push({ ch: ch, py: map ? syl[hi] : '' });
+      hi++;
+      chars.push('<span class="' + (good ? 'dg' : 'db') + '">' + esc(ch) + '</span>');
+    });
+    var tips = miss.slice(0, 3).map(function (m) {
+      return '<li><b class="zh">' + esc(m.ch) + '</b>' + (m.py ? ' <span class="py">' + esc(m.py) + '</span> <em>' + TONE_TIP[pyTone(m.py)] + '</em>' : '') + '</li>';
+    }).join('');
+    return '<div class="rep-diff"><div class="rd-t zh">' + chars.join('') + '</div>' +
+      (miss.length ? '<div class="rd-l">빨간 글자를 다시 말해 보세요</div><ul class="rd-tips">' + tips + '</ul>' : '') + '</div>';
   }
   function acMicDown(kind) {
     kind = kind === 'ko' ? 'ko' : 'zh';
@@ -1675,18 +1723,18 @@
     if (!SR) return;
     stopSpeak();
     acHolding = true;
-    var r = new SR(), got = '', errCode = '';
+    var r = new SR(), got = '', errCode = '', alts = [];
     if (kind === 'ko' && a.rep) { acHolding = false; return; }
-    a.lk = kind; acRec = r; r.lang = kind === 'ko' ? 'ko-KR' : 'zh-CN'; r.interimResults = true; r.continuous = false; r.maxAlternatives = 1;
+    a.lk = kind; acRec = r; r.lang = kind === 'ko' ? 'ko-KR' : 'zh-CN'; r.interimResults = true; r.continuous = false; r.maxAlternatives = a.rep ? 5 : 1;
     var live = function () { var m = document.getElementById(kind === 'ko' ? 'ac-mic-ko' : 'ac-mic'), lv = document.getElementById('ac-live'); if (m) m.classList.toggle('on', !!a.listening); if (lv) { lv.textContent = a.listening ? (a.live || '듣고 있어요…') : ''; lv.classList.remove('hint'); lv.classList.toggle('wait', !a.live); } };
     r.onstart = function () { a.listening = true; a.live = ''; live(); if (!acHolding) { try { r.stop(); } catch (e) { /* 무시 */ } } };
-    r.onresult = function (e) { got = e.results[e.results.length - 1][0].transcript; a.live = got; live(); };
+    r.onresult = function (e) { var rs = e.results[e.results.length - 1]; got = rs[0].transcript; alts = []; for (var z = 0; z < rs.length; z++) alts.push(rs[z].transcript); a.live = got; live(); };
     r.onerror = function (e) { errCode = e.error || 'error'; };
     r.onend = function () {
       if (acRec === r) acRec = null;
       a.listening = false; acHolding = false;
       if (state.ac !== a || state.screen !== 'aichat') return;
-      if (got) { a.live = ''; if (kind === 'ko') { if (!a.ko) a.ko = { opts: null, heard: '', busy: false }; acKoRun(got); } else if (a.rep) acRepDone(got); else acSend(got); return; }
+      if (got) { a.live = ''; if (kind === 'ko') { if (!a.ko) a.ko = { opts: null, heard: '', busy: false }; acKoRun(got); } else if (a.rep) acRepDone(alts.length ? alts : got); else acSend(got); return; }
       a.live = '';
       if (errCode === 'not-allowed' || errCode === 'service-not-allowed') toast('마이크 권한을 허용해 주세요');
       else if (errCode === 'network') toast('음성 인식 서버에 연결하지 못했어요');
@@ -3223,6 +3271,7 @@
           if (ko_o) { acStop(); state.ac.koOpts = state.ac.ko.opts; state.ac.koHeard = state.ac.ko.heard; state.ac.ko = null; state.ac.koSend = true; state.ac.rep = { zh: ko_o.zh, py: ko_o.py, ko: ko_o.ko, heard: '', res: null }; render(); acScroll(); setTimeout(function () { speak(ko_o.zh, 0.8); }, 200); }
         }
         break;
+      case 'say-slow': speak(el.getAttribute('data-text'), 0.55); break;
       case 'ac-rep-again': if (state.ac && state.ac.rep) { state.ac.rep.res = null; state.ac.rep.heard = ''; render(); acScroll(); } break;
       case 'ac-rep-close':
         if (state.ac && state.ac.koSend) {
