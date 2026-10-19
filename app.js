@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v74';
+  var APP_VERSION = 'v75';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -68,6 +68,7 @@
       speedUsed: Math.max(0, parseInt(p.speedUsed, 10) || 0),
       sound: p.sound !== false,
       kr: p.kr !== false,
+      input: p.input === 'type' ? 'type' : 'voice',
       hsk3: normHsk(p.hsk3),
       dlg: (Array.isArray(p.dlg) ? p.dlg : []).filter(function (x) { return typeof x === 'string'; }).slice(0, 50),
       favs: (Array.isArray(p.favs) ? p.favs : []).filter(function (x) { return typeof x === 'string'; }).slice(0, 100)
@@ -218,7 +219,7 @@
     state.progress = {}; state.done = {}; state.daily = {};
     if (!keepProfile) {
       var meta = (state.user && state.user.user_metadata) || {};
-      state.profile = normProfile({ nickname: meta.nickname, goal: meta.goal, theme: meta.theme, remind: meta.remind, remindOn: meta.remindOn, minuteOn: meta.minuteOn, speedUsed: meta.speedUsed, sound: meta.sound, kr: meta.kr, favs: meta.favs, dlg: meta.dlg, hsk3: meta.hsk3 });
+      state.profile = normProfile({ nickname: meta.nickname, goal: meta.goal, theme: meta.theme, remind: meta.remind, remindOn: meta.remindOn, minuteOn: meta.minuteOn, speedUsed: meta.speedUsed, sound: meta.sound, kr: meta.kr, input: meta.input, favs: meta.favs, dlg: meta.dlg, hsk3: meta.hsk3 });
       applyTheme();
     }
     (res[0].data || []).forEach(function (r) { state.progress[r.qid] = r; });
@@ -290,7 +291,7 @@
       persistLocal();
       if (!sb || isGuest()) return;
       var p = state.profile;
-      var res = await sb.auth.updateUser({ data: { nickname: p.nickname, goal: p.goal, theme: p.theme, remind: p.remind, remindOn: p.remindOn, minuteOn: p.minuteOn, speedUsed: p.speedUsed, sound: p.sound, kr: p.kr, favs: p.favs, dlg: p.dlg, hsk3: p.hsk3 } });
+      var res = await sb.auth.updateUser({ data: { nickname: p.nickname, goal: p.goal, theme: p.theme, remind: p.remind, remindOn: p.remindOn, minuteOn: p.minuteOn, speedUsed: p.speedUsed, sound: p.sound, kr: p.kr, input: p.input, favs: p.favs, dlg: p.dlg, hsk3: p.hsk3 } });
       if (res.error) saveFailed(res.error); else if (res.data && res.data.user) state.user = res.data.user;
     }),
     saveDaily: tracked(async function (row) {
@@ -1124,7 +1125,7 @@
       return '<div class="mic-area">' +
         '<div class="type-row"><input id="typed" class="zh" lang="zh-CN" inputmode="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="중국어로 입력" aria-label="중국어로 답 입력">' +
         '<button class="btn" data-act="submit-typed">확인</button></div>' +
-        (window.SpeechRecognition || window.webkitSpeechRecognition ? '<button class="link-btn" data-act="voice-mode">음성으로 답하기</button>' : '') + '</div>';
+        (window.SpeechRecognition || window.webkitSpeechRecognition ? '<button class="link-btn" data-act="voice-mode">' + (state.profile.input === 'type' ? '이번만 음성으로 답하기' : '음성으로 답하기') + '</button>' : '') + '</div>';
     }
     return '<div class="mic-area">' +
       '<div id="live" class="live' + (s.listening ? (s.live ? '' : ' wait') : ' hint') + '">' + esc(s.listening ? (s.live || '듣고 있어요…') : hint) + '</div>' +
@@ -1389,7 +1390,7 @@
       '<div class="ai-hero-art">' + ppm('ai', 124) + '</div>' +
       '<div class="ai-hero-txt"><span class="ai-hero-chip">대표 기능</span><h2>AI 자유 대화</h2>' +
       '<p>AI 선생님과 부담 없이 편하게 대화를 주고 받을 수 있어요.</p></div>' +
-      '<div class="ai-hero-foot"><span class="ai-hero-bal">남은 크레딧 ' + aiBal() + '</span><button class="ai-hero-go" data-act="ac-open">대화 시작하기</button></div></div>';
+      '<div class="ai-hero-foot"><button class="ai-hero-go" data-act="ac-open">대화 시작하기</button></div></div>';
   }
   function acStop() {
     acHolding = false;
@@ -1435,8 +1436,12 @@
   function acHasSR() { return !!(window.SpeechRecognition || window.webkitSpeechRecognition); }
   function acMicBox(a, hint, kind) {
     kind = kind || 'zh';
-    if (!acHasSR()) {   // 음성 인식이 안 되는 브라우저에서만 입력창을 보여요
-      return '<div class="ac-in"><input id="ac-in" lang="zh-CN" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="중국어로 입력해 주세요" value="' + esc(a.input || '') + '"' + (a.busy ? ' disabled' : '') + '>' +
+    if (!acHasSR() || state.profile.input === 'type') {   // 음성 인식이 안 되거나 야외 모드면 입력창을 보여요
+      if (kind === 'ko') {
+        return '<div class="ac-in"><input id="ac-ko-in" autocomplete="off" spellcheck="false" placeholder="하고 싶은 말을 한국어로 써 주세요" value="' + esc(a.koIn || '') + '"' + (a.busy ? ' disabled' : '') + '>' +
+          '<button class="btn ac-send" data-act="ac-ko-send"' + (a.busy ? ' disabled' : '') + '>찾기</button></div>';
+      }
+      return (kind === 'both' && !a.rep ? '<div class="ac-kolink"><button class="link-btn" data-act="ac-ko">중국어로 어떻게 말할지 모르겠어요</button></div>' : '') + '<div class="ac-in"><input id="ac-in" lang="zh-CN" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="중국어로 입력해 주세요" value="' + esc(a.input || '') + '"' + (a.busy ? ' disabled' : '') + '>' +
         '<button class="btn ac-send" data-act="ac-send"' + (a.busy ? ' disabled' : '') + '>' + (a.rep ? '확인' : '보내기') + '</button></div>';
     }
     var dis = a.busy ? ' disabled' : '';
@@ -1732,10 +1737,16 @@
       return '<button data-act="' + act + '" data-v="' + o[0] + '" class="' + (String(cur) === String(o[0]) ? 'on' : '') + '">' + o[1] + '</button>';
     }).join('') + '</div>';
   }
+  function inputOpt(v, t, sub) {
+    var on = state.profile.input === v;
+    return '<button class="radio-o' + (on ? ' on' : '') + '" role="radio" aria-checked="' + on + '" data-act="set-input" data-v="' + v + '"><i></i><span><b>' + t + '</b><small>' + sub + '</small></span></button>';
+  }
   function settingsCard() {
     var p = state.profile;
     return '<div class="section-title" style="margin-top:24px">설정</div><div class="set-card">' +
       '<div class="set-row"><div class="set-t">하루 목표</div>' + seg('set-goal', p.goal, [[20, '20'], [50, '50'], [100, '100']]) + '</div>' +
+      '<div class="set-row col"><div class="set-t">답하는 방법</div><div class="radio-list" role="radiogroup" aria-label="답하는 방법">' +
+        inputOpt('voice', '말로 답하기', '마이크에 대고 말해요 · 기본') + inputOpt('type', '키보드로 답하기 · 야외 모드', '소리 내기 어려운 곳에서 글자로 입력해요') + '</div></div>' +
       '<div class="set-row"><div class="set-t">효과음·진동</div>' + seg('set-sound', p.sound ? 'on' : 'off', [['on', '켜짐'], ['off', '꺼짐']]) + '</div>' +
       '<div class="set-row"><div class="set-t">한국어 발음 표기</div>' + seg('set-kr', p.kr ? 'on' : 'off', [['on', '켜짐'], ['off', '꺼짐']]) + '</div>' +
       '<div class="set-row"><div class="set-t">화면</div>' + seg('set-theme', p.theme, [['auto', '자동'], ['light', '라이트'], ['dark', '다크']]) + '</div>' +
@@ -2028,7 +2039,7 @@
       return vs[Math.floor(Math.random() * vs.length)];
     });
     state.sp = { items: items, i: 0, right: 0, combo: 0, best: 0, phase: 'ready', showKo: false, marks: [], tok: 0, ok: false, heard: '', opts: null,
-      voice: !!(window.SpeechRecognition || window.webkitSpeechRecognition), before: todayAnswers(), lessons: learnedLessons().length };
+      voice: !!(window.SpeechRecognition || window.webkitSpeechRecognition) && state.profile.input !== 'type', before: todayAnswers(), lessons: learnedLessons().length };
     go('speed');
   }
   function speedAsk() {
@@ -2140,7 +2151,7 @@
         '<h1 class="big-title">스피드 퀴즈</h1>' +
         '<p>끝낸 레슨에서 랜덤으로 질문이 나와요.<br>' + SPEED_SEC + '초 안에 바로 대답하면 정답이에요!</p>' +
         '<div class="chips"><span class="chip soft">' + sp.lessons + '개 레슨에서</span><span class="chip soft">' + n + '문제</span><span class="chip y">' + SPEED_SEC + '초</span></div>' +
-        (sp.voice ? '' : '<p class="sq-note">이 기기는 말하기 인식을 지원하지 않아서 알맞은 대답을 고르는 방식으로 해요.</p>') +
+        (sp.voice ? '' : '<p class="sq-note">' + (state.profile.input === 'type' ? '야외 모드라서 알맞은 대답을 고르는 방식으로 해요.' : '이 기기는 말하기 인식을 지원하지 않아서 알맞은 대답을 고르는 방식으로 해요.') + '</p>') +
         '</div><div class="footer"><button class="btn" data-act="speed-go">시작하기</button></div></div>';
     }
     var l = lessonById(q.lessonId);
@@ -2374,6 +2385,7 @@
     if (e.key === 'Enter' && e.target && e.isComposing !== true) {
       if (e.target.id === 'ac-in') { e.preventDefault(); acSend(); }
       else if (e.target.id === 'ac-topic') { e.preventDefault(); acStart(); }
+      else if (e.target.id === 'ac-ko-in') { e.preventDefault(); var kb = document.querySelector('[data-act="ac-ko-send"]'); if (kb) kb.click(); }
     }
   });
   document.addEventListener('input', function (e) {
@@ -2386,6 +2398,7 @@
       for (var ci = 0; ci < chipsOn.length; ci++) chipsOn[ci].classList.remove('on');
       return;
     }
+    if (t && t.id === 'ac-ko-in' && state.ac) { state.ac.koIn = String(t.value || ''); return; }
     if (t && t.id === 'ac-in' && state.ac) { state.ac.input = String(t.value || ''); return; }
     if (t && t.id === 'w-search') { wordsUi.q = String(t.value || ''); refreshWordsList(); return; }
     if (!t || t.id !== 'fb-text' || !state.fb) return;
@@ -2739,7 +2752,7 @@
       queue: qs.slice(), cur: qs[0], total: qs.length, solved: 0,
       first: {}, wrong: {}, tries: 0, revealed: false, combo: 0, committed: {}, solvedCommitted: 0,
       phase: 'ask', heard: '', pass: false, listening: false,
-      typing: false, live: '', msg: '', showKo: false
+      typing: state.profile.input === 'type', live: '', msg: '', showKo: false
     };
     if (extra) Object.keys(extra).forEach(function (k) { state.s[k] = extra[k]; });
     go('practice');
@@ -3167,6 +3180,8 @@
       case 'rlessons-more': lessonUi.rn = (lessonUi.rn || 7) + 7; renderKeep(); break;
       case 'ac-showko': if (state.ac) { var sk = state.ac.msgs[+el.getAttribute('data-i')]; if (sk) { sk.showKo = !sk.showKo; render(); } } break;
       case 'ac-ko': if (state.ac && state.ac.mode === 'chat' && !state.ac.busy && !state.ac.ended) { state.ac.ko = { opts: null, heard: '', busy: false }; render(); acScroll(); } break;
+      case 'ac-ko-send': if (state.ac && state.ac.ko && !state.ac.ko.busy) { var kv = String(state.ac.koIn || '').trim(); if (kv) { state.ac.koIn = ''; acKoRun(kv); } } break;
+      case 'set-input': setProfile({ input: el.getAttribute('data-v') === 'type' ? 'type' : 'voice' }); break;
       case 'ac-ko-close': if (state.ac) { acStop(); state.ac.ko = null; state.ac.koSend = false; state.ac.live = ''; render(); acScroll(); } break;
       case 'ac-ko-pick':
         if (state.ac && state.ac.ko && state.ac.ko.opts) {
