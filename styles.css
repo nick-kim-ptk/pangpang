@@ -1483,9 +1483,9 @@ body.kb .screen > .mic-area { padding-top: 8px; padding-bottom: calc(10px + var(
 
 /* v81: 선생님 말이 끝나면 내 차례 영역이 떠오르듯 나타나요 */
 @keyframes acRise { from { opacity: 0; transform: translateY(26px); } to { opacity: 1; transform: none; } }
-.acsug.rise, .ac-foot.rise { animation: acRise .5s cubic-bezier(.2,.8,.2,1) both; }
-.ac-foot.ac-wait { min-height: 24px; }
-@media (prefers-reduced-motion: reduce) { .acsug.rise, .ac-foot.rise { animation: none; } }
+.acsug, .ac-foot { transition: opacity .5s ease, transform .55s cubic-bezier(.2,.8,.2,1); }
+.acsug.hide, .ac-foot.hide { opacity: 0; transform: translateY(26px); pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { .acsug, .ac-foot { transition: none; } }
 
 /* v82: 대화 정리 화면 여백 */
 .ac-wrap-h { margin-top: 36px; }

@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v83';
+  var APP_VERSION = 'v84';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -1500,18 +1500,16 @@
       foot = '<div class="ac-foot">' + acRepBox(a) + '</div>';
     } else if (a.ko) {
       foot = '<div class="ac-foot">' + acKoBox(a) + '</div>';
-    } else if (a.wait) {   // 선생님 말이 끝날 때까지 내 차례 영역은 숨겨 둬요
-      foot = '<div class="ac-foot ac-wait"></div>';
     } else {
       a.shown = a.shown || {};
-      sug = !a.busy && a.sug.length ? '<div class="acsug' + (a.rise ? ' rise' : '') + '"><div class="acsug-l">이렇게 말해볼 수 있어요 <small>눌러서 듣기</small></div>' +
+      sug = !a.busy && a.sug.length ? '<div class="acsug' + (a.wait ? ' hide' : '') + '"><div class="acsug-l">이렇게 말해볼 수 있어요 <small>눌러서 듣기</small></div>' +
         a.sug.map(function (x, i) {
           var on = !!a.shown[i];
           return '<div class="acsg' + (on ? ' on' : '') + '"><button class="acsg-main" data-act="ac-sug" data-i="' + i + '">' + esc(x.ko || x.zh) + '</button>' +
             (on ? '<div class="acsg-ans"><span class="zh">' + esc(x.zh) + '</span>' + (x.py ? '<span class="py">' + esc(x.py) + '</span>' : '') + '</div>' : '') +
             '<button class="acsg-show" data-act="ac-sug-show" data-i="' + i + '">' + (on ? '답변 가리기' : '답변 보기') + '</button></div>';
         }).join('') + '</div>' : '';
-      foot = '<div class="ac-foot' + (a.rise ? ' rise' : '') + '">' + (a.low ? '<div class="notice ac-low">크레딧이 모자라요. 마이 화면에서 충전하거나, 대화를 마치고 정리를 볼 수 있어요.</div>' : '') +
+      foot = '<div class="ac-foot' + (a.wait ? ' hide' : '') + '">' + (a.low ? '<div class="notice ac-low">크레딧이 모자라요. 마이 화면에서 충전하거나, 대화를 마치고 정리를 볼 수 있어요.</div>' : '') +
         acMicBox(a, '누른 채로 말하고, 끝나면 손을 떼세요', acHasSR() ? 'both' : 'zh') + '</div>';
     }
     var leave = a.leave ? '<div class="ac-leave"><div class="ac-leave-b"><b>대화를 마칠까요?</b><span>지금까지 ' + a.turns + '번 주고받았어요. ' + (a.turns * AI_CHAT_COST) + '크레딧이 쓰였고, 마치면 정리 화면으로 가요.</span>' +
@@ -1579,9 +1577,8 @@
       a.busy = false;
       if (!d.ok) { toast(AI_ERR[d.error] || '대화를 시작하지 못했어요. 잠시 후 다시 해 주세요'); render(); return; }
       state.ac = { mode: 'chat', scenario: { id: 'free', title: topic }, sid: d.sid, msgs: [Object.assign({ who: 'them' }, d.turn.reply)], sug: d.turn.suggestions || [], turns: 0, input: '', busy: false, ended: false, fixes: [], wait: true };
-      acReveal(state.ac);
       render(); acScroll();
-      setTimeout(function () { if (state.screen === 'aichat' && state.ac && state.ac.sid === d.sid) speak(d.turn.reply.zh, 0.85); }, 350);
+      acReveal(state.ac, d.turn.reply.zh);
     } catch (e) {
       if (window.console) console.error(e);
       a.busy = false; toast('연결하지 못했어요. 잠시 후 다시 해 주세요');
@@ -1589,23 +1586,29 @@
     }
   }
   // AI의 다음 말을 대화에 올려요
-  // 선생님이 말을 마친 뒤에 내 차례 영역(추천 답변·마이크)이 떠오르듯 나타나요
-  function acReveal(a) {
+  // 선생님 말(음성)이 끝나면 내 차례 영역(추천 답변·마이크)이 슥 떠올라요. 자리는 미리 잡아 둬서 화면이 튀지 않아요
+  function acReveal(a, text) {
     a.wait = true;
-    setTimeout(function () {
-      if (state.ac !== a || !a.wait) return;
-      a.wait = false; a.rise = true;
-      if (state.screen === 'aichat') { render(); acScroll(); }
-      setTimeout(function () { a.rise = false; }, 800);
-    }, 1400);
+    var done = false;
+    function show() {
+      if (done) return; done = true;
+      setTimeout(function () {
+        if (state.ac !== a) return;
+        a.wait = false;
+        var els = document.querySelectorAll('.ac-foot.hide, .acsug.hide');
+        for (var k = 0; k < els.length; k++) els[k].classList.remove('hide');
+      }, 350);
+    }
+    setTimeout(function () { if (state.screen === 'aichat' && state.ac === a) speak(text, 0.85, show); else show(); }, 300);
+    setTimeout(show, 7000);   // 음성이 없거나 늦어져도 보여 줘요
   }
   function acRelease(a, p) {
     a.msgs.push(Object.assign({ who: 'them' }, p.reply));
     a.sug = p.sug; a.lastSug = a.sug; a.shown = {}; a.ended = !!p.end; a.pending = null; a.rep = null;
     if (!a.ended) a.wait = true;
     render(); acScroll();
-    if (!a.ended) acReveal(a);
-    setTimeout(function () { if (state.screen === 'aichat' && state.ac === a) speak(p.reply.zh, 0.85); }, 250);
+    if (a.ended) setTimeout(function () { if (state.screen === 'aichat' && state.ac === a) speak(p.reply.zh, 0.85); }, 250);
+    else acReveal(a, p.reply.zh);
   }
   async function acSend(said) {
     var a = state.ac;
@@ -3190,13 +3193,12 @@
       case 'ac-sug':
         if (state.ac && state.ac.sug[+el.getAttribute('data-i')]) {
           var sg = state.ac.sug[+el.getAttribute('data-i')];
-          var ai = document.getElementById('ac-in'); if (ai) ai.value = sg.zh;
-          state.ac.input = sg.zh;
+          if (acHasSR() && state.profile.input !== 'type') { var ai = document.getElementById('ac-in'); if (ai) ai.value = sg.zh; state.ac.input = sg.zh; }
           speak(sg.zh, 0.8);
         }
         break;
       case 'ac-sug-show':
-        if (state.ac) { var si = +el.getAttribute('data-i'); state.ac.shown = state.ac.shown || {}; state.ac.shown[si] = !state.ac.shown[si]; render(); acScroll(); }
+        if (state.ac) { var si = +el.getAttribute('data-i'); state.ac.shown = state.ac.shown || {}; state.ac.shown[si] = !state.ac.shown[si]; renderKeep(); }
         break;
       case 'ac-rep':
         if (state.ac) {
