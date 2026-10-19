@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v75';
+  var APP_VERSION = 'v78';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -1403,21 +1403,20 @@
     if (!aiOn() || !a) return '<div class="screen"><div class="topbar"><button class="icon-btn" data-act="back" aria-label="뒤로">' + I.back + '</button></div><div class="scroll"><p class="sub-title">멤버십이 있을 때 쓸 수 있어요.</p></div></div>';
     return a.mode === 'pick' ? acPick(a) : a.mode === 'end' ? acEnd(a) : acChat(a);
   }
-  var AC_TOPICS = ['오늘 하루', '좋아하는 음식', '주말 계획', '가족 소개', '취미', '여행 가고 싶은 곳', '날씨', '내 직업', '중국어 공부'];
+  var AC_TOPICS = ['중국 카페에서 주문하기', '식당에서 음식 시키기', '택시 타고 길 알려 주기', '처음 만난 친구와 인사하기', '호텔 체크인하기', '쇼핑하며 가격 물어보기', '주말 계획 이야기하기', '내 가족 소개하기', '좋아하는 취미 이야기하기'];
   function acPick(a) {
     var bal = aiBal(), can = bal >= AI_CHAT_COST;
     var ok = can && String(a.topic || '').trim().length >= 2 && !a.busy;
     var chips = AC_TOPICS.map(function (t, i) { return '<button class="ac-chip' + (a.topic === t ? ' on' : '') + '" data-act="ac-topic" data-i="' + i + '">' + esc(t) + '</button>'; }).join('');
     return '<div class="screen"><div class="topbar"><button class="icon-btn" data-act="back" aria-label="뒤로">' + I.back + '</button></div>' +
-      '<div class="scroll" style="padding-top:4px"><h1 class="big-title" style="margin-top:0">AI 자유 대화</h1>' +
-      '<p class="sub-title">하고 싶은 이야기를 적거나 골라 보세요. AI 선생님이 먼저 말을 걸고, 뭐라고 말할지도 같이 알려 줘요. 끝내고 싶을 때 마치면 쓴 만큼만 정산해요.</p>' +
-      '<div class="ac-bal"><span>한 번 주고받을 때마다 ' + AI_CHAT_COST + '크레딧 · 원하는 만큼 이어가요</span><b>남은 크레딧 ' + bal + '</b></div>' +
+      '<div class="scroll" style="padding-top:4px"><h1 class="big-title" style="margin-top:0">중국어로, 아무 말이나 해봐요</h1>' +
+      '<p class="sub-title">틀려도 괜찮아요.<br>AI 선생님과 이야기하며 자연스럽게 중국어를 익혀봐요.</p>' +
       (can ? '' : '<div class="notice" style="margin-bottom:12px">크레딧이 부족해요. <button class="link-btn inl" data-act="open-aicharge">충전하기</button></div>') +
-      '<label class="ac-lab" for="ac-topic">대화 주제</label>' +
+      '<label class="ac-lab" for="ac-topic">어떤 이야기를 해볼까요?</label>' +
       '<input id="ac-topic" class="ac-topic" maxlength="30" autocomplete="off" spellcheck="false" placeholder="예: 내일 친구랑 점심 약속 잡기" value="' + esc(a.topic || '') + '">' +
       '<div class="ac-lab" style="margin-top:16px">이런 주제는 어때요?</div><div class="ac-chips">' + chips + '</div>' +
-      '<div style="height:96px"></div></div>' +
-      '<div class="footer"><button id="ac-go" class="btn" data-act="ac-start"' + (ok ? '' : ' disabled') + '>' + (a.busy ? '대화를 준비하고 있어요…' : '시작하기') + '</button></div></div>';
+      '<div style="height:150px"></div></div>' +
+      '<div class="footer ac-footer"><div class="ac-cost"><b>' + bal + ' 크레딧 남음</b><span>대화 1회 당 ' + AI_CHAT_COST + '크레딧 사용</span></div><button id="ac-go" class="btn" data-act="ac-start"' + (ok ? '' : ' disabled') + '>' + (a.busy ? '대화를 준비하고 있어요…' : '시작하기') + '</button></div></div>';
   }
   
   function acBubble(m, idx) {

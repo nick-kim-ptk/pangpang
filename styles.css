@@ -1458,3 +1458,17 @@ u.miss { text-decoration: underline wavy #ef5350; text-underline-offset: 4px; co
 .ai-hero-foot { display: block; }
 .ai-hero-go { display: block; width: 100%; }
 .ac-kolink { text-align: center; padding-bottom: 6px; }
+
+/* v76: AI 대화 시작 화면 꾸미기 */
+.ac-hero { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; padding: 14px 16px 14px 6px; border-radius: 24px; background: linear-gradient(172deg, #2A3558 -10%, #1A2139 62%); color: #FFF6E4; }
+.ac-hero-art { flex: none; display: grid; place-items: end center; }
+.ac-hero-txt { min-width: 0; display: grid; gap: 2px; }
+.ac-hero-txt h1 { margin: 0; font-size: clamp(19px, 5.9vw, 26px); line-height: 1.2; font-weight: 800; color: #FFF6E4; white-space: nowrap; word-break: normal; overflow-wrap: anywhere; }
+.ac-hero-txt .py { font-size: 12.5px; color: #FFD45E; font-weight: 700; }
+.ac-hero-txt .kr { font-size: 12px; color: #B9C2DE; }
+.ac-hero-ko { margin-top: 6px; justify-self: start; padding: 3px 10px; border-radius: 999px; background: var(--y); color: #1A2139; font-size: 12px; font-weight: 800; }
+.ac-hero + .sub-title { margin-top: 12px; }
+.ac-hero .ppm__shadow { background: radial-gradient(closest-side, rgba(0,4,20,.5), transparent); }
+.ac-footer { display: grid; gap: 10px; }
+.ac-cost { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 14px; border-radius: 14px; background: var(--soft); font-size: 13px; color: var(--ink-3); font-weight: 700; }
+.ac-cost b { color: var(--ink); font-size: 14px; font-weight: 800; }
