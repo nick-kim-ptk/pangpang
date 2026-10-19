@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v98';
+  var APP_VERSION = 'v100';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -657,10 +657,16 @@
   /* ---------- 캐릭터 ---------- */
   function ms(name) { return (window.MASCOT && window.MASCOT[name]) || 'img/' + name + '.webp'; }
   // 팽팽 캐릭터 모션 (CSS만으로 움직여요): hello 인사 / book 학습 / ai 튜터
-  function ppm(kind, w) {
+  function ppm(kind, w, cls) {
     var P = 'img/pm/', st = ' style="--w:' + w + 'px"';
     if (kind === 'hello') return '<div class="ppm ppm-hello"' + st + ' role="img" aria-label="인사하는 달팽이"><div class="ppm__shadow"></div><div class="ppm__body"><img src="' + P + 'hello-body.webp" alt=""><img class="ppm__blink" src="' + P + 'hello-blink.webp" alt=""></div><img class="ppm__nihao" src="' + P + 'hello-nihao.webp" alt=""><img class="ppm__annyeong" src="' + P + 'hello-annyeong.webp" alt=""></div>';
     if (kind === 'book') return '<div class="ppm ppm-book"' + st + ' role="img" aria-label="책 읽는 달팽이"><div class="ppm__shadow"></div><div class="ppm__body"><div class="ppm__breath"><img src="' + P + 'book-body.webp" alt=""><img class="ppm__blink" src="' + P + 'book-blink.webp" alt=""></div></div><span class="ppm__g" style="--c:#FFF6E4; --d:0s">文</span><span class="ppm__g" style="--c:#FFD45E; --d:-2.67s">A</span><span class="ppm__g" style="--c:#B9E3FF; --d:-1.34s">字</span></div>';
+    if (kind === 'laptop') {
+      var keys = [['N', 66, -20, 0, -10], ['I', 78, 30, .22, 8], ['H', 70, -10, 1.05, -6], ['A', 82, 40, 1.27, 10], ['O', 74, 10, 1.5, -8]].map(function (k) {
+        return '<span class="ppm__key" style="--x:' + k[1] + '%;--tx:' + k[2] + '%;--d:' + k[3] + 's;--r:' + k[4] + 'deg">' + k[0] + '</span>';
+      }).join('');
+      return '<div class="ppm ppm-laptop' + (cls ? ' ' + cls : '') + '"' + st + ' role="img" aria-label="노트북으로 타자 치는 달팽이"><div class="ppm__shadow"></div><div class="ppm__body"><img src="' + P + 'laptop-body.webp" alt=""><img class="ppm__blink" src="' + P + 'laptop-blink.webp" alt=""><div class="ppm__glow"></div></div><img class="ppm__laptop" src="' + P + 'laptop-desk.webp" alt="">' + keys + '<span class="ppm__done">你好!</span></div>';
+    }
     return '<div class="ppm ppm-ai"' + st + ' role="img" aria-label="AI 튜터 달팽이"><div class="ppm__shadow"></div><div class="ppm__body"><img src="' + P + 'ai-body.webp" alt=""><img class="ppm__blink" src="' + P + 'ai-blink.webp" alt=""><div class="ppm__scan"></div><span class="ppm__ring"></span><span class="ppm__ring" style="--d:1s"></span></div><img class="ppm__marks" src="' + P + 'ai-marks.webp" alt=""></div>';
   }
   function mascot(name, cls) {
@@ -931,10 +937,10 @@
     return '<h2 class="big-title" style="margin-top:36px;font-size:26px">복습하기</h2>' +
       '<p class="sub-title">배운 문장을 다시 말하면서 오래 기억해요.</p>' +
       '<div class="today' + (due > 0 ? '' : ' done') + '" style="margin-top:0">' +
-        '<div class="today-top"><span class="chip ' + (due > 0 ? 'y' : 'green') + '">' + (due > 0 ? '지금 복습할 문제' : '오늘 복습 완료') + '</span>' +
+        '<div class="today-top' + (due > 0 ? ' has-laptop' : '') + '"><span class="chip ' + (due > 0 ? 'y' : 'green') + '">' + (due > 0 ? '지금 복습할 문제' : '오늘 복습 완료') + '</span>' +
         '<h2 style="font-size:34px">' + due + '개</h2></div>' +
         (due > 0 ? '<p class="explain">한 번에 최대 ' + REVIEW_SIZE + '문제씩 해요</p>' : '') +
-        mascot(due > 0 ? 'laptop' : 'sleep', 'today-m') +
+        (due > 0 ? ppm('laptop', 132, 'today-m') : mascot('sleep', 'today-m')) +
         (due > 0
           ? '<button class="btn" data-act="review-start">복습 시작</button>'
           : '<button class="btn soft" data-act="review-random"' + (learned.length ? '' : ' disabled') + '>랜덤 복습하기</button>') +
@@ -2816,8 +2822,7 @@
         '<div class="qz-cap">소리를 듣고 알맞은 뜻을 골라요</div></div>';
     } else {
       prompt = '<div class="qz-prompt"><div class="q-zh">' + esc(it.zh) + '</div><div class="q-py">' + esc(it.py) + '</div><div class="q-kr">' + esc(kr(it.py)) + '</div>' +
-        '<button class="round-btn" data-act="say" data-text="' + esc(it.zh) + '" aria-label="듣기" style="margin-top:12px">' + I.spk + '</button>' +
-        '<div class="qz-cap">알맞은 뜻을 골라요</div></div>';
+        '<button class="round-btn" data-act="say" data-text="' + esc(it.zh) + '" aria-label="듣기" style="margin-top:12px">' + I.spk + '</button></div>';
     }
     var opts = '<div class="qz-opts">' + it.options.map(function (o, i) {
       var cls = 'opt';
@@ -2828,12 +2833,16 @@
     if (z.picked !== null && z.kind === 'listen') {
       reveal = '<div class="qz-reveal"><div class="zh">' + esc(it.zh) + '</div><div class="py">' + esc(it.py) + '</div><div class="kr">' + esc(kr(it.py)) + '</div></div>';
     }
-    var verdict = z.picked !== null
-      ? '<div class="qz-verdict ' + (it.options[z.picked].ok ? 'ok' : 'no') + '" role="status">' + (it.options[z.picked].ok ? '맞았어요!' : '틀렸어요!') + '</div>' : '';
+    var verdict = '<div class="qz-slot">';
+    if (z.picked !== null) {
+      var vok = it.options[z.picked].ok;
+      verdict += '<div class="qz-verdict ' + (vok ? 'ok' : 'no') + '" role="status"><img src="img/' + (vok ? 'qz-ok' : 'qz-no') + '.webp" alt="" draggable="false">' +
+        '<div class="qv-t"><b>' + (vok ? '맞았어요!' : '틀렸어요!') + '</b><span>' + (vok ? (z.combo >= 2 ? '연속 ' + z.combo + '번 정답' : '잘했어요') : '괜찮아요, 다시 해봐요') + '</span></div></div>';
+    }
+    verdict += '</div>';
     var foot = z.picked !== null
       ? '<div class="footer"><button class="btn ' + (it.options[z.picked].ok ? 'green' : '') + '" data-act="quiz-next">' + (z.i + 1 >= z.items.length ? '결과 보기' : '다음') + '</button></div>' : '';
-    return '<div class="screen">' + top + '<div class="qz-wrap">' + prompt + verdict + opts + reveal +
-      (z.picked !== null && z.combo >= 2 ? '<div class="qz-combo">연속 ' + z.combo + '번 정답</div>' : '') + '</div>' + foot + '</div>';
+    return '<div class="screen">' + top + '<div class="qz-wrap">' + prompt + verdict + opts + reveal + '</div>' + foot + '</div>';
   }
 
   /* ---------- 연습 세션 ---------- */

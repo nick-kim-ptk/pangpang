@@ -1563,3 +1563,94 @@ body.kb .screen > .mic-area { padding-top: 8px; padding-bottom: calc(10px + var(
 @keyframes qzpop { 0% { transform: scale(.3) rotate(-8deg); opacity: 0; } 60% { transform: scale(1.25) rotate(3deg); opacity: 1; } 100% { transform: scale(1) rotate(0); } }
 @keyframes qzshake { 0% { transform: translateY(-10px); opacity: 0; } 25% { transform: translateX(-8px); opacity: 1; } 50% { transform: translateX(8px); } 75% { transform: translateX(-4px); } 100% { transform: translateX(0); } }
 @media (prefers-reduced-motion: reduce) { .qz-verdict.ok, .qz-verdict.no { animation: none; } }
+
+/* v99 타자 치는 달팽이 (복습 카드) */
+.ppm-laptop { width: var(--w, 288px); aspect-ratio: 288 / 270; }
+.ppm-laptop .ppm__body { position: absolute; inset: 0; transform-origin: 40% 96%; animation: ppmLapType 3.6s linear infinite; }
+.ppm-laptop .ppm__blink { animation: ppmLapBlink 3.6s steps(1) infinite; }
+.ppm-laptop .ppm__laptop { animation: ppmLapDesk 3.6s linear infinite; transform-origin: 70% 95%; }
+/* 화면 빛이 얼굴에 비침 */
+.ppm-laptop .ppm__glow { position: absolute; left: 38%; top: 38%; width: 40%; height: 34%; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(closest-side, rgba(150,210,255,.28), transparent); mix-blend-mode: screen; animation: ppmLapGlow 3.6s linear infinite; }
+/* 키캡 */
+.ppm-laptop .ppm__key { position: absolute; left: var(--x); top: 54%; width: 9%; aspect-ratio: 1; border-radius: 22%;
+  display: grid; place-items: center; background: #FFF6E4; color: #1A2139;
+  font: 700 calc(var(--w, 288px) * .042)/1 'Pretendard', sans-serif;
+  box-shadow: 0 calc(var(--w, 288px) * .008) 0 #D9C7A4, 0 4px 8px -4px rgba(0,0,0,.4);
+  opacity: 0; animation: ppmLapKey 3.6s var(--d) cubic-bezier(.3,1.4,.5,1) infinite; pointer-events: none; }
+/* 완성 말풍선 */
+.ppm-laptop .ppm__done { position: absolute; left: 66%; top: 18%; padding: .32em .7em; border-radius: 1em 1em 1em .25em;
+  background: #B9E3FF; color: #1A2139; font: 400 calc(var(--w, 288px) * .068)/1.1 'ZCOOL KuaiLe', sans-serif; white-space: nowrap;
+  box-shadow: 0 8px 16px -8px rgba(0,0,0,.45); transform-origin: 0 100%; opacity: 0; animation: ppmLapDone 3.6s cubic-bezier(.3,1.6,.5,1) infinite; pointer-events: none; }
+
+/* 0–56%: 타닥타닥 (빠른 상하 진동 버스트) · 60–74%: 엔터 꾹 → 말풍선 · 74–100%: 쉼 + 깜빡임 */
+@keyframes ppmLapType {
+  0%   { transform: translateY(0) rotate(0); }
+  3%   { transform: translateY(.7%) rotate(.6deg); }   6% { transform: translateY(0) rotate(-.3deg); }
+  9%   { transform: translateY(.7%) rotate(-.6deg); }  12% { transform: translateY(0) rotate(.3deg); }
+  15%  { transform: translateY(.7%) rotate(.6deg); }   18% { transform: translateY(0); }
+  24%  { transform: translateY(-.6%) rotate(-1deg); }
+  30%  { transform: translateY(.7%) rotate(.6deg); }   33% { transform: translateY(0) rotate(-.3deg); }
+  36%  { transform: translateY(.7%) rotate(-.6deg); }  39% { transform: translateY(0) rotate(.3deg); }
+  42%  { transform: translateY(.7%) rotate(.6deg); }   45% { transform: translateY(0); }
+  48%  { transform: translateY(.7%) rotate(-.6deg); }  51% { transform: translateY(0); }
+  58%  { transform: translateY(-.8%) rotate(-1deg) scale(1.01, .99); }
+  62%  { transform: translateY(1.4%) rotate(1deg) scale(1.03, .96); }
+  68%  { transform: translateY(-1.2%) rotate(-1.2deg) scale(.99, 1.015); }
+  74%  { transform: translateY(0) rotate(0) scale(1); }
+  86%  { transform: translateY(-.8%) rotate(1.2deg); }
+  100% { transform: translateY(0) rotate(0); }
+}
+@keyframes ppmLapDesk {
+  0%, 2%, 4%, 8%, 10%, 14%, 16%, 29%, 31%, 35%, 37%, 41%, 43%, 47%, 49%, 61%, 64%, 100% { transform: translateY(0); }
+  3%, 9%, 15%, 30%, 36%, 42%, 48% { transform: translateY(.35%); }
+  62% { transform: translateY(.9%); }
+}
+@keyframes ppmLapBlink { 0% { opacity: 0; } 22% { opacity: 1; } 24.5% { opacity: 0; } 64% { opacity: 1; } 72% { opacity: 0; } 88% { opacity: 1; } 90.5% { opacity: 0; } }
+@keyframes ppmLapGlow  { 0%, 56%, 100% { opacity: .7; } 6%, 18%, 36%, 48% { opacity: 1; } 62% { opacity: 1; transform: scale(1.12); } 74% { transform: scale(1); } }
+@keyframes ppmLapKey {
+  0%   { opacity: 0; transform: translateY(0) scale(.3) rotate(0); }
+  3%   { opacity: 1; transform: translate(var(--tx), -90%) scale(1.08) rotate(var(--r)); }
+  6%   { transform: translate(var(--tx), -110%) scale(1) rotate(var(--r)); }
+  16%  { opacity: 1; }
+  24%  { opacity: 0; transform: translate(calc(var(--tx) * 1.6), -300%) scale(.9) rotate(calc(var(--r) * -1)); }
+  100% { opacity: 0; transform: translate(calc(var(--tx) * 1.6), -300%) scale(.9); }
+}
+@keyframes ppmLapDone {
+  0%, 60% { opacity: 0; transform: scale(.2) rotate(-10deg); }
+  66%  { opacity: 1; transform: scale(1) rotate(0); }
+  90%  { opacity: 1; transform: scale(1) translateY(-6%); }
+  96%, 100% { opacity: 0; transform: scale(.9) translateY(-14%); }
+}
+
+@media (prefers-reduced-motion: reduce) { .ppm-laptop .ppm__key, .ppm-laptop .ppm__done { display: none; } .ppm-laptop .ppm__body, .ppm-laptop .ppm__laptop, .ppm-laptop .ppm__blink, .ppm-laptop .ppm__glow { animation: none; } }
+/* 복습 카드: 이미지 높이에 맞춰 카드 안쪽 높이를 잡아요 (좁은 화면에선 이미지가 같이 줄어요) */
+.today { --lw: clamp(108px, 34vw, 132px); }
+.today .today-top.has-laptop { min-height: calc(var(--lw) * .94 + 4px); padding-right: calc(var(--lw) + 8px); }
+.today .today-top.has-laptop .chip { white-space: nowrap; }
+.today .ppm-laptop.today-m { --w: var(--lw) !important; position: absolute; right: 4px; top: 12px; width: var(--lw); }
+.today .ppm-laptop .ppm__shadow { bottom: 0; }
+
+/* v100 퀴즈 결과: 달팽이 + 글자 */
+.qz-slot { min-height: 104px; margin-top: 12px; display: flex; align-items: center; justify-content: center; }
+.qz-verdict { display: flex; align-items: center; justify-content: center; gap: 12px; margin: 0; animation: none; }
+.qz-verdict img { width: 84px; height: auto; flex: none; transform-origin: 50% 100%; }
+.qz-verdict .qv-t { display: flex; flex-direction: column; text-align: left; min-width: 0; }
+.qz-verdict .qv-t b { font-size: 28px; line-height: 1.15; font-weight: 800; letter-spacing: -0.5px; }
+.qz-verdict .qv-t span { margin-top: 2px; font-size: 14px; font-weight: 600; color: var(--ink-2); }
+.qz-verdict.ok .qv-t b { color: #16a34a; animation: qzpop .55s .08s cubic-bezier(.2,1.6,.4,1) both; }
+.qz-verdict.no .qv-t b { color: #dc2626; animation: qzshake .45s .08s ease-in-out both; }
+.qz-verdict.ok img { animation: qzsnailin .6s cubic-bezier(.2,1.5,.4,1) both, qzbob 1.6s .6s ease-in-out infinite; }
+.qz-verdict.no img { animation: qzsnailno .5s ease-out both; }
+@keyframes qzsnailin { 0% { transform: translateY(40px) scale(.4); opacity: 0; } 60% { transform: translateY(-8px) scale(1.1) rotate(-4deg); opacity: 1; } 100% { transform: none; opacity: 1; } }
+@keyframes qzbob { 0%, 100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(-4px) rotate(2deg); } }
+@keyframes qzsnailno { 0% { transform: translateY(-24px) scale(.6); opacity: 0; } 40% { transform: translateY(0) rotate(-8deg); opacity: 1; } 60% { transform: rotate(7deg); } 80% { transform: rotate(-4deg); } 100% { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .qz-verdict img, .qz-verdict .qv-t b { animation: none !important; } }
+
+/* v100 보정: 결과 영역을 문제 아래·보기 위로, 작게 */
+.qz-slot { min-height: 72px; margin: 2px 0 6px; }
+.qz-verdict img { width: 64px; }
+.qz-verdict .qv-t b { font-size: 24px; }
+.qz-verdict .qv-t span { font-size: 13px; }
+.qz-prompt { padding: 10px 0 4px; }
+.qz-prompt .round-btn { margin-left: auto; margin-right: auto; }
