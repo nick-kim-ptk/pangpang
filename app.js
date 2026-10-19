@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v105';
+  var APP_VERSION = 'v108';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -548,7 +548,7 @@
 
   /* ---------- 화면 이동 ---------- */
   // 뒤로 가기: 폰의 뒤로 제스처·버튼(기록)과 화면 왼쪽 가장자리에서 오른쪽으로 미는 동작을 같이 처리해요
-  var SUBSCREEN = { pay: 1, privacy: 1, login: 1, intro: 1, practice: 1, quiz: 1, stats: 1, done: 1, hsk: 1, hskstudy: 1, feedback: 1, speed: 1, account: 1, coupon: 1, aicharge: 1, aichat: 1, aiall: 1, prefs: 1 };
+  var SUBSCREEN = { pay: 1, privacy: 1, login: 1, intro: 1, practice: 1, quiz: 1, stats: 1, done: 1, hsk: 1, hskstudy: 1, feedback: 1, speed: 1, account: 1, coupon: 1, aicharge: 1, aichat: 1, aiall: 1, prefs: 1, about: 1, advisor: 1 };
   var inSub = false, ignorePop = 0, backAnim = false;
   function syncHistory(screen) {
     try {
@@ -581,7 +581,7 @@
     else if (sc === 'speed') { stopSpeed(); go('tab'); }
     else if (sc === 'done') go('tab', { tab: 'home' });
     else if (sc === 'feedback' || sc === 'account' || sc === 'coupon') go('prefs');
-    else if (sc === 'intro' || sc === 'stats' || sc === 'aicharge' || sc === 'aiall' || sc === 'prefs') go('tab');
+    else if (sc === 'intro' || sc === 'stats' || sc === 'aicharge' || sc === 'aiall' || sc === 'prefs' || sc === 'about' || sc === 'advisor') go('tab');
   }
   window.addEventListener('popstate', function () {
     if (ignorePop > 0) { ignorePop--; return; }
@@ -1924,12 +1924,38 @@
   // 마이페이지에는 자주 바꾸는 세 가지만 두고, 나머지는 '환경 설정' 화면에서 관리해요
   function settingsCard() {
     var p = state.profile;
-    return '<div class="section-title" style="margin-top:24px">설정</div><div class="set-card">' +
+    return '<div class="section-title" style="margin-top:24px">학습 설정</div><div class="set-card">' +
       '<div class="set-row"><div class="set-t">하루 목표</div>' + seg('set-goal', p.goal, [[20, '20'], [50, '50'], [100, '100']]) + '</div>' +
       '<div class="set-row col"><div class="set-t">답하는 방법</div><div class="radio-list" role="radiogroup" aria-label="답하는 방법">' +
         inputOpt('voice', '말로 답하기', '마이크에 대고 말해요 · 기본') + inputOpt('type', '키보드로 답하기 · 야외 모드', '소리 내기 어려운 곳에서 글자로 입력해요') + '</div></div>' +
       '<div class="set-row"><div class="set-t">한국어 발음 표기</div>' + seg('set-kr', p.kr ? 'on' : 'off', [['on', '켜짐'], ['off', '꺼짐']]) + '</div>' +
-      '<button class="set-row set-link" data-act="open-prefs"><span class="set-t">환경 설정</span><span class="set-arrow" aria-hidden="true">›</span></button></div>';
+      '</div>';
+  }
+  // 마이페이지 메뉴 영역: 팽팽이 소개 · 자문위원 소개 · 환경 설정
+  function menuCard() {
+    function row(act, t) { return '<button class="set-row set-link" data-act="' + act + '"><span class="set-t">' + t + '</span><span class="set-arrow" aria-hidden="true">›</span></button>'; }
+    return '<div class="set-card" style="margin-top:24px">' + row('open-about', '팽팽이 소개') + row('open-advisor', '자문위원 소개') + row('open-prefs', '환경 설정') + '</div>';
+  }
+  // (임시 내용) 나중에 실제 소개 문구로 바꿔요
+  function viewAbout() {
+    var feats = [['말로 하는 연습', '읽기만 하지 않고, 직접 소리 내어 말하며 입을 열어요.'], ['작은 걸음, 매일', '하루 한 문장부터. 부담 없이 이어 갈 수 있게 짧게 나눴어요.'], ['AI 선생님', '틀려도 괜찮아요. 대화하며 자연스럽게 고쳐 줘요.']];
+    return '<div class="screen"><div class="topbar"><button class="icon-btn" data-act="back" aria-label="뒤로">' + I.back + '</button></div>' +
+      '<div class="scroll legal" style="padding-top:4px"><div style="text-align:center;margin:4px 0 8px">' + ppm('hello', 120) + '</div>' +
+      '<h1 class="big-title" style="margin-top:0;text-align:center">팽팽이</h1>' +
+      '<p class="sub-title" style="text-align:center">천천히, 하지만 꾸준히 중국어로 말해요.</p>' +
+      '<p>팽팽이는 중국어를 처음 시작하는 분들이 부담 없이 말문을 트도록 돕는 앱이에요. (임시 소개 글)</p>' +
+      feats.map(function (f) { return '<h2>' + esc(f[0]) + '</h2><p>' + esc(f[1]) + '</p>'; }).join('') +
+      '<h2>문의</h2><p>설정 → 환경 설정 → 의견 보내기로 남겨 주세요.</p><div style="height:40px"></div></div></div>';
+  }
+  function viewAdvisor() {
+    var chips = ['레슨 문장', 'HSK 단어', '발음·병음'];
+    return '<div class="screen"><div class="topbar"><button class="icon-btn" data-act="back" aria-label="뒤로">' + I.back + '</button></div>' +
+      '<div class="scroll legal" style="padding-top:4px"><h1 class="big-title" style="margin-top:0">자문위원 소개</h1>' +
+      '<p class="sub-title">팽팽이의 중국어 콘텐츠를 함께 살펴 주세요. (임시 내용)</p>' +
+      '<div class="set-card adv-card"><div class="adv-av" aria-hidden="true">师</div><div class="adv-t"><b>OOO 선생님</b><span>중국어 교육 전문가 · 경력 N년</span></div></div>' +
+      '<h2>소개</h2><p>중국어 교육 현장에서 오랫동안 학습자를 가르쳐 왔어요. 초급 학습자가 자주 헷갈리는 표현을 중심으로 살펴 주고 있어요. (임시 소개 글)</p>' +
+      '<h2>검수 범위</h2><div class="adv-chips">' + chips.map(function (c) { return '<span class="chip soft">' + c + '</span>'; }).join('') + '</div>' +
+      '<h2>한마디</h2><p>“틀려도 괜찮아요. 입으로 말해 보는 게 가장 빠른 길이에요.” (임시 문구)</p><div style="height:40px"></div></div></div>';
   }
   function viewPrefs() {
     var p = state.profile;
@@ -1944,6 +1970,7 @@
         '<div class="set-row"><div class="set-t">쿠폰 등록</div><button class="pill-sm" data-act="open-coupon">입력</button></div>' +
         (!isGuest() ? '<div class="set-row"><div class="set-t">계정 관리</div><button class="pill-sm" data-act="open-account">열기</button></div>' : '') + '</div>' : '') +
       '<div class="section-title" style="margin-top:24px">도움말</div><div class="set-card">' +
+        '<button class="set-row set-link" data-act="open-review"><span class="set-t">콘텐츠 검수 도구</span><span class="set-arrow">›</span></button>' +
         '<div class="set-row"><div class="set-t">의견 보내기</div><button class="pill-sm" data-act="open-feedback">보내기</button></div>' +
         '<div class="set-row"><div class="set-t">앱 버전</div><div class="set-v">' + APP_VERSION + '</div></div></div>' +
       '<div style="height:40px"></div></div></div>';
@@ -1976,7 +2003,7 @@
         '<div class="stat"><b>' + dueRows().length + '</b><span>복습할 문제</span></div>' +
       '</div>' +
       '<button class="btn soft quiz-btn" data-act="open-stats">학습 통계 · 약점 분석 보기</button>' +
-      settingsCard() +
+      settingsCard() + menuCard() +
       '<div class="me-actions">' +
         (sb ? '<button class="btn gray" data-act="logout">로그아웃</button>'
             : '<button class="btn gray" data-act="reset-local">기록 모두 지우기</button>') +
@@ -2069,6 +2096,8 @@
     else if (state.screen === 'hsk') html = viewHsk();
     else if (state.screen === 'feedback') html = viewFeedback();
     else if (state.screen === 'privacy') html = viewPrivacy();
+    else if (state.screen === 'about') html = viewAbout();
+    else if (state.screen === 'advisor') html = viewAdvisor();
     else if (state.screen === 'account') html = viewAccount();
     else if (state.screen === 'coupon') html = viewCoupon();
     else if (state.screen === 'aicharge') html = viewAiCharge();
@@ -3373,6 +3402,9 @@
       case 'open-aicharge': go('aicharge'); break;
       case 'open-aiall': go('aiall'); break;
       case 'open-prefs': go('prefs'); break;
+      case 'open-about': go('about'); break;
+      case 'open-advisor': go('advisor'); break;
+      case 'open-review': location.href = 'review.html'; break;
       case 'ai-why': aiWhyLoad(); break;
       case 'ac-open': state.ac = { mode: 'pick', topic: '' }; go('aichat'); break;
       case 'ac-topic': if (state.ac) { state.ac.topic = AC_TOPICS[+el.getAttribute('data-i')] || ''; render(); } break;

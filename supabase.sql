@@ -584,3 +584,22 @@ grant select, insert, update, delete on public.ai_fix to authenticated;
 -- v70: 대화에서 모은 표현(질문/대답)도 같은 표에 저장해요
 alter table public.ai_fix add column if not exists kind text not null default 'fix';
 alter table public.ai_fix add column if not exists ko text not null default '';
+
+-- v106: 콘텐츠 검수도구 (review.html) — 선생님이 남긴 검수 의견·수정 저장. 여러 번 실행해도 안전해요.
+-- 아직 오픈 전이라 로그인 없이 누구나 읽고 쓸 수 있게 열어 둬요. (오픈 전에 꼭 다시 잠그세요)
+create table if not exists public.review_notes (
+  item_id    text primary key,
+  data       jsonb not null default '{}'::jsonb,
+  who        text not null default '',
+  updated_at timestamptz not null default now(),
+  constraint review_notes_size check (octet_length(data::text) < 20000 and char_length(item_id) < 80)
+);
+alter table public.review_notes enable row level security;
+drop policy if exists "review_notes read" on public.review_notes;
+drop policy if exists "review_notes insert" on public.review_notes;
+drop policy if exists "review_notes update" on public.review_notes;
+create policy "review_notes read" on public.review_notes for select to anon, authenticated using (true);
+create policy "review_notes insert" on public.review_notes for insert to anon, authenticated with check (true);
+create policy "review_notes update" on public.review_notes for update to anon, authenticated using (true) with check (true);
+grant select, insert, update on public.review_notes to anon, authenticated;
+notify pgrst, 'reload schema';

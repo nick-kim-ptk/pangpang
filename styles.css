@@ -1663,3 +1663,12 @@ body.kb .screen > .scroll { min-height: 0; }
 /* v104 AI 대화 탭의 '대화 시작하기'처럼 입체적인 노란 버튼 */
 .btn.btn-3d { background: var(--y); color: var(--on-yellow, #1A2139); font-weight: 800; box-shadow: 0 5px 0 #C9A22C; margin-bottom: 5px; }
 .btn.btn-3d:active { filter: none; background: var(--y); transform: translateY(3px); box-shadow: 0 2px 0 #C9A22C; }
+
+/* v107 마이페이지 메뉴 영역 · 소개 화면 · 로그아웃 버튼 */
+.me-actions { margin-top: 20px; }
+.adv-card { display: flex; align-items: center; gap: 14px; padding: 16px; }
+.adv-av { flex: none; width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; background: var(--y); color: var(--on-yellow, #1A2139); font: 400 32px/1 "ZCOOL KuaiLe", "Noto Sans SC", sans-serif; }
+.adv-t { display: flex; flex-direction: column; min-width: 0; }
+.adv-t b { font-size: 18px; font-weight: 800; }
+.adv-t span { font-size: 14px; color: var(--ink-2); margin-top: 2px; }
+.adv-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
