@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v90';
+  var APP_VERSION = 'v92';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -377,7 +377,7 @@
   var AI_PACKS = [{ id: 'p60', credits: 60, price: 1900 }, { id: 'p170', credits: 170, price: 4900 }, { id: 'p360', credits: 360, price: 9900 }];
   var AI_ERR = {
     no_credit: '크레딧이 모두 소진됐어요. 마이 화면의 AI 크레딧에서 충전할 수 있어요.',
-    not_member: 'AI 선생님 호출은 멤버십 기능이에요.',
+    not_member: 'AI 선생님은 멤버십 기능이에요.',
     too_fast: '너무 빨리 눌렀어요. 잠시 후 다시 해 주세요.',
     ai_failed: 'AI가 응답하지 못했어요. 크레딧은 돌려드렸어요. 잠시 후 다시 해 주세요.',
     auth: '로그인이 필요해요.'
@@ -726,6 +726,51 @@
 
   // 소개글의 첫 문장까지만 (예: "오늘은 … 배워볼 거예요.")
   function firstSentence(t) { var m = String(t || '').match(/^.*?[.!?](?=\s|$)/); return m ? m[0] : t; }
+  var GREETS = [
+    ["니하오, 오늘도!", "우리 또 만나서 반가워"],
+    ["오늘의 한마디는?", "미래의 백 마디!"],
+    ["중국어 한 스푼,", "자신감 두 스푼"],
+    ["한자는 낯설어도,", "대화는 친근하게"],
+    ["Ni Hao부터 시작해,", "너의 세계를 넓혀봐"],
+    ["조금씩, 스며들듯", "너의 언어가 되는 중"],
+    ["서툰 오늘도", "분명한 성장의 일부"],
+    ["한마디의 용기,", "새로운 세상의 시작"],
+    ["느긋하게, 단단하게", "너만의 중국어"],
+    ["어제보다 조금 더", "중국어다운 하루"],
+    ["공부하려고 왔어?", "그럼 일단 수다부터!"],
+    ["오늘도 작심삼일?", "삼일씩 계속하면 되지!"],
+    ["중국어가 어렵다고?", "팽팽도 처음엔 달팽이였어!"],
+    ["틀릴 준비 완료?", "그럼 말할 준비도 완료!"],
+    ["오늘 공부 안 했어?", "지금 하면 오늘 한 거야!"],
+    ["팽팽도 매일 조금씩,", "너도 오늘 한마디!"],
+    ["우리 서두르지 말자,", "중국어는 도망 안 가!"],
+    ["오늘도 슬금슬금,", "실력은 차곡차곡"],
+    ["나랑 같이 가자,", "중국어가 쉬워질 때까지"],
+    ["느려도 괜찮아!", "우리 제법 잘하고 있어"],
+    ["느린 게 아니라,", "음미하는 중이야"],
+    ["니하오부터 시작해,", "니하오로 세상을 넓혀"],
+    ["오늘도 중국어랑,", "한 뼘 더 친해지기"],
+    ["혀가 꼬여도 괜찮아,", "실력은 안 꼬이니까"],
+    ["달팽이도 도착해,", "꾸준하다면 어디든"],
+    ["오늘 배운 한마디,", "언젠가 쓸 날이 와!"],
+    ["틀리면 어때,", "대화는 계속되니까"],
+    ["공부 말고 수다,", "하다 보면 실력 쑥!"],
+    ["중국어 레벨 업,", "오늘도 슬금슬금"],
+    ["오늘의 니하오,", "내일은 유창하게!"],
+    ["천천히 해도 돼,", "분명 늘고 있으니까"],
+    ["오늘도 조금씩,", "너답게 배워가자"],
+    ["서두르지 마,", "배움은 너의 속도로"],
+    ["한마디씩 차근차근,", "중국어와 가까워지기"],
+    ["조금 서툴러도,", "너는 잘하고 있어"],
+    ["오늘의 작은 한 걸음,", "내일의 큰 자신감"],
+    ["모르는 게 당연해,", "하나씩 알아가면 돼"],
+    ["오늘도 한마디,", "어제보다 한 뼘 더"],
+    ["완벽하지 않아도,", "시작은 충분하니까"],
+    ["작은 꾸준함이,", "너만의 실력이 되도록"],
+    ["느려도 괜찮아,", "너만의 속도로."]
+  ];
+  var greetIdx = Math.floor(Math.random() * GREETS.length);
+  function pickGreet() { var n = Math.floor(Math.random() * (GREETS.length - 1)); greetIdx = n >= greetIdx ? n + 1 : n; }   // 직전과 다른 멘트
   function viewHome() {
     var next = nextLesson();
     var due = dueRows().length;
@@ -733,7 +778,8 @@
     var st = streak();
 
     var nick = nickname();
-    var head = '<div class="home-greet"><h1>느려도 괜찮아,<br>너만의 속도로.' +
+    var gl = Math.max(GREETS[greetIdx][0].length, GREETS[greetIdx][1].length);   // 두 줄이 한 줄씩 들어가도록 글자 크기를 길이에 맞춰요
+    var head = '<div class="home-greet"><h1 style="font-size:min(32px, calc((100vw - 56px) / ' + (gl * 0.95).toFixed(1) + '))">' + esc(GREETS[greetIdx][0]) + '<br>' + esc(GREETS[greetIdx][1]) +
       (st > 0 ? ' <span class="chip y streak-chip">' + st + '일 연속</span>' : '') + '</h1></div>';
 
     var ans = todayAnswers(), goal = state.profile.goal;
@@ -1100,14 +1146,14 @@
   }
   function qTools(s) {
     var on = !(state.profile && state.profile.kr === false);
-    return '<div class="q-tools">' + (s.showKo ? '' : '<button class="ko-peek" data-act="ko">뜻 보기</button>') +
+    return '<div class="q-tools">' + '<button class="ko-peek' + (s.showKo ? ' on' : '') + '" data-act="ko" aria-pressed="' + (!!s.showKo) + '">' + (s.showKo ? '뜻 가리기' : '뜻 보기') + '</button>' +
       '<button class="tg' + (on ? ' on' : '') + '" data-act="set-kr" data-v="' + (on ? 'off' : 'on') + '" role="switch" aria-checked="' + on + '">한글 발음<i aria-hidden="true"></i></button>' +
       '<button class="tg wd" data-act="words-open">' + I.book + '단어</button></div>';
   }
   function koBlock(s, text, cls) {
     return s.showKo
       ? '<div class="' + cls + '" data-act="ko" role="button" tabindex="0">' + esc(text) + '</div>'
-      : '<button class="ko-peek" data-act="ko">뜻 보기</button>';
+      : '';
   }
 
   function answerCard(q, label) {
@@ -1164,7 +1210,7 @@
         (v.why ? '<p class="ai-why">' + esc(v.why) + '</p>' : '') + aiFuHtml(r) + '</div>';
     }
     if (r && r.err) return '<div class="ai-card err"><div class="ai-err-row"><span>' + esc(r.err) + '</span>' + (r.retry ? '<button class="ai-retry" data-act="ai-correct">다시 호출하기</button>' : '') + '</div></div>';
-    return '<button class="ai-btn" data-act="ai-correct"><span>AI 선생님 호출</span><em>1크레딧</em><span class="ai-bal">남은 크레딧 ' + aiBal() + '</span></button>';
+    return '<button class="ai-btn" data-act="ai-correct"><span>AI 선생님, 궁금해요!</span><em>1크레딧</em><span class="ai-bal">남은 크레딧 ' + aiBal() + '</span></button>';
   }
   // 교정을 본 뒤 궁금한 점을 한 번만 물어볼 수 있어요(질문 → 답변, 이어서 묻기는 없어요)
   function aiFuHtml(r) {
@@ -1387,6 +1433,7 @@
   /* ---------- AI 선생님: '왜 이렇게 써요?' 설명 (정답 문장마다, 크레딧 없음) ---------- */
   function aiWhy(q) {
     var s = state.s;
+    if (true) return '';   // v91: '왜 이렇게 써요?'는 AI 선생님 호출과 겹쳐 화면에서 뺐어요
     if (!aiOn() || !s || !q || !q.a) return '';
     var r = (s.why || {})[q.a.zh], h;
     if (r && r.busy) h = '<div class="why-box busy"><span class="ai-dots"><i></i><i></i><i></i></span>설명을 불러오는 중…</div>';
@@ -3354,6 +3401,7 @@
         break;
       case 'tab':
         if (id === 'me' && isGuest()) { requireLogin('me', function () { go('tab'); }); break; }
+        if (id === 'home' && state.tab !== 'home') pickGreet();
         state.editNick = false; state.tab = id; render(); window.scrollTo(0, 0);
         refreshQuiet();
         break;

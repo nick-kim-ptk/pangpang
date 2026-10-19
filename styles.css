@@ -1536,3 +1536,8 @@ body.kb .screen > .mic-area { padding-top: 8px; padding-bottom: calc(10px + var(
 .ai-fu-q { font-size: 13px; font-weight: 800; color: var(--ink-3); }
 .ai-fu-a { padding: 12px 14px; border-radius: 14px; background: var(--soft); color: var(--ink); font-size: 14.5px; line-height: 1.6; word-break: keep-all; }
 .ai-fu-a.busy { display: flex; align-items: center; gap: 10px; color: var(--ink-3); }
+.ko-peek.on { background: var(--y); color: var(--on-yellow); }
+
+/* v92: 인사 멘트는 항상 두 줄, 연속 일수 칩은 아래 줄 */
+.home-greet h1 { white-space: nowrap; }
+.home-greet h1 .streak-chip { display: table; margin: 8px 0 0; }
