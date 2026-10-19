@@ -1626,7 +1626,8 @@ body.kb .screen > .mic-area { padding-top: 8px; padding-bottom: calc(10px + var(
 @media (prefers-reduced-motion: reduce) { .ppm-laptop .ppm__key, .ppm-laptop .ppm__done { display: none; } .ppm-laptop .ppm__body, .ppm-laptop .ppm__laptop, .ppm-laptop .ppm__blink, .ppm-laptop .ppm__glow { animation: none; } }
 /* 복습 카드: 이미지 높이에 맞춰 카드 안쪽 높이를 잡아요 (좁은 화면에선 이미지가 같이 줄어요) */
 .today { --lw: clamp(108px, 34vw, 132px); }
-.today .today-top.has-laptop { min-height: calc(var(--lw) * .94 + 4px); padding-right: calc(var(--lw) + 8px); }
+.today .today-top.has-laptop { min-height: 0; padding-right: calc(var(--lw) + 8px); }
+.today .today-top.has-laptop + .explain { margin-top: 4px; }
 .today .today-top.has-laptop .chip { white-space: nowrap; }
 .today .ppm-laptop.today-m { --w: var(--lw) !important; position: absolute; right: 4px; top: 12px; width: var(--lw); }
 .today .ppm-laptop .ppm__shadow { bottom: 0; }
@@ -1654,3 +1655,11 @@ body.kb .screen > .mic-area { padding-top: 8px; padding-bottom: calc(10px + var(
 .qz-verdict .qv-t span { font-size: 13px; }
 .qz-prompt { padding: 10px 0 4px; }
 .qz-prompt .round-btn { margin-left: auto; margin-right: auto; }
+
+/* v101 키보드가 올라와도 위쪽 내용이 사라지지 않게: 화면 높이를 보이는 영역(--vvh)에 맞춰요 */
+body.kb #app, body.kb .screen { min-height: var(--vvh, 100dvh); }
+body.kb .screen > .scroll { min-height: 0; }
+
+/* v104 AI 대화 탭의 '대화 시작하기'처럼 입체적인 노란 버튼 */
+.btn.btn-3d { background: var(--y); color: var(--on-yellow, #1A2139); font-weight: 800; box-shadow: 0 5px 0 #C9A22C; margin-bottom: 5px; }
+.btn.btn-3d:active { filter: none; background: var(--y); transform: translateY(3px); box-shadow: 0 2px 0 #C9A22C; }

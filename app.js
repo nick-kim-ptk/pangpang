@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v100';
+  var APP_VERSION = 'v105';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -465,15 +465,15 @@
   // AI 대화 탭: 모은 표현 최근 5건만 보여 주고, 전체는 '전체 보기'에서 봐요
   function aiFixSection() {
     var list = aiFixes().filter(function (f) { return f.kind === 'ask' || f.kind === 'say'; }).slice(0, 5);
-    var head = '<div class="aisec-head"><div class="section-title" style="margin:0">내가 모은 것</div><button class="aisec-all" data-act="open-aiall">전체 보기</button></div>';
+    var head = '<div class="aisec-head"><div class="section-title" style="margin:0">내가 모은 문장</div><button class="aisec-all" data-act="open-aiall">전체 보기</button></div>';
     var body = list.length ?
-      '<p class="hsk-note under-title">대화에서 자주 묻고 답할 만한 말이에요. 눌러서 소리를 듣고 따라 말해 보세요.</p><div class="fixlist">' + list.map(function (f) { return fixRowHtml(f, true); }).join('') + '</div>'
+      '<div class="fixlist" style="margin-top:12px">' + list.map(function (f) { return fixRowHtml(f, true); }).join('') + '</div>'
       : '<div class="aiempty">아직 모은 표현이 없어요.<br>AI와 대화하고 마치면 자주 쓸 표현이 여기에 모여요.</div>';
     return '<div style="margin-top:28px"></div>' + head + body;
   }
   function viewAiAll() {
     return '<div class="screen"><div class="topbar"><button class="icon-btn" data-act="back" aria-label="뒤로">' + I.back + '</button></div>' +
-      '<div class="scroll" style="padding-top:4px"><h1 class="big-title" style="margin-top:0">내가 모은 것</h1>' + aiFixFull() + '<div style="height:60px"></div></div></div>';
+      '<div class="scroll" style="padding-top:4px"><h1 class="big-title" style="margin-top:0">내가 모은 문장</h1>' + aiFixFull() + '<div style="height:60px"></div></div></div>';
   }
   function aiOn() { return !!(sb && !isGuest() && !state.entErr && state.ai && isPro()); }
   function aiBal() { return state.ai ? state.ai.monthly + state.ai.topup : 0; }
@@ -835,7 +835,7 @@
     } else {
       todayCard = '<div class="today hero">' + mascot('snail-reading', 'hero-m reading') + '<span class="chip y">오늘의 중국어</span>' +
         '<h2>' + esc(next.title) + '</h2><p class="explain">' + esc(firstSentence(next.intro)) + '</p>' +
-        '<button class="btn" data-act="open-lesson" data-id="' + next.id + '">학습하기</button></div>';
+        '<button class="btn btn-3d" data-act="open-lesson" data-id="' + next.id + '">학습하기</button></div>';
     }
 
     var nextTarget = done ? next : (next ? LESSONS[LESSONS.indexOf(next) + 1] : null);
@@ -942,7 +942,7 @@
         (due > 0 ? '<p class="explain">한 번에 최대 ' + REVIEW_SIZE + '문제씩 해요</p>' : '') +
         (due > 0 ? ppm('laptop', 132, 'today-m') : mascot('sleep', 'today-m')) +
         (due > 0
-          ? '<button class="btn" data-act="review-start">복습 시작</button>'
+          ? '<button class="btn btn-3d" data-act="review-start">복습 시작</button>'
           : '<button class="btn soft" data-act="review-random"' + (learned.length ? '' : ' disabled') + '>랜덤 복습하기</button>') +
       '</div>' +
       weakCard() +
@@ -1017,7 +1017,7 @@
         '<div class="stat"><b>' + wordCount + '</b><span>배운 단어</span></div>' +
         '<div class="stat"><b>' + streak() + '일</b><span>연속 학습</span></div>' +
       '</div>' +
-      (wordCount >= 4 ? '<button class="btn quiz-btn" data-act="quiz-word">단어 퀴즈 풀기</button>' : '') +
+      (wordCount >= 4 ? '<button class="btn btn-3d quiz-btn" data-act="quiz-word">단어 퀴즈 풀기</button>' : '') +
       hskSection() +
       phraseSections() +
       (learned.length ? body : emptyState('empty', { title: '아직 쌓인 단어가 없어요', desc: '첫 레슨을 끝내면\n단어가 여기에 쌓여요', cta: { act: 'tab', id: 'lessons', label: '레슨 보러 가기' } })) +
@@ -2583,6 +2583,16 @@
     document.body.classList.add('kb');
     if (id === 'typed') [0, 250, 600].forEach(function (ms) { setTimeout(function () { if (document.activeElement && document.activeElement.id === 'typed') window.scrollTo(0, 0); }, ms); });
   });
+  // 키보드가 올라오면 화면 높이를 '보이는 영역'에 맞춰요 (안 그러면 위쪽 내용이 화면 밖으로 밀려요)
+  (function () {
+    var vv = window.visualViewport; if (!vv) return;
+    function fit() {
+      document.documentElement.style.setProperty('--vvh', Math.round(vv.height) + 'px');
+      if (document.body.classList.contains('kb')) { window.scrollTo(0, 0); }
+    }
+    vv.addEventListener('resize', fit); vv.addEventListener('scroll', function () { if (document.body.classList.contains('kb') && vv.offsetTop > 0) window.scrollTo(0, 0); });
+    fit();
+  })();
   document.addEventListener('focusout', function () {
     setTimeout(function () { var ae = document.activeElement; if (!ae || !KB_IDS[ae.id]) document.body.classList.remove('kb'); }, 150);
   });
