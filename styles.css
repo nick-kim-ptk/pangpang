@@ -1472,3 +1472,11 @@ u.miss { text-decoration: underline wavy #ef5350; text-underline-offset: 4px; co
 .ac-footer { display: grid; gap: 10px; }
 .ac-cost { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 14px; border-radius: 14px; background: var(--soft); font-size: 13px; color: var(--ink-3); font-weight: 700; }
 .ac-cost b { color: var(--ink); font-size: 14px; font-weight: 800; }
+
+.ac-hint { margin: 8px 2px 0; font-size: 13px; color: var(--ink-3); font-weight: 600; }
+
+/* v80: 키보드가 올라왔을 때 */
+body.kb .mic-area .link-btn, body.kb .ac-kolink { display: none; }
+body.kb .screen > .mic-area { padding-top: 8px; padding-bottom: calc(10px + var(--safe-b)); }
+.mic-area { grid-template-columns: minmax(0, 1fr); }
+.type-row input { width: 0; }

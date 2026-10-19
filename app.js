@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v78';
+  var APP_VERSION = 'v80';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -1406,7 +1406,7 @@
   var AC_TOPICS = ['중국 카페에서 주문하기', '식당에서 음식 시키기', '택시 타고 길 알려 주기', '처음 만난 친구와 인사하기', '호텔 체크인하기', '쇼핑하며 가격 물어보기', '주말 계획 이야기하기', '내 가족 소개하기', '좋아하는 취미 이야기하기'];
   function acPick(a) {
     var bal = aiBal(), can = bal >= AI_CHAT_COST;
-    var ok = can && String(a.topic || '').trim().length >= 2 && !a.busy;
+    var ok = can && !a.busy;
     var chips = AC_TOPICS.map(function (t, i) { return '<button class="ac-chip' + (a.topic === t ? ' on' : '') + '" data-act="ac-topic" data-i="' + i + '">' + esc(t) + '</button>'; }).join('');
     return '<div class="screen"><div class="topbar"><button class="icon-btn" data-act="back" aria-label="뒤로">' + I.back + '</button></div>' +
       '<div class="scroll" style="padding-top:4px"><h1 class="big-title" style="margin-top:0">중국어로, 아무 말이나 해봐요</h1>' +
@@ -1414,7 +1414,8 @@
       (can ? '' : '<div class="notice" style="margin-bottom:12px">크레딧이 부족해요. <button class="link-btn inl" data-act="open-aicharge">충전하기</button></div>') +
       '<label class="ac-lab" for="ac-topic">어떤 이야기를 해볼까요?</label>' +
       '<input id="ac-topic" class="ac-topic" maxlength="30" autocomplete="off" spellcheck="false" placeholder="예: 내일 친구랑 점심 약속 잡기" value="' + esc(a.topic || '') + '">' +
-      '<div class="ac-lab" style="margin-top:16px">이런 주제는 어때요?</div><div class="ac-chips">' + chips + '</div>' +
+      '<p class="ac-hint">주제 선택 없이 시작하면 선생님이 먼저 말을 걸어요.</p>' +
+      '<div class="ac-lab" style="margin-top:30px">이런 주제는 어때요?</div><div class="ac-chips">' + chips + '</div>' +
       '<div style="height:150px"></div></div>' +
       '<div class="footer ac-footer"><div class="ac-cost"><b>' + bal + ' 크레딧 남음</b><span>대화 1회 당 ' + AI_CHAT_COST + '크레딧 사용</span></div><button id="ac-go" class="btn" data-act="ac-start"' + (ok ? '' : ' disabled') + '>' + (a.busy ? '대화를 준비하고 있어요…' : '시작하기') + '</button></div></div>';
   }
@@ -1563,11 +1564,16 @@
   }
   async function acStart() {
     var a = state.ac;
-    var topic = String((a && a.topic) || '').trim().slice(0, 30);
-    if (!a || a.busy || topic.length < 2 || !aiOn() || aiBal() < AI_CHAT_COST) return;
+    var topic = String((a && a.topic) || '').trim().slice(0, 30), intro = '';
+    if (!a || a.busy || !aiOn() || aiBal() < AI_CHAT_COST) return;
+    if (topic.length < 2) {   // 주제를 안 골랐으면 인사와 함께 아무 이야기나 먼저 걸어 줘요
+      var pool = AC_TOPICS.concat(['오늘 하루', '날씨', '좋아하는 음식', '여행 가고 싶은 곳']);
+      topic = pool[Math.floor(Math.random() * pool.length)];
+      intro = '학습자가 주제를 정하지 않았어요. 먼저 밝게 인사하고, 이 주제로 쉬운 질문 하나를 가볍게 건네 주세요.';
+    }
     a.busy = true; render();
     try {
-      var d = await acCall({ action: 'chat_start', scenario: { id: 'free', title: topic, intro: '' } });
+      var d = await acCall({ action: 'chat_start', scenario: { id: 'free', title: topic, intro: intro } });
       a.busy = false;
       if (!d.ok) { toast(AI_ERR[d.error] || '대화를 시작하지 못했어요. 잠시 후 다시 해 주세요'); render(); return; }
       state.ac = { mode: 'chat', scenario: { id: 'free', title: topic }, sid: d.sid, msgs: [Object.assign({ who: 'them' }, d.turn.reply)], sug: d.turn.suggestions || [], turns: 0, input: '', busy: false, ended: false, fixes: [] };
@@ -2380,6 +2386,17 @@
       reportError('feedback: ' + (err && err.message), err && err.stack);
     }
   }
+  // 키보드로 입력할 때: 위쪽 내용은 그대로 보이게 하고, 부가 버튼은 숨겨요
+  var KB_IDS = { typed: 1, 'ac-in': 1, 'ac-ko-in': 1, 'ac-topic': 1 };
+  document.addEventListener('focusin', function (e) {
+    var id = e.target && e.target.id;
+    if (!id || !KB_IDS[id]) return;
+    document.body.classList.add('kb');
+    if (id === 'typed') [0, 250, 600].forEach(function (ms) { setTimeout(function () { if (document.activeElement && document.activeElement.id === 'typed') window.scrollTo(0, 0); }, ms); });
+  });
+  document.addEventListener('focusout', function () {
+    setTimeout(function () { var ae = document.activeElement; if (!ae || !KB_IDS[ae.id]) document.body.classList.remove('kb'); }, 150);
+  });
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Enter' && e.target && e.isComposing !== true) {
       if (e.target.id === 'ac-in') { e.preventDefault(); acSend(); }
