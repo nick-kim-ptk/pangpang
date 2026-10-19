@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v80';
+  var APP_VERSION = 'v83';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -1417,7 +1417,7 @@
       '<p class="ac-hint">주제 선택 없이 시작하면 선생님이 먼저 말을 걸어요.</p>' +
       '<div class="ac-lab" style="margin-top:30px">이런 주제는 어때요?</div><div class="ac-chips">' + chips + '</div>' +
       '<div style="height:150px"></div></div>' +
-      '<div class="footer ac-footer"><div class="ac-cost"><b>' + bal + ' 크레딧 남음</b><span>대화 1회 당 ' + AI_CHAT_COST + '크레딧 사용</span></div><button id="ac-go" class="btn" data-act="ac-start"' + (ok ? '' : ' disabled') + '>' + (a.busy ? '대화를 준비하고 있어요…' : '시작하기') + '</button></div></div>';
+      '<div class="footer ac-footer"><div class="ac-cost"><b>' + bal + ' 크레딧 남음</b><span>대화 1회 당 ' + AI_CHAT_COST + '크레딧 사용</span></div><button id="ac-go" class="btn" data-act="ac-start"' + (ok ? '' : ' disabled') + '>' + (a.busy ? '대화를 준비하고 있어요…' : '대화하기') + '</button></div></div>';
   }
   
   function acBubble(m, idx) {
@@ -1500,16 +1500,18 @@
       foot = '<div class="ac-foot">' + acRepBox(a) + '</div>';
     } else if (a.ko) {
       foot = '<div class="ac-foot">' + acKoBox(a) + '</div>';
+    } else if (a.wait) {   // 선생님 말이 끝날 때까지 내 차례 영역은 숨겨 둬요
+      foot = '<div class="ac-foot ac-wait"></div>';
     } else {
       a.shown = a.shown || {};
-      sug = !a.busy && a.sug.length ? '<div class="acsug"><div class="acsug-l">이렇게 말해볼 수 있어요 <small>눌러서 듣기</small></div>' +
+      sug = !a.busy && a.sug.length ? '<div class="acsug' + (a.rise ? ' rise' : '') + '"><div class="acsug-l">이렇게 말해볼 수 있어요 <small>눌러서 듣기</small></div>' +
         a.sug.map(function (x, i) {
           var on = !!a.shown[i];
           return '<div class="acsg' + (on ? ' on' : '') + '"><button class="acsg-main" data-act="ac-sug" data-i="' + i + '">' + esc(x.ko || x.zh) + '</button>' +
             (on ? '<div class="acsg-ans"><span class="zh">' + esc(x.zh) + '</span>' + (x.py ? '<span class="py">' + esc(x.py) + '</span>' : '') + '</div>' : '') +
             '<button class="acsg-show" data-act="ac-sug-show" data-i="' + i + '">' + (on ? '답변 가리기' : '답변 보기') + '</button></div>';
         }).join('') + '</div>' : '';
-      foot = '<div class="ac-foot">' + (a.low ? '<div class="notice ac-low">크레딧이 모자라요. 마이 화면에서 충전하거나, 대화를 마치고 정리를 볼 수 있어요.</div>' : '') +
+      foot = '<div class="ac-foot' + (a.rise ? ' rise' : '') + '">' + (a.low ? '<div class="notice ac-low">크레딧이 모자라요. 마이 화면에서 충전하거나, 대화를 마치고 정리를 볼 수 있어요.</div>' : '') +
         acMicBox(a, '누른 채로 말하고, 끝나면 손을 떼세요', acHasSR() ? 'both' : 'zh') + '</div>';
     }
     var leave = a.leave ? '<div class="ac-leave"><div class="ac-leave-b"><b>대화를 마칠까요?</b><span>지금까지 ' + a.turns + '번 주고받았어요. ' + (a.turns * AI_CHAT_COST) + '크레딧이 쓰였고, 마치면 정리 화면으로 가요.</span>' +
@@ -1521,8 +1523,8 @@
   function acWrapHtml(a) {
     var w = a.wrap;
     if (!w) return '';
-    var head = '<div class="section-title" style="margin-top:20px">자주 쓸 만한 표현</div>';
-    if (w.busy) return head + '<div class="acb them typing" style="align-self:flex-start"><span class="ai-dots"><i></i><i></i><i></i></span></div><p class="hsk-note under-title">이번 대화에서 다시 쓸 만한 말을 고르고 있어요…</p>';
+    var head = '<div class="section-title ac-wrap-h">자주 쓸 만한 표현</div>';
+    if (w.busy) return head + '<div class="ac-wraploading"><span class="ai-dots"><i></i><i></i><i></i></span><span>이번 대화에서 다시 쓸 만한 말을 고르고 있어요…</span></div>';
     if (w.err) return head + '<p class="hsk-note under-title">표현을 고르지 못했어요. 다음 대화에서는 꼭 모아 드릴게요.</p>';
     return head + '<p class="hsk-note under-title">AI 대화 탭에 저장했어요. 눌러서 소리를 들어 보세요.</p><div class="fixlist">' + (w.items || []).map(function (x) {
       return '<div class="fixrow"><button class="fixrow-main" data-act="say" data-text="' + esc(x.zh) + '"><span class="xchip ' + (x.kind === 'ask' ? 'ask' : 'say') + '">' + (x.kind === 'ask' ? '질문' : '대답') + '</span><span class="zh">' + esc(x.zh) + '</span>' +
@@ -1539,7 +1541,7 @@
       '<div class="scroll" style="padding-top:4px"><h1 class="big-title" style="margin-top:0">대화 끝! 수고했어요</h1>' +
       '<p class="sub-title">' + esc(a.scenario.title) + '</p>' +
       '<div class="ac-settle"><div><span>주고받은 횟수</span><b>' + a.turns + '번</b></div><div><span>사용한 크레딧</span><b>' + (a.turns * AI_CHAT_COST) + '</b></div><div><span>남은 크레딧</span><b>' + aiBal() + '</b></div></div>' +
-      '<div class="section-title" style="margin-top:8px">이렇게 고쳐 보세요</div>' + (a.fixes.length ? '<p class="hsk-note under-title">AI 대화 탭에도 모아 뒀어요.</p>' : '') + fx + acWrapHtml(a) + '<div style="height:96px"></div></div>' +
+      '<div class="section-title" style="margin-top:8px">이렇게 고쳐 보세요</div>' + (a.fixes.length ? '<p class="hsk-note under-title">AI 대화 탭에도 모아 뒀어요.</p>' : '') + fx + acWrapHtml(a) + '<div style="height:150px"></div></div>' +
       '<div class="footer fc-foot"><button class="btn gray" data-act="ac-leave-yes">닫기</button><button class="btn" data-act="ac-again">한 번 더 하기</button></div></div>';
   }
   async function acCall(body) {
@@ -1576,7 +1578,8 @@
       var d = await acCall({ action: 'chat_start', scenario: { id: 'free', title: topic, intro: intro } });
       a.busy = false;
       if (!d.ok) { toast(AI_ERR[d.error] || '대화를 시작하지 못했어요. 잠시 후 다시 해 주세요'); render(); return; }
-      state.ac = { mode: 'chat', scenario: { id: 'free', title: topic }, sid: d.sid, msgs: [Object.assign({ who: 'them' }, d.turn.reply)], sug: d.turn.suggestions || [], turns: 0, input: '', busy: false, ended: false, fixes: [] };
+      state.ac = { mode: 'chat', scenario: { id: 'free', title: topic }, sid: d.sid, msgs: [Object.assign({ who: 'them' }, d.turn.reply)], sug: d.turn.suggestions || [], turns: 0, input: '', busy: false, ended: false, fixes: [], wait: true };
+      acReveal(state.ac);
       render(); acScroll();
       setTimeout(function () { if (state.screen === 'aichat' && state.ac && state.ac.sid === d.sid) speak(d.turn.reply.zh, 0.85); }, 350);
     } catch (e) {
@@ -1586,10 +1589,22 @@
     }
   }
   // AI의 다음 말을 대화에 올려요
+  // 선생님이 말을 마친 뒤에 내 차례 영역(추천 답변·마이크)이 떠오르듯 나타나요
+  function acReveal(a) {
+    a.wait = true;
+    setTimeout(function () {
+      if (state.ac !== a || !a.wait) return;
+      a.wait = false; a.rise = true;
+      if (state.screen === 'aichat') { render(); acScroll(); }
+      setTimeout(function () { a.rise = false; }, 800);
+    }, 1400);
+  }
   function acRelease(a, p) {
     a.msgs.push(Object.assign({ who: 'them' }, p.reply));
     a.sug = p.sug; a.lastSug = a.sug; a.shown = {}; a.ended = !!p.end; a.pending = null; a.rep = null;
+    if (!a.ended) a.wait = true;
     render(); acScroll();
+    if (!a.ended) acReveal(a);
     setTimeout(function () { if (state.screen === 'aichat' && state.ac === a) speak(p.reply.zh, 0.85); }, 250);
   }
   async function acSend(said) {

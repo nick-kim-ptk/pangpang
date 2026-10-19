@@ -1480,3 +1480,24 @@ body.kb .mic-area .link-btn, body.kb .ac-kolink { display: none; }
 body.kb .screen > .mic-area { padding-top: 8px; padding-bottom: calc(10px + var(--safe-b)); }
 .mic-area { grid-template-columns: minmax(0, 1fr); }
 .type-row input { width: 0; }
+
+/* v81: 선생님 말이 끝나면 내 차례 영역이 떠오르듯 나타나요 */
+@keyframes acRise { from { opacity: 0; transform: translateY(26px); } to { opacity: 1; transform: none; } }
+.acsug.rise, .ac-foot.rise { animation: acRise .5s cubic-bezier(.2,.8,.2,1) both; }
+.ac-foot.ac-wait { min-height: 24px; }
+@media (prefers-reduced-motion: reduce) { .acsug.rise, .ac-foot.rise { animation: none; } }
+
+/* v82: 대화 정리 화면 여백 */
+.ac-wrap-h { margin-top: 36px; }
+.screen .fixlist { gap: 14px; }
+.fixrow { padding: 14px 10px 14px 16px; }
+.fixrow-main { gap: 4px; }
+.xchip { margin-bottom: 4px; justify-self: start; }
+.ac-wrap-h + .hsk-note.under-title { margin: 6px 2px 16px; }
+.section-title + .hsk-note.under-title { margin-bottom: 16px; }
+.ac-settle + .section-title { margin-top: 28px !important; }
+.screen .acb.typing { margin: 6px 0 10px; }
+
+/* v83: 표현 고르는 중 로딩 */
+.ac-wraploading { display: flex; align-items: center; gap: 12px; margin: 8px 0 0; padding: 16px 18px; border-radius: 18px; background: var(--card); box-shadow: inset 0 0 0 1.5px var(--line); color: var(--ink-3); font-size: 14px; line-height: 1.45; }
+.ac-wraploading .ai-dots { flex: none; }
