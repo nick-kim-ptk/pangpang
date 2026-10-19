@@ -149,8 +149,20 @@ export function parseChat(text: string) {
   } catch (_e) { return null; }
 }
 
+// 앞선 대화의 마지막 한 줄에 '여기까지 기억' 표시를 달아요 (messages 마지막 줄은 이번 새 입력이라 제외)
+function withCache(messages: any[], on: boolean) {
+  if (!on || messages.length < 2) return messages;
+  const i = messages.length - 2, m = messages[i];
+  if (!m || typeof m.content !== 'string') return messages;
+  const out = messages.slice();
+  out[i] = { role: m.role, content: [{ type: 'text', text: m.content, cache_control: { type: 'ephemeral' } }] };
+  return out;
+}
+
 // Claude 부르기 (실패하면 던져요)
-async function askClaude(deps: Deps, system: string, messages: any[], maxTokens: number) {
+// 프롬프트 캐싱: 매번 똑같은 안내문(system)을 Anthropic이 잠시 기억해 두면 다음 요청부터 입력 값이 싸져요.
+// 답의 내용은 그대로예요. cacheHist=true면 앞선 대화(마지막 한 줄까지)도 같이 기억해요.
+async function askClaude(deps: Deps, system: string, messages: any[], maxTokens: number, cacheHist = false) {
   const key = deps.env('ANTHROPIC_API_KEY')!;
   const model = deps.env('AI_MODEL') ?? 'claude-sonnet-5-5';
   const ctl = new AbortController();
@@ -159,13 +171,14 @@ async function askClaude(deps: Deps, system: string, messages: any[], maxTokens:
     const r = await deps.fetchFn('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model, max_tokens: maxTokens, system, messages }),
+      body: JSON.stringify({ model, max_tokens: maxTokens, system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }], messages: withCache(messages, cacheHist) }),
       signal: ctl.signal,
     });
     if (!r.ok) throw new Error('anthropic ' + r.status);
     const data = await r.json();
     const text = (data?.content ?? []).map((c: any) => c?.text ?? '').join('');
-    return { text, model, stop: data?.stop_reason ?? null, inT: data?.usage?.input_tokens ?? null, outT: data?.usage?.output_tokens ?? null };
+    return { text, model, stop: data?.stop_reason ?? null, inT: data?.usage?.input_tokens ?? null, outT: data?.usage?.output_tokens ?? null,
+      cR: data?.usage?.cache_read_input_tokens ?? 0, cW: data?.usage?.cache_creation_input_tokens ?? 0 };
   } finally { clearTimeout(timer); }
 }
 
@@ -311,7 +324,7 @@ async function explain(deps: Deps, uid: string, body: any) {
     const result = parseExplain(a.text);
     if (!result) throw new Error('parse');
     await db.from('ai_explain').upsert({ zh, data: result });
-    await db.from('ai_usage').insert({ user_id: uid, kind: 'explain', model: a.model, in_tokens: a.inT, out_tokens: a.outT });
+    await db.from('ai_usage').insert({ user_id: uid, kind: 'explain', model: a.model, in_tokens: a.inT, out_tokens: a.outT, cache_read: a.cR, cache_write: a.cW });
     return json({ ok: true, result });
   } catch (e) {
     console.error('ai-coach explain failed', String(e));
@@ -352,7 +365,7 @@ async function chatStart(deps: Deps, uid: string, body: any) {
     const ins = await db.from('ai_chat').insert({ user_id: uid, scenario: scenario.id || scenario.title, msgs, turns: 0, done: false }).select('id').single();
     const sid = ins?.data?.id;
     if (!sid) throw new Error('session');
-    if (usage) await db.from('ai_usage').insert({ user_id: uid, kind: 'chat', model: usage.model, in_tokens: usage.inT, out_tokens: usage.outT });
+    if (usage) await db.from('ai_usage').insert({ user_id: uid, kind: 'chat', model: usage.model, in_tokens: usage.inT, out_tokens: usage.outT, cache_read: usage.cR, cache_write: usage.cW });
     return json({ ok: true, mock: !usage, sid, turn: parsed, cost: COST_TURN, monthly, topup });
   } catch (e) {
     console.error('ai-coach chat_start failed', String(e));
@@ -393,7 +406,7 @@ async function chatWrap(deps: Deps, uid: string, body: any) {
       a = await askClaude(deps, SYSTEM_WRAP, [{ role: 'user', content: JSON.stringify({ topic: ses.scenario, conversation: lines, ...(attempt ? { format_reminder: '반드시 지정한 JSON 객체 하나만 출력하세요.' } : {}) }) }], 1200);
       result = parseWrap(a.text);
       if (!result) console.error('ai-coach chat_wrap unparsed', attempt, a.stop, String(a.text).slice(0, 400));
-      await db.from('ai_usage').insert({ user_id: uid, kind: 'wrap', model: a.model, in_tokens: a.inT, out_tokens: a.outT });
+      await db.from('ai_usage').insert({ user_id: uid, kind: 'wrap', model: a.model, in_tokens: a.inT, out_tokens: a.outT, cache_read: a.cR, cache_write: a.cW });
     }
     if (!result) throw new Error('parse');
     return json({ ok: true, result });
@@ -431,7 +444,7 @@ async function ko2zh(deps: Deps, uid: string, body: any) {
       a = await askClaude(deps, SYSTEM_KO, [{ role: 'user', content: JSON.stringify({ topic: ses.scenario, partner_last_said: last, learner_said_in_korean: ko, ...(attempt ? { format_reminder: '반드시 지정한 JSON 객체 하나만 출력하세요.' } : {}) }) }], 800);
       result = parseKo(a.text);
       if (!result) console.error('ai-coach ko2zh unparsed', attempt, a.stop, String(a.text).slice(0, 400));
-      await db.from('ai_usage').insert({ user_id: uid, kind: 'ko2zh', model: a.model, in_tokens: a.inT, out_tokens: a.outT });
+      await db.from('ai_usage').insert({ user_id: uid, kind: 'ko2zh', model: a.model, in_tokens: a.inT, out_tokens: a.outT, cache_read: a.cR, cache_write: a.cW });
     }
     if (!result) throw new Error('parse');
     return json({ ok: true, result });
@@ -460,7 +473,7 @@ async function followup(deps: Deps, uid: string, body: any) {
     }) }], 700);
     const answer = String(a.text || '').trim().slice(0, 900);
     if (!answer) throw new Error('empty');
-    await db.from('ai_usage').insert({ user_id: uid, kind: 'followup', model: a.model, in_tokens: a.inT, out_tokens: a.outT });
+    await db.from('ai_usage').insert({ user_id: uid, kind: 'followup', model: a.model, in_tokens: a.inT, out_tokens: a.outT, cache_read: a.cR, cache_write: a.cW });
     return json({ ok: true, result: { answer } });
   } catch (e) {
     console.error('ai-coach followup failed', String(e));
@@ -494,11 +507,11 @@ async function chatTurn(deps: Deps, uid: string, body: any) {
       let a: any = null, user: any = null;
       for (let attempt = 0; attempt < 2 && !parsed; attempt++) {
         user = { role: 'user', content: JSON.stringify({ learner_said: answer, ...(short ? { note: '아주 짧은 답(단어 하나 등)입니다. 정상적인 답으로 받아들여 대화를 이어 가고, 학습자가 하고 싶었을 완전한 문장을 짐작해 fix로 반드시 제안하세요.' } : {}), ...(attempt ? { format_reminder: '반드시 지정한 JSON 객체 하나만 출력하세요. 설명 글(why)은 짧게, 추천 문장은 2개만 쓰세요.' } : {}) }) };
-        a = await askClaude(deps, SYSTEM_CHAT, [...hist, user], 1500);
+        a = await askClaude(deps, SYSTEM_CHAT, [...hist, user], 1500, true);
         parsed = parseChat(a.text);
         if (!parsed) console.error('ai-coach chat_turn unparsed', attempt, a.stop, String(a.text).slice(0, 600));
         usage = a;
-        if (usage) await db.from('ai_usage').insert({ user_id: uid, kind: 'chat', model: usage.model, in_tokens: usage.inT, out_tokens: usage.outT });
+        if (usage) await db.from('ai_usage').insert({ user_id: uid, kind: 'chat', model: usage.model, in_tokens: usage.inT, out_tokens: usage.outT, cache_read: usage.cR, cache_write: usage.cW });
       }
       if (!parsed) {
         // 두 번 모두 형식에 맞는 답이 없으면 대화를 끊지 않고 '다시 말해 달라'고 하며, 이번 크레딧은 돌려줘요

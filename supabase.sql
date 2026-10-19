@@ -603,3 +603,8 @@ create policy "review_notes insert" on public.review_notes for insert to anon, a
 create policy "review_notes update" on public.review_notes for update to anon, authenticated using (true) with check (true);
 grant select, insert, update on public.review_notes to anon, authenticated;
 notify pgrst, 'reload schema';
+-- v109: AI 프롬프트 캐싱 사용량 기록 (원가 계산용). 여러 번 실행해도 안전해요.
+-- 서버 함수(ai-coach)를 배포하기 전에 먼저 실행하세요.
+alter table public.ai_usage add column if not exists cache_read  int;
+alter table public.ai_usage add column if not exists cache_write int;
+notify pgrst, 'reload schema';

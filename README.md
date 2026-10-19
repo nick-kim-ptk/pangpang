@@ -387,3 +387,9 @@ Supabase 로그인을 연결한 뒤에만 동작해요. 아직 실제 기기에�
 
 ## v108
 - 로그아웃 버튼 강조 스타일(v107) 취소: 원래의 은은한 회색 버튼으로 복원
+
+## v109
+- AI 프롬프트 캐싱: ai-coach가 매번 같은 안내문(system)과 앞선 대화를 Anthropic 캐시에 기억시켜 입력 비용을 줄임 (답의 내용은 그대로). ai_usage에 cache_read/cache_write 컬럼 추가. 순서: v109-cache.sql 실행 → ai-coach 재배포. 확인: 아래 SQL에서 cache_read가 0보다 큰지
+```sql
+select kind, count(*) n, round(avg(in_tokens)) avg_in, round(avg(cache_read)) avg_cache_read, round(avg(cache_write)) avg_cache_write from public.ai_usage where at > now() - interval '1 day' group by kind;
+```
