@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v89';
+  var APP_VERSION = 'v90';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
