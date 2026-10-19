@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v84';
+  var APP_VERSION = 'v86';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -1509,7 +1509,7 @@
             (on ? '<div class="acsg-ans"><span class="zh">' + esc(x.zh) + '</span>' + (x.py ? '<span class="py">' + esc(x.py) + '</span>' : '') + '</div>' : '') +
             '<button class="acsg-show" data-act="ac-sug-show" data-i="' + i + '">' + (on ? '답변 가리기' : '답변 보기') + '</button></div>';
         }).join('') + '</div>' : '';
-      foot = '<div class="ac-foot' + (a.wait ? ' hide' : '') + '">' + (a.low ? '<div class="notice ac-low">크레딧이 모자라요. 마이 화면에서 충전하거나, 대화를 마치고 정리를 볼 수 있어요.</div>' : '') +
+      foot = '<div class="ac-foot">' + (a.low ? '<div class="notice ac-low">크레딧이 모자라요. 마이 화면에서 충전하거나, 대화를 마치고 정리를 볼 수 있어요.</div>' : '') +
         acMicBox(a, '누른 채로 말하고, 끝나면 손을 떼세요', acHasSR() ? 'both' : 'zh') + '</div>';
     }
     var leave = a.leave ? '<div class="ac-leave"><div class="ac-leave-b"><b>대화를 마칠까요?</b><span>지금까지 ' + a.turns + '번 주고받았어요. ' + (a.turns * AI_CHAT_COST) + '크레딧이 쓰였고, 마치면 정리 화면으로 가요.</span>' +
@@ -1586,7 +1586,7 @@
     }
   }
   // AI의 다음 말을 대화에 올려요
-  // 선생님 말(음성)이 끝나면 내 차례 영역(추천 답변·마이크)이 슥 떠올라요. 자리는 미리 잡아 둬서 화면이 튀지 않아요
+  // 선생님 말(음성)이 끝나면 추천 답변 목록이 슥 펼쳐져요. 대화창(마이크·입력)은 처음부터 떠 있어요
   function acReveal(a, text) {
     a.wait = true;
     var done = false;
@@ -1595,8 +1595,9 @@
       setTimeout(function () {
         if (state.ac !== a) return;
         a.wait = false;
-        var els = document.querySelectorAll('.ac-foot.hide, .acsug.hide');
-        for (var k = 0; k < els.length; k++) els[k].classList.remove('hide');
+        var els = document.querySelectorAll('.acsug.hide');
+        for (var k = 0; k < els.length; k++) { els[k].classList.add('go'); els[k].classList.remove('hide'); }
+        [80, 250, 450, 700].forEach(function (ms) { setTimeout(function () { if (state.ac === a && state.screen === 'aichat') { try { window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }); } catch (e) { acScroll(); } } }, ms); });
       }, 350);
     }
     setTimeout(function () { if (state.screen === 'aichat' && state.ac === a) speak(text, 0.85, show); else show(); }, 300);
