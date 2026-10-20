@@ -1785,3 +1785,21 @@ html, body, * { touch-action: pan-x pan-y; }
 .review-card.big .btn { min-height: 0; padding: 0 22px; }
 html, body, * { scrollbar-width: none; -ms-overflow-style: none; }
 *::-webkit-scrollbar { width: 0; height: 0; display: none; }
+
+/* v123 스플래시 버전, 모은 문장 날짜 위치, 밀어서 삭제 */
+.sp-ver { position: absolute; left: 0; right: 0; bottom: 44px; text-align: center; z-index: 15; font: 600 11px "Pretendard Variable", Pretendard, sans-serif; letter-spacing: .02em; color: var(--ink); opacity: 0; animation: sp-ver-in .4s 2s forwards; }
+@keyframes sp-ver-in { to { opacity: .45; } }
+.fixrow { position: relative; }
+.fix-ago { position: absolute; top: 14px; right: 16px; order: 0; justify-self: auto; margin: 0; font-size: 12px; font-weight: 600; line-height: 20px; color: var(--ink-3); }
+.fixrow.no-chip .fixrow-main .zh { padding-right: 56px; }
+.fixswipe { position: relative; border-radius: 18px; overflow: hidden; }
+.fixswipe .fixrow { position: relative; z-index: 1; transition: transform .22s ease; touch-action: pan-y; will-change: transform; }
+.fixswipe .fixrow.drag { transition: none; }
+.fixdel { position: absolute; top: 0; right: 0; bottom: 0; width: 76px; border: 0; background: #e5484d; color: #fff; display: grid; place-items: center; }
+.fixdel:active { background: #cf3a3f; }
+.fixswipe.hint .fixrow { animation: fix-hint 1.3s .5s ease-in-out 1; }
+@keyframes fix-hint { 0%, 100% { transform: translateX(0); } 38%, 62% { transform: translateX(-60px); } }
+@media (prefers-reduced-motion: reduce) { .fixswipe.hint .fixrow { animation: none; } }
+
+.fixdel { opacity: 0; transition: opacity .15s; }
+.fixswipe.open .fixdel, .fixswipe.sw-drag .fixdel, .fixswipe.hint .fixdel { opacity: 1; }
