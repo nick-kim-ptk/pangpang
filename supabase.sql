@@ -622,3 +622,21 @@ drop policy if exists "user_srs own update" on public.user_srs;
 create policy "user_srs own select" on public.user_srs for select using (auth.uid() = user_id);
 create policy "user_srs own insert" on public.user_srs for insert with check (auth.uid() = user_id);
 create policy "user_srs own update" on public.user_srs for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- v119: AI 대화 기록(말한 그대로) 저장. 안 만들어도 앱은 이 기기에서 잘 동작해요.
+create table if not exists public.ai_chats (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  id text not null,
+  data jsonb not null,
+  created_at timestamptz not null default now(),
+  primary key (user_id, id)
+);
+alter table public.ai_chats enable row level security;
+drop policy if exists "ai_chats own select" on public.ai_chats;
+drop policy if exists "ai_chats own insert" on public.ai_chats;
+drop policy if exists "ai_chats own update" on public.ai_chats;
+drop policy if exists "ai_chats own delete" on public.ai_chats;
+create policy "ai_chats own select" on public.ai_chats for select using (auth.uid() = user_id);
+create policy "ai_chats own insert" on public.ai_chats for insert with check (auth.uid() = user_id);
+create policy "ai_chats own update" on public.ai_chats for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "ai_chats own delete" on public.ai_chats for delete using (auth.uid() = user_id);

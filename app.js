@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v117';
+  var APP_VERSION = 'v119';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -582,7 +582,7 @@
 
   /* ---------- 화면 이동 ---------- */
   // 뒤로 가기: 폰의 뒤로 제스처·버튼(기록)과 화면 왼쪽 가장자리에서 오른쪽으로 미는 동작을 같이 처리해요
-  var SUBSCREEN = { pay: 1, privacy: 1, login: 1, intro: 1, practice: 1, quiz: 1, stats: 1, done: 1, hsk: 1, hskstudy: 1, tone: 1, feedback: 1, speed: 1, account: 1, coupon: 1, aicharge: 1, aichat: 1, aiall: 1, prefs: 1, about: 1, advisor: 1 };
+  var SUBSCREEN = { pay: 1, privacy: 1, login: 1, intro: 1, practice: 1, quiz: 1, stats: 1, done: 1, hsk: 1, hskstudy: 1, tone: 1, feedback: 1, speed: 1, account: 1, coupon: 1, aicharge: 1, aichat: 1, aiall: 1, aichats: 1, aichatlog: 1, prefs: 1, about: 1, advisor: 1 };
   var inSub = false, ignorePop = 0, backAnim = false;
   function syncHistory(screen) {
     try {
@@ -609,6 +609,8 @@
     else if (sc === 'quiz') { stopSpeak(); go(state.z && state.z.hsk ? 'hsk' : 'tab'); }
     else if (sc === 'hskstudy') { stopSpeak(); clearTimeout(hskTimer); store.saveProfile(); go(state.hc && state.hc.mode === 'due' ? 'tab' : 'hsk'); }
     else if (sc === 'tone') { stopSpeak(); go('hsk'); }
+    else if (sc === 'aichats') go('tab');
+    else if (sc === 'aichatlog') go(state.chatFrom === 'all' ? 'aichats' : 'tab');
     else if (sc === 'hsk') go('tab');
     else if (sc === 'login') loginLater();
     else if (sc === 'pay') go('tab');
@@ -873,15 +875,19 @@
         '<button class="btn btn-3d" data-act="open-lesson" data-id="' + next.id + '">학습하기</button></div>';
     }
 
-    var nextTarget = done ? next : (next ? LESSONS[LESSONS.indexOf(next) + 1] : null);
+    var nextTarget = done ? next : null;   // 오늘 레슨을 끝낸 뒤에만 '다음 레슨'을 보여줘요
     var nextCard = nextTarget ? '<div class="next-card"><span class="nc-num">' + (LESSONS.indexOf(nextTarget) + 1) + '</span>' +
       '<div class="nc-txt"><div class="nc-lab">' + '다음 레슨' + '</div><b>' + esc(nextTarget.title) + '</b><div class="s">' + esc(nextTarget.sub) + '</div></div>' +
       '<button class="btn sm" data-act="open-lesson" data-id="' + nextTarget.id + '">' + (done ? '배우기' : '미리 보기') + '</button></div>' : '';
 
     var wdue = hskDue(0).length, rtot = due + wdue;
-    var reviewCard = rtot > 0 ? '<div class="review-card"><div class="lead">' + mascot('laptop') +
-      '<div><b>오늘의 복습 ' + rtot + '개</b><div class="s">' + (due ? '문장 ' + due + '개' : '') + (due && wdue ? ' · ' : '') + (wdue ? '단어 ' + wdue + '개' : '') + ' · 잊기 전에 한 번 더</div></div></div>' +
-      '<button class="btn sm" data-act="today-review">복습</button></div>' : '';
+    var reviewCard = rtot > 0 ? '<div class="review-card big"><div class="lead">' + mascot('laptop') +
+      '<div>' + (rtot > 20 ? '<span class="chip y rv-chip">오늘은 복습부터!</span>' : '') + '<b>오늘의 복습 ' + rtot + '개</b><div class="s">' + (due ? '문장 ' + due + '개' : '') + (due && wdue ? ' · ' : '') + (wdue ? '단어 ' + wdue + '개' : '') + '<br>잊기 전에 한 번 더 해요</div></div></div>' +
+      '<button class="btn btn-3d sm" data-act="today-review">복습 시작</button></div>' : '';
+    // 오늘 레슨을 끝낸 날: 가볍게 더 해 볼 연습을 앞쪽에 보여줘요
+    var lightCard = done && Object.keys(HSKW).length ? '<div class="light-card"><div class="lc-t">가볍게 더 연습해 볼까요?</div><div class="lc-b">' +
+      '<button class="btn soft sm" data-act="tone-start" data-id="1">성조 연습</button>' +
+      '<button class="btn soft sm" data-act="hsk-quiz" data-id="1">HSK 단어 퀴즈</button></div></div>' : '';
 
     var ph = todayPhrase();
     var phraseCard = ph ? '<div class="phrase-card"><div class="lab">오늘의 한 문장</div>' +
@@ -889,7 +895,7 @@
       '<div class="kr p-kr">' + esc(kr(ph[1])) + '</div><div class="ko p-ko">' + esc(ph[2]) + '</div></div>' +
       '<div class="p-btns"><button class="round-btn" data-act="say" data-text="' + esc(ph[0]) + '" aria-label="오늘의 한 문장 듣기">' + I.spk + '</button>' +
       '<button class="star' + (isFav(ph[0]) ? ' on' : '') + '" data-act="fav" data-text="' + esc(ph[0]) + '" aria-pressed="' + (isFav(ph[0]) ? 'true' : 'false') + '" aria-label="문장 저장">' + I.star + '</button></div></div></div>' : '';
-    return '<div class="screen"><div class="scroll with-nav home-scroll">' + head + goalCard + todayCard + nextCard + phraseCard + reviewCard + '</div>' + navHtml() + '</div>';
+    return '<div class="screen"><div class="scroll with-nav home-scroll' + (rtot > 0 ? ' has-review' : '') + '">' + head + goalCard + reviewCard + todayCard + lightCard + phraseCard + nextCard + '</div>' + navHtml() + '</div>';
   }
 
   // 레슨 진행률: 이어서 하기로 저장된 푼 문제 수를 완료 기준(20문제)으로 나눠요
@@ -992,7 +998,10 @@
   function viewAi() {
     var head = '<h1 class="big-title">AI 대화</h1><p class="sub-title">AI 선생님과 편하게 말해 보고, 모은 표현을 다시 익혀요.</p>';
     var body;
-    if (aiOn()) body = aiEntry() + aiFixSection();
+    if (aiOn()) {
+      if ((!state.chats || state.chatsUid !== (state.user && state.user.id)) && !state.chatsBusy) { state.chatsBusy = true; chatsInit().then(function () { state.chatsBusy = false; if (state.screen === 'tab' && state.tab === 'review') renderKeep(); }); }
+      body = aiEntry() + aiHistorySection() + aiFixSection();
+    }
     else body = '<div class="ai-lock"><div class="ai-lock-t">AI 대화는 멤버십에서 쓸 수 있어요</div><p>AI 선생님과 자유롭게 대화하고, 말이 막히면 한국어로 물어보고, 고쳐 받은 문장과 표현을 모아 복습해요.</p>' +
       '<button class="btn" data-act="open-pay">멤버십 보기</button></div>';
     return '<div class="screen"><div class="scroll with-nav" style="padding-top:28px">' + head + body + '</div>' + navHtml() + '</div>';
@@ -1704,7 +1713,109 @@
         d.result.items.slice().reverse().forEach(function (x) { aiFixAdd({ natural: x.zh, pinyin: x.py, ko: x.ko, kind: x.kind === 'ask' ? 'ask' : 'say' }); });
       } else a.wrap = { err: true };
     } catch (e) { if (window.console) console.error(e); a.wrap = { err: true }; }
+    chatSave(a);
     if (state.ac === a && a.mode === 'end' && state.screen === 'aichat') render();
+  }
+
+  /* ---------- AI 대화 기록: 끝난 대화를 말한 그대로 저장해요 ---------- */
+  function chatsKey() { return 'pangpang.chats.' + (state.user ? state.user.id : 'x'); }
+  function chatsLocal() { try { return JSON.parse(localStorage.getItem(chatsKey()) || '[]'); } catch (e) { return []; } }
+  function chatsPersist() { try { localStorage.setItem(chatsKey(), JSON.stringify((state.chats || []).slice(0, 60))); } catch (e) { /* 무시 */ } }
+  function chatSnap(a) {
+    return {
+      id: String(a.sid || ('c' + Date.now())), at: a.startAt || new Date().toISOString(), title: a.scenario.title, turns: a.turns,
+      msgs: a.msgs.map(function (m) {
+        var o = { who: m.who, zh: m.zh };
+        if (m.py) o.py = m.py;
+        if (m.ko) o.ko = m.ko;
+        if (m.corrected) o.corrected = 1;
+        if (m.fix) o.fix = { natural: m.fix.natural, pinyin: m.fix.pinyin || '', ko: m.fix.ko || '', why: m.fix.why || '' };
+        return o;
+      }),
+      wrap: a.wrap && a.wrap.items ? a.wrap.items.map(function (x) { return { zh: x.zh, py: x.py || '', ko: x.ko || '', kind: x.kind }; }) : []
+    };
+  }
+  function chatSave(a) {
+    if (!a || !a.msgs || !(a.turns >= 1) || !state.user) return;
+    var snap = chatSnap(a);
+    if (!state.chats || state.chatsUid !== state.user.id) { state.chatsUid = state.user.id; state.chats = chatsLocal(); }
+    state.chats = [snap].concat(state.chats.filter(function (c) { return c.id !== snap.id; }))
+      .sort(function (x, y) { return String(y.at).localeCompare(String(x.at)); }).slice(0, 60);
+    chatsPersist();
+    if (sb && !isGuest()) {
+      Promise.resolve(sb.from('ai_chats').upsert({ user_id: state.user.id, id: snap.id, data: snap, created_at: snap.at }, { onConflict: 'user_id,id' }))
+        .then(function (r) { if (r && r.error && window.console) console.warn(r.error); }, function () { /* 무시 */ });   // 표가 없어도 이 기기에는 저장돼요
+    }
+  }
+  async function chatsInit() {
+    state.chatsUid = state.user && state.user.id;
+    state.chats = chatsLocal();
+    if (!sb || isGuest() || !state.user) return;
+    try {
+      var res = await sb.from('ai_chats').select('id,data,created_at').order('created_at', { ascending: false }).limit(60);
+      var rows = (res && res.data) || [];
+      if (rows.length) {
+        var map = {};
+        state.chats.forEach(function (c) { map[c.id] = c; });
+        rows.forEach(function (r) { if (r.data && r.data.id && (!map[r.data.id] || (r.data.msgs || []).length >= (map[r.data.id].msgs || []).length)) map[r.data.id] = r.data; });
+        state.chats = Object.keys(map).map(function (k) { return map[k]; }).sort(function (x, y) { return String(y.at).localeCompare(String(x.at)); }).slice(0, 60);
+        chatsPersist();
+      }
+    } catch (e) { /* 무시 */ }
+  }
+  function chatDel(id) {
+    state.chats = (state.chats || chatsLocal()).filter(function (c) { return c.id !== id; });
+    chatsPersist();
+    if (sb && !isGuest() && state.user) {
+      Promise.resolve(sb.from('ai_chats').delete().eq('user_id', state.user.id).eq('id', id)).then(function () {}, function () {});
+    }
+  }
+  function chatWhen(iso) {
+    var d = new Date(iso);
+    if (isNaN(d)) return '';
+    return (d.getMonth() + 1) + '.' + d.getDate() + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  }
+  function chatRow(c) {
+    return '<li><button class="item" data-act="chat-open" data-id="' + esc(c.id) + '"><span class="txt"><div class="t">' + esc(c.title || 'AI 대화') + '</div>' +
+      '<div class="s">' + chatWhen(c.at) + ' · ' + c.turns + '번 주고받았어요</div></span><span class="chip soft">보기</span></button></li>';
+  }
+  function aiHistorySection() {
+    var list = state.chats || [];
+    var head = '<div class="section-title" style="margin-top:28px">내 대화 기록</div>';
+    if (!list.length) return head + '<p class="hsk-note under-title">대화를 하면 말한 그대로 여기에 저장돼요.</p>';
+    return head + '<ul class="list">' + list.slice(0, 3).map(chatRow).join('') + '</ul>' +
+      (list.length > 3 ? '<button class="more-btn" data-act="chat-all">전체 보기 (' + list.length + '개)</button>' : '');
+  }
+  function viewChatAll() {
+    var list = state.chats || [];
+    return '<div class="screen"><div class="topbar"><button class="icon-btn" data-act="back" aria-label="뒤로">' + I.back + '</button></div>' +
+      '<div class="scroll" style="padding-top:4px"><h1 class="big-title" style="margin-top:0">내 대화 기록</h1>' +
+      '<p class="sub-title">대화한 내용이 말한 그대로 저장돼요.</p>' +
+      (list.length ? '<ul class="list">' + list.map(chatRow).join('') + '</ul>' : '<p class="hsk-note">아직 저장된 대화가 없어요.</p>') + '<div style="height:40px"></div></div></div>';
+  }
+  function viewChatLog() {
+    var c = (state.chats || []).filter(function (x) { return x.id === state.chatId; })[0];
+    var back = '<div class="topbar"><button class="icon-btn" data-act="back" aria-label="뒤로">' + I.back + '</button></div>';
+    if (!c) return '<div class="screen">' + back + '<div class="scroll"><p class="sub-title">기록을 찾지 못했어요.</p></div></div>';
+    var log = (c.msgs || []).map(function (m) {
+      if (m.who === 'me') {
+        return '<div class="acb me' + (m.corrected ? ' fixed' : '') + '">' + (m.corrected ? '<div class="acb-tag">고친 문장으로 다시 말했어요</div>' : '') + '<div class="zh">' + esc(m.zh) + '</div></div>' +
+          (m.fix ? '<div class="acfix"><div class="acfix-l">이렇게 말하면 더 자연스러워요</div>' +
+            '<button class="acfix-n" data-act="say" data-text="' + esc(m.fix.natural) + '"><span class="zh">' + esc(m.fix.natural) + '</span>' + (m.fix.pinyin ? '<span class="py">' + esc(m.fix.pinyin) + '</span>' : '') + '</button>' +
+            (m.fix.ko ? '<div class="acfix-k">' + esc(m.fix.ko) + '</div>' : '') + (m.fix.why ? '<div class="acfix-w">' + esc(m.fix.why) + '</div>' : '') + '</div>' : '');
+      }
+      return '<div class="acb them"><div class="acb-main"><div class="zh">' + esc(m.zh) + '</div>' + (m.py ? '<div class="py">' + esc(m.py) + '</div><div class="kr">' + esc(kr(m.py)) + '</div>' : '') +
+        (m.ko ? '<div class="ko">' + esc(m.ko) + '</div>' : '') + '</div>' +
+        '<button class="round-btn" data-act="say" data-text="' + esc(m.zh) + '" aria-label="듣기">' + I.spk + '</button></div>';
+    }).join('');
+    var wrap = (c.wrap && c.wrap.length) ? '<div class="section-title" style="margin-top:20px">자주 쓸 만한 표현</div><div class="fixlist">' + c.wrap.map(function (x) {
+      return '<div class="fixrow"><button class="fixrow-main" data-act="say" data-text="' + esc(x.zh) + '"><span class="xchip ' + (x.kind === 'ask' ? 'ask' : 'say') + '">' + (x.kind === 'ask' ? '질문' : '대답') + '</span><span class="zh">' + esc(x.zh) + '</span>' +
+        (x.py ? '<span class="py">' + esc(x.py) + '</span>' : '') + (x.ko ? '<span class="why">' + esc(x.ko) + '</span>' : '') + '</button></div>';
+    }).join('') + '</div>' : '';
+    return '<div class="screen">' + back + '<div class="scroll" style="padding-top:4px"><h1 class="big-title" style="margin-top:0">' + esc(c.title || 'AI 대화') + '</h1>' +
+      '<p class="sub-title">' + chatWhen(c.at) + ' · ' + c.turns + '번 주고받았어요</p>' +
+      '<div class="ac-log chat-log">' + log + '</div>' + wrap +
+      '<button class="link-btn chat-del" data-act="chat-del" data-id="' + esc(c.id) + '">이 기록 지우기</button><div style="height:40px"></div></div></div>';
   }
   async function acStart() {
     var a = state.ac;
@@ -1720,7 +1831,7 @@
       var d = await acCall({ action: 'chat_start', scenario: { id: 'free', title: topic, intro: intro } });
       a.busy = false;
       if (!d.ok) { toast(AI_ERR[d.error] || '대화를 시작하지 못했어요. 잠시 후 다시 해 주세요'); render(); return; }
-      state.ac = { mode: 'chat', scenario: { id: 'free', title: topic }, sid: d.sid, msgs: [Object.assign({ who: 'them' }, d.turn.reply)], sug: d.turn.suggestions || [], turns: 0, input: '', busy: false, ended: false, fixes: [], wait: true };
+      state.ac = { mode: 'chat', startAt: new Date().toISOString(), scenario: { id: 'free', title: topic }, sid: d.sid, msgs: [Object.assign({ who: 'them' }, d.turn.reply)], sug: d.turn.suggestions || [], turns: 0, input: '', busy: false, ended: false, fixes: [], wait: true };
       render(); acScroll();
       acReveal(state.ac, d.turn.reply.zh);
     } catch (e) {
@@ -1749,6 +1860,7 @@
   }
   function acRelease(a, p) {
     a.msgs.push(Object.assign({ who: 'them' }, p.reply));
+    if (a.turns >= 1) chatSave(a);   // 한 턴마다 이 기기에 남겨 두면, 중간에 앱이 꺼져도 대화가 남아요
     a.sug = p.sug; a.lastSug = a.sug; a.shown = {}; a.ended = !!p.end; a.pending = null; a.rep = null;
     if (!a.ended) a.wait = true;
     render(); acScroll();
@@ -2160,6 +2272,8 @@
     else if (state.screen === 'coupon') html = viewCoupon();
     else if (state.screen === 'aicharge') html = viewAiCharge();
     else if (state.screen === 'aiall') html = viewAiAll();
+    else if (state.screen === 'aichats') html = viewChatAll();
+    else if (state.screen === 'aichatlog') html = viewChatLog();
     else if (state.screen === 'prefs') html = viewPrefs();
     else if (state.screen === 'aichat') html = viewAiChat();
     else if (state.screen === 'pay') html = viewPay();
@@ -3716,10 +3830,10 @@
         break;
       case 'ac-leave-no': if (state.ac) { state.ac.leave = false; render(); } break;
       case 'ac-leave-yes':
-        if (state.ac && state.ac.mode === 'chat' && state.ac.turns > 0) { state.ac.mode = 'end'; state.ac.leave = false; acStop(); render(); window.scrollTo(0, 0); acWrap(state.ac); }
+        if (state.ac && state.ac.mode === 'chat' && state.ac.turns > 0) { state.ac.mode = 'end'; state.ac.leave = false; acStop(); chatSave(state.ac); render(); window.scrollTo(0, 0); acWrap(state.ac); }
         else { acStop(); state.ac = null; go('tab', { tab: 'review' }); }
         break;
-      case 'ac-finish': if (state.ac) { state.ac.mode = 'end'; acStop(); render(); window.scrollTo(0, 0); acWrap(state.ac); } break;
+      case 'ac-finish': if (state.ac) { state.ac.mode = 'end'; acStop(); chatSave(state.ac); render(); window.scrollTo(0, 0); acWrap(state.ac); } break;
       case 'ac-again': state.ac = { mode: 'pick', topic: '' }; render(); window.scrollTo(0, 0); break;
       case 'buy-pack': buyPack(id); break;
       case 'open-privacy': go('privacy', { privFrom: state.screen === 'login' ? 'login' : 'tab' }); break;
@@ -3826,6 +3940,9 @@
         state.hsk = { lv: parseInt(id, 10), unknownOnly: false }; go('hsk'); break;
       case 'hsk-study': startHskStudy(parseInt(id, 10)); break;
       case 'hsk-quiz': startHskQuiz(parseInt(id, 10)); break;
+      case 'chat-open': state.chatFrom = state.screen === 'aichats' ? 'all' : 'tab'; go('aichatlog', { chatId: id }); break;
+      case 'chat-all': go('aichats'); break;
+      case 'chat-del': askConfirm({ title: '이 기록을 지울까요?', body: '지운 대화는 되돌릴 수 없어요.', ok: '지우기', cancel: '취소', danger: true }, function () { chatDel(id); goBack(); toast('기록을 지웠어요'); }); break;
       case 'tone-start': startTone(parseInt(id, 10)); break;
       case 'tone-pick': tonePick(parseInt(id, 10)); break;
       case 'tone-slot': if (state.tn && !state.tn.res) { state.tn.cur = state.tn.cur.slice(0, parseInt(id, 10)); sfx('tap'); render(); } break;
