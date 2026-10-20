@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v116';
+  var APP_VERSION = 'v117';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -94,6 +94,7 @@
     progress: {},      // qid -> row
     done: {},          // lessonId -> row
     daily: {},         // 'YYYY-MM-DD' -> {lessons, answers}
+    srs: {},           // HSK 단어 복습 주기 'lv.idx' -> [상자, 다음 복습일(일 번호), 마지막 날, 틀린 횟수]
     lessonId: null,
     s: null,           // 연습 세션
     result: null,      // 완료 화면 정보
@@ -224,7 +225,7 @@
   function isGuest() { return !!(state.user && state.user.id === 'guest'); }
   function persistLocal() {
     try {
-      localStorage.setItem(isGuest() ? GUEST_KEY : LOCAL_KEY, JSON.stringify({ progress: state.progress, done: state.done, daily: state.daily, profile: state.profile }));
+      localStorage.setItem(isGuest() ? GUEST_KEY : LOCAL_KEY, JSON.stringify({ progress: state.progress, done: state.done, daily: state.daily, profile: state.profile, srs: state.srs, srsUid: state.user ? state.user.id : null }));
     } catch (e) { /* 저장 공간이 없으면 무시 */ }
   }
   function saveFailed(err) {
@@ -293,13 +294,15 @@
           state.done = raw.done || {};
           state.daily = raw.daily || {};
           state.profile = normProfile(raw.profile);
-        } catch (e) { state.progress = {}; state.done = {}; state.daily = {}; state.profile = normProfile({}); }
+          state.srs = raw.srs || {};
+        } catch (e) { state.progress = {}; state.done = {}; state.daily = {}; state.profile = normProfile({}); state.srs = {}; }
         applyTheme();
         return;
       }
       var d = await fetchRemote();
       if (d.err) saveFailed(d.err);
       applyRemote(d);
+      await srsLoadRemote();
     },
     saveProgress: tracked(async function (rows) {
       persistLocal();
@@ -579,7 +582,7 @@
 
   /* ---------- 화면 이동 ---------- */
   // 뒤로 가기: 폰의 뒤로 제스처·버튼(기록)과 화면 왼쪽 가장자리에서 오른쪽으로 미는 동작을 같이 처리해요
-  var SUBSCREEN = { pay: 1, privacy: 1, login: 1, intro: 1, practice: 1, quiz: 1, stats: 1, done: 1, hsk: 1, hskstudy: 1, feedback: 1, speed: 1, account: 1, coupon: 1, aicharge: 1, aichat: 1, aiall: 1, prefs: 1, about: 1, advisor: 1 };
+  var SUBSCREEN = { pay: 1, privacy: 1, login: 1, intro: 1, practice: 1, quiz: 1, stats: 1, done: 1, hsk: 1, hskstudy: 1, tone: 1, feedback: 1, speed: 1, account: 1, coupon: 1, aicharge: 1, aichat: 1, aiall: 1, prefs: 1, about: 1, advisor: 1 };
   var inSub = false, ignorePop = 0, backAnim = false;
   function syncHistory(screen) {
     try {
@@ -604,7 +607,8 @@
     }
     else if (sc === 'practice') quitPractice();
     else if (sc === 'quiz') { stopSpeak(); go(state.z && state.z.hsk ? 'hsk' : 'tab'); }
-    else if (sc === 'hskstudy') { stopSpeak(); clearTimeout(hskTimer); store.saveProfile(); go('hsk'); }
+    else if (sc === 'hskstudy') { stopSpeak(); clearTimeout(hskTimer); store.saveProfile(); go(state.hc && state.hc.mode === 'due' ? 'tab' : 'hsk'); }
+    else if (sc === 'tone') { stopSpeak(); go('hsk'); }
     else if (sc === 'hsk') go('tab');
     else if (sc === 'login') loginLater();
     else if (sc === 'pay') go('tab');
@@ -874,9 +878,10 @@
       '<div class="nc-txt"><div class="nc-lab">' + '다음 레슨' + '</div><b>' + esc(nextTarget.title) + '</b><div class="s">' + esc(nextTarget.sub) + '</div></div>' +
       '<button class="btn sm" data-act="open-lesson" data-id="' + nextTarget.id + '">' + (done ? '배우기' : '미리 보기') + '</button></div>' : '';
 
-    var reviewCard = due > 0 ? '<div class="review-card"><div class="lead">' + mascot('laptop') +
-      '<div><b>복습할 문제 ' + due + '개</b><div class="s">잊기 전에 한 번 더 말해요</div></div></div>' +
-      '<button class="btn sm" data-act="review-start">복습</button></div>' : '';
+    var wdue = hskDue(0).length, rtot = due + wdue;
+    var reviewCard = rtot > 0 ? '<div class="review-card"><div class="lead">' + mascot('laptop') +
+      '<div><b>오늘의 복습 ' + rtot + '개</b><div class="s">' + (due ? '문장 ' + due + '개' : '') + (due && wdue ? ' · ' : '') + (wdue ? '단어 ' + wdue + '개' : '') + ' · 잊기 전에 한 번 더</div></div></div>' +
+      '<button class="btn sm" data-act="today-review">복습</button></div>' : '';
 
     var ph = todayPhrase();
     var phraseCard = ph ? '<div class="phrase-card"><div class="lab">오늘의 한 문장</div>' +
@@ -2160,6 +2165,7 @@
     else if (state.screen === 'pay') html = viewPay();
     else if (state.screen === 'speed') html = viewSpeed();
     else if (state.screen === 'hskstudy') html = viewHskStudy();
+    else if (state.screen === 'tone') html = viewTone();
     else if (state.screen === 'done') html = viewDone();
     $app.innerHTML = html + modalHtml();
     fitGreet();
@@ -2726,15 +2732,188 @@
     clearTimeout(hskTimer);
     hskTimer = setTimeout(function () { store.saveProfile(); }, 900);   // 연달아 누를 땐 한 번만 저장
   }
+
+  /* ---------- HSK 단어 복습 주기 (간격 반복) ---------- */
+  // 맞히면 1일 → 3일 → 7일 → 14일 → 30일 뒤에 다시, 틀리면 다음 날 다시 나와요
+  var SRS_INT = [1, 1, 3, 7, 14, 30];
+  function dayNum() { return Math.floor((Date.now() - new Date().getTimezoneOffset() * 60000) / 864e5); }
+  function srsKey(lv, i) { return lv + '.' + i; }
+  var srsTimer = null;
+  function srsGrade(lv, i, ok) {
+    var k = srsKey(lv, i), e = state.srs[k] || [0, 0, 0, 0], t = dayNum();
+    var box = ok ? Math.min(5, e[0] + 1) : 0;
+    state.srs[k] = [box, t + (ok ? SRS_INT[box] : 1), t, (e[3] || 0) + (ok ? 0 : 1)];
+    persistLocal();
+    clearTimeout(srsTimer);
+    srsTimer = setTimeout(srsRemoteSave, 1500);
+  }
+  async function srsRemoteSave() {
+    if (!sb || isGuest() || !state.user) return;
+    try {
+      var res = await sb.from('user_srs').upsert({ user_id: state.user.id, data: state.srs, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+      if (res && res.error && window.console) console.warn(res.error);   // 표가 아직 없어도 이 기기에는 저장돼요
+    } catch (e) { /* 무시 */ }
+  }
+  async function srsLoadRemote() {
+    try {
+      var local = {};
+      try {
+        var raw = JSON.parse(localStorage.getItem(LOCAL_KEY) || '{}');
+        if (raw.srs && (!raw.srsUid || (state.user && raw.srsUid === state.user.id))) local = raw.srs;
+      } catch (e) { /* 무시 */ }
+      state.srs = local;
+      var res = await sb.from('user_srs').select('data').maybeSingle();
+      var rd = res && res.data && res.data.data;
+      if (rd) Object.keys(rd).forEach(function (k) {
+        var a = state.srs[k], b = rd[k];
+        if (!a || (b[2] || 0) >= (a[2] || 0)) state.srs[k] = b;
+      });
+    } catch (e) { /* 무시 */ }
+  }
+  // 오늘 복습할 단어 (상자가 낮고 자주 틀린 단어부터)
+  function hskDue(onlyLv) {
+    var t = dayNum(), out = [];
+    Object.keys(state.srs).forEach(function (k) {
+      var p = k.split('.'), lv = parseInt(p[0], 10), i = parseInt(p[1], 10), e = state.srs[k];
+      if (onlyLv && lv !== onlyLv) return;
+      if (!HSKW[lv] || !HSKW[lv][i] || hskLocked(lv) || e[1] > t) return;
+      out.push({ lv: lv, i: i, box: e[0], w: e[3] || 0, due: e[1] });
+    });
+    out.sort(function (a, b) { return a.box - b.box || b.w - a.w || a.due - b.due; });
+    return out;
+  }
+  // 학습·퀴즈에 넣을 단어: 복습할 단어(몰랐던 것 먼저) → 아직 안 본 단어 → 나머지
+  function hskPick(lv, n) {
+    var list = hskList(lv), due = hskDue(lv), fresh = [], used = {};
+    list.forEach(function (w, i) { if (!state.srs[srsKey(lv, i)] && !hskKnown(lv, i)) fresh.push({ lv: lv, i: i }); });
+    fresh = shuffle(fresh);
+    var takeDue = due.slice(0, fresh.length ? Math.min(due.length, Math.ceil(n * 0.7)) : n);
+    var out = takeDue.map(function (q) { return { lv: q.lv, i: q.i }; }).concat(fresh.slice(0, n - takeDue.length));
+    out.forEach(function (q) { used[q.i] = 1; });
+    if (out.length < n) {
+      var rest = [];
+      list.forEach(function (w, i) { if (!used[i]) rest.push({ lv: lv, i: i }); });
+      out = out.concat(shuffle(rest).slice(0, n - out.length));
+    }
+    return out.slice(0, n);
+  }
+  function startHskDue() {
+    var q = hskDue(0).slice(0, HSK_STUDY).map(function (x) { return { lv: x.lv, i: x.i }; });
+    if (!q.length) { toast('지금 복습할 단어가 없어요'); return; }
+    state.hc = { lv: 0, mode: 'due', queue: q, i: 0, flip: false, known: 0, before: todayAnswers() };
+    go('hskstudy');
+    speakCard();
+  }
+  function startTodayReview() {
+    if (dueRows().length) startReview(); else startHskDue();
+  }
   function bumpAnswer() {
     var day = dayStr(new Date());
     var d0 = state.daily[day] || { day: day, lessons: 0, answers: 0 };
     var d = { day: day, lessons: d0.lessons, answers: d0.answers + 1 };
     state.daily[day] = d; store.saveDaily(d);
   }
+
+  /* ---------- 성조 연습: 소리를 듣고 각 글자의 성조를 맞혀요 ---------- */
+  var TN_V = 'aeiouüāáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ';
+  var TN_MAP = { 'ā': 1, 'á': 2, 'ǎ': 3, 'à': 4, 'ē': 1, 'é': 2, 'ě': 3, 'è': 4, 'ī': 1, 'í': 2, 'ǐ': 3, 'ì': 4, 'ō': 1, 'ó': 2, 'ǒ': 3, 'ò': 4, 'ū': 1, 'ú': 2, 'ǔ': 3, 'ù': 4, 'ǖ': 1, 'ǘ': 2, 'ǚ': 3, 'ǜ': 4 };
+  var TN_RE = new RegExp('(?:zh|ch|sh|[bpmfdtnlgkhjqxrzcsyw])?[' + TN_V + ']+(?:ng(?![' + TN_V + '])|n(?![' + TN_V + '])|r(?![' + TN_V + ']))?', 'g');
+  var TN_SYM = ['a', 'ā', 'á', 'ǎ', 'à'], TN_NAME = ['경성', '1성', '2성', '3성', '4성'];
+  function toneOf(py) {
+    var segs = String(py).toLowerCase().split(/[\s'’\-·\/]+/), out = [];
+    for (var a = 0; a < segs.length; a++) {
+      if (!segs[a]) continue;
+      var t = segs[a].match(TN_RE);
+      if (!t || t.join('') !== segs[a]) return null;
+      for (var b = 0; b < t.length; b++) {
+        var n = 0, c = 0;
+        for (var k = 0; k < t[b].length; k++) { var m = TN_MAP[t[b].charAt(k)]; if (m) { n = m; c++; } }
+        if (c > 1) return null;
+        out.push(n);
+      }
+    }
+    return out.length ? out : null;
+  }
+  function startTone(lv) {
+    var pool = [];
+    hskList(lv).forEach(function (w, i) {
+      var t = toneOf(w[1]);
+      if (t && t.length <= 4) pool.push({ zh: w[0], py: w[1], ko: w[2], tones: t, hi: i });
+    });
+    if (!pool.length) return;
+    state.tn = { lv: lv, items: shuffle(pool).slice(0, QUIZ_SIZE), i: 0, right: 0, combo: 0, cur: [], res: null, before: todayAnswers() };
+    go('tone');
+    speakTone();
+  }
+  function speakTone() {
+    var t = state.tn;
+    setTimeout(function () { if (state.screen === 'tone' && state.tn === t && !t.res) speak(t.items[t.i].zh); }, 300);
+  }
+  function tonePick(v) {
+    var tn = state.tn, it = tn.items[tn.i];
+    if (!tn || tn.res || tn.cur.length >= it.tones.length) return;
+    tn.cur.push(v);
+    if (tn.cur.length < it.tones.length) { sfx('tap'); render(); return; }
+    var ok = tn.cur.every(function (x, k) { return x === it.tones[k]; });
+    tn.res = { ok: ok };
+    if (ok) { tn.right++; tn.combo++; sfx('right', tn.combo); } else { tn.combo = 0; sfx('wrong'); }
+    bumpAnswer();
+    render();
+  }
+  function toneNext() {
+    var tn = state.tn;
+    if (!tn.res) return;
+    tn.i++; tn.cur = []; tn.res = null;
+    if (tn.i >= tn.items.length) { finishTone(); return; }
+    render(); speakTone();
+  }
+  function finishTone() {
+    var tn = state.tn, goal = state.profile.goal, now = todayAnswers();
+    var hit = tn.before < goal && now >= goal;
+    stopSpeak(); sfx(hit ? 'goal' : 'done');
+    go('done', { result: {
+      kind: 'quiz', title: '성조 연습 끝!',
+      line: tn.items.length + '문제 중 ' + tn.right + '개 맞혔어요' + (tn.right === tn.items.length ? '. 전부 정답이에요!' : '.'),
+      answers: now, goal: goal, goalHit: hit, milestone: 0,
+      again: { act: 'tone-start', id: String(tn.lv), label: '한 번 더 하기' }
+    } });
+  }
+  function viewTone() {
+    var tn = state.tn, it = tn.items[tn.i], n = it.tones.length, res = tn.res;
+    var answered = tn.i + (res ? 1 : 0), pct = Math.round(answered / tn.items.length * 100);
+    var len = Math.max(1, Array.from(it.zh).length);
+    var top = '<div class="topbar"><button class="icon-btn" data-act="tone-quit" aria-label="그만하기">' + I.close + '</button>' +
+      '<div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + pct + '"><i style="width:' + pct + '%"></i></div>' +
+      '<span class="chip" style="min-width:48px;justify-content:center">' + answered + '/' + tn.items.length + '</span></div>';
+    var prompt = '<div class="qz-prompt qz-word">' +
+      '<button class="round-btn qz-spk" data-act="say" data-text="' + esc(it.zh) + '" aria-label="듣기">' + I.spk + '</button>' +
+      '<div class="q-zh big" style="font-size:min(104px, calc((100vw - 64px) / ' + len + '))">' + esc(it.zh) + '</div>' +
+      '<div class="q-peek' + (res ? ' on' : '') + '">' + (res ? '<div class="q-py">' + esc(it.py) + '</div><div class="q-kr">' + esc(kr(it.py)) + '</div><div class="q-ko">' + esc(it.ko) + '</div>' : '<div class="q-hint">소리를 듣고 성조를 차례로 골라요</div>') + '</div></div>';
+    var slots = '<div class="tn-slots">';
+    for (var k = 0; k < n; k++) {
+      var filled = tn.cur[k] !== undefined, cls = 'tn-slot' + (!res && k === tn.cur.length ? ' cur' : '') + (filled ? ' fill' : '');
+      if (res) cls += tn.cur[k] === it.tones[k] ? ' ok' : ' no';
+      slots += '<button class="' + cls + '" data-act="tone-slot" data-id="' + k + '"' + (res || !filled ? ' disabled' : '') + ' aria-label="' + (k + 1) + '번째 글자 성조">' +
+        '<b>' + (filled ? TN_SYM[tn.cur[k]] : '?') + '</b>' + (res && tn.cur[k] !== it.tones[k] ? '<i>' + TN_SYM[it.tones[k]] + '</i>' : '') + '</button>';
+    }
+    slots += '</div>';
+    var verdict = '<div class="qz-slot">';
+    if (res) {
+      verdict += '<div class="qz-verdict ' + (res.ok ? 'ok' : 'no') + '" role="status"><img src="img/' + (res.ok ? 'qz-ok' : 'qz-no') + '.webp" alt="" draggable="false">' +
+        '<div class="qv-t"><b>' + (res.ok ? '맞았어요!' : '틀렸어요!') + '</b><span>' + (res.ok ? (tn.combo >= 2 ? '연속 ' + tn.combo + '번 정답' : '귀가 좋아요') : '빨간 칸의 작은 글자가 정답이에요') + '</span></div></div>';
+    }
+    verdict += '</div>';
+    var pad = '<div class="tn-pad">' + [1, 2, 3, 4, 0].map(function (v) {
+      return '<button class="tn-btn t' + v + '" data-act="tone-pick" data-id="' + v + '"' + (res ? ' disabled' : '') + '><b>' + TN_SYM[v] + '</b><span>' + TN_NAME[v] + '</span></button>';
+    }).join('') + '</div>';
+    var foot = res ? '<div class="footer"><button class="btn ' + (res.ok ? 'green' : '') + '" data-act="tone-next">' + (tn.i + 1 >= tn.items.length ? '결과 보기' : '다음') + '</button></div>' : '';
+    return '<div class="screen">' + top + '<div class="qz-wrap">' + prompt + slots + verdict + pad + '</div>' + foot + '</div>';
+  }
   function hskSection() {
     if (!Object.keys(HSKW).length) return '';
-    return '<div class="section-title" style="margin-top:24px">HSK 단어</div><p class="hsk-note under-title">' + HSK_NOTE + '</p><ul class="list">' + [1, 2, 3, 4].map(function (lv) {
+    var wd = hskDue(0).length;
+    var dueCard = wd ? '<button class="hsk-due" data-act="hsk-due"><span class="hd-t">오늘 복습할 단어 <b>' + wd + '개</b></span><span class="chip y">복습</span></button>' : '';
+    return '<div class="section-title" style="margin-top:24px">HSK 단어</div><p class="hsk-note under-title">' + HSK_NOTE + '</p>' + dueCard + '<ul class="list">' + [1, 2, 3, 4].map(function (lv) {
       var n = hskList(lv).length, k = hskCount(lv), pct = n ? Math.round(k / n * 100) : 0;
       return '<li><button class="item" data-act="hsk-open" data-id="' + lv + '"><span class="num">' + lv + '</span><span class="txt"><div class="t">HSK ' + lv + '급</div>' +
         '<div class="s">단어 ' + n + '개 · 익힌 ' + k + '개</div><div class="meter g" style="margin-top:6px"><i style="width:' + pct + '%"></i></div></span>' +
@@ -2757,6 +2936,7 @@
       '<div class="hsk-new"><em class="perk-tag" style="margin:0">개정된 신 HSK 3.0</em> 새 시험 기준 단어예요</div>' +
       '<div class="hsk-btns"><button class="btn" data-act="hsk-study" data-id="' + lv + '">카드 학습</button>' +
       '<button class="btn gray" data-act="hsk-quiz" data-id="' + lv + '">퀴즈</button></div>' +
+      '<div class="hsk-btns2"><button class="btn soft" data-act="tone-start" data-id="' + lv + '">성조 연습 (소리 듣고 성조 맞히기)</button></div>' +
       '<div class="seg-row"><button class="seg-b' + (!h.unknownOnly ? ' on' : '') + '" data-act="hsk-filter" data-v="all">전체</button>' +
       '<button class="seg-b' + (h.unknownOnly ? ' on' : '') + '" data-act="hsk-filter" data-v="unknown">모르는 단어만</button></div>' +
       '<div class="words">' + (rows || emptyState('search', { title: '모르는 단어가 없어요', desc: '전부 익혔어요. 대단해요!', badge: { text: '0개', dot: '#0e9f63' }, cta: { act: 'hsk-filter', v: 'all', label: '전체 보기' } })) + '</div>' +
@@ -2765,26 +2945,24 @@
   function startHskStudy(lv) {
     var list = hskList(lv);
     if (!list.length) return;
-    var idx = list.map(function (w, i) { return i; });
-    var unk = idx.filter(function (i) { return !hskKnown(lv, i); });
-    var pool = unk.length ? unk : idx;
-    state.hc = { lv: lv, queue: shuffle(pool).slice(0, HSK_STUDY), i: 0, flip: false, known: 0, before: todayAnswers() };
+    state.hc = { lv: lv, mode: 'study', queue: hskPick(lv, HSK_STUDY), i: 0, flip: false, known: 0, before: todayAnswers() };
     go('hskstudy');
     speakCard();
   }
+  function hcWord(c) { var q = c.queue[c.i]; return hskList(q.lv)[q.i]; }
   function speakCard() {
     var c = state.hc;
-    setTimeout(function () { if (state.screen === 'hskstudy' && state.hc === c) speak(hskList(c.lv)[c.queue[c.i]][0]); }, 300);
+    setTimeout(function () { if (state.screen === 'hskstudy' && state.hc === c) speak(hcWord(c)[0]); }, 300);
   }
   function viewHskStudy() {
-    var c = state.hc, w = hskList(c.lv)[c.queue[c.i]], pct = Math.round(c.i / c.queue.length * 100);
+    var c = state.hc, q = c.queue[c.i], w = hcWord(c), pct = Math.round(c.i / c.queue.length * 100);
     var top = '<div class="topbar"><button class="icon-btn" data-act="back" aria-label="그만하기">' + I.close + '</button>' +
       '<div class="progress"><i style="width:' + pct + '%"></i></div><span class="chip" style="min-width:48px;justify-content:center">' + c.i + '/' + c.queue.length + '</span></div>';
     var len = Math.max(1, Array.from(w[0]).length);
     var card = '<div class="fc-stage"><div class="fc fc-swipe" id="fc-card" role="button" tabindex="0" aria-label="카드 뒤집기">' +
       '<span class="fc-tag no">몰라요</span><span class="fc-tag yes">알아요</span>' +
       '<button class="round-btn fc-spk-tr" data-act="say" data-text="' + esc(w[0]) + '" aria-label="듣기">' + I.spk + '</button>' +
-      '<div class="fc-lv">HSK ' + c.lv + '급</div>' +
+      '<div class="fc-lv">HSK ' + q.lv + '급' + (c.mode === 'due' ? ' · 복습' : '') + '</div>' +
       '<div class="fc-zh" style="font-size:min(112px, calc((100vw - 90px) / ' + len + '))">' + esc(w[0]) + '</div>' +
       '<div class="fc-back' + (c.flip ? ' on' : '') + '">' + (c.flip ? '<div class="fc-py">' + esc(w[1]) + '</div><div class="fc-kr">' + esc(kr(w[1])) + '</div><div class="fc-ko">' + esc(w[2]) + '</div>' : '<div class="fc-hint">카드를 누르면 뜻이 보여요</div>') + '</div></div></div>' +
       '<div class="fc-guide"><span>← 몰라요</span><span>알아요 →</span></div>';
@@ -2793,8 +2971,9 @@
   }
   function hskMark(yes) {
     var c = state.hc;
-    var i = c.queue[c.i];
-    setHskKnown(c.lv, i, yes);
+    var q = c.queue[c.i];
+    setHskKnown(q.lv, q.i, yes);
+    srsGrade(q.lv, q.i, yes);
     if (yes) { c.known++; sfx('right', c.known); } else sfx('tap');
     bumpAnswer();
     c.i++; c.flip = false;
@@ -2807,20 +2986,19 @@
     clearTimeout(hskTimer); store.saveProfile();
     stopSpeak(); sfx(hit ? 'goal' : 'done');
     go('done', { result: {
-      kind: 'quiz', title: 'HSK ' + c.lv + '급 카드 학습 끝!',
-      line: c.queue.length + '개 중 ' + c.known + '개를 알아요. 지금까지 ' + hskCount(c.lv) + '/' + hskList(c.lv).length + '개 익혔어요.',
+      kind: 'quiz', title: c.mode === 'due' ? '단어 복습 끝!' : 'HSK ' + c.lv + '급 카드 학습 끝!',
+      line: c.queue.length + '개 중 ' + c.known + '개를 알아요.' + (c.mode === 'due' ? (hskDue(0).length ? ' 아직 복습할 단어가 ' + hskDue(0).length + '개 남았어요.' : ' 오늘 단어 복습은 모두 끝났어요.') : ' 지금까지 ' + hskCount(c.lv) + '/' + hskList(c.lv).length + '개 익혔어요.'),
       answers: now, goal: goal, goalHit: hit, milestone: 0,
-      again: { act: 'hsk-study', id: String(c.lv), label: '다음 카드 학습' }
+      again: c.mode === 'due'
+        ? (hskDue(0).length ? { act: 'hsk-due', label: '이어서 단어 복습' } : (dueRows().length ? { act: 'review-start', label: '이어서 문장 복습' } : null))
+        : { act: 'hsk-study', id: String(c.lv), label: '다음 카드 학습' }
     } });
   }
   function startHskQuiz(lv) {
     var list = hskList(lv);
-    var idx = list.map(function (w, i) { return i; });
-    var unk = idx.filter(function (i) { return !hskKnown(lv, i); });
-    var pool = unk.length >= QUIZ_SIZE ? unk : idx;
     var kos = list.map(function (w) { return w[2]; });
-    var items = shuffle(pool).slice(0, QUIZ_SIZE).map(function (i) {
-      var w = list[i];
+    var items = shuffle(hskPick(lv, QUIZ_SIZE)).map(function (q) {
+      var i = q.i, w = list[i];
       return { id: null, lessonId: null, zh: w[0], py: w[1], ko: w[2], hi: i, options: quizOptions(w[2], kos) };
     });
     state.z = { kind: 'word', hsk: lv, items: items, i: 0, right: 0, combo: 0, picked: null, before: todayAnswers() };
@@ -2876,7 +3054,7 @@
     if (ok) { z.right++; z.combo++; sfx('right', z.combo); } else { z.combo = 0; sfx('wrong'); }
     // 풀자마자 오늘 푼 문제 수에 더하고, 틀린 듣기 문제는 약한 문제로 보내요
     bumpAnswer();
-    if (z.hsk && it.hi != null) setHskKnown(z.hsk, it.hi, ok);
+    if (z.hsk && it.hi != null) { setHskKnown(z.hsk, it.hi, ok); srsGrade(z.hsk, it.hi, ok); }
     if (!ok && it.id && state.progress[it.id]) {
       var prev = state.progress[it.id];
       var row = { qid: it.id, lesson_id: it.lessonId, box: 1, due_at: dueISO(1), correct: prev.correct, wrong: prev.wrong + 1, updated_at: new Date().toISOString() };
@@ -3359,9 +3537,9 @@
       var left = dueRows().length;
       result = {
         kind: 'review', title: '복습 끝!',
-        line: left > 0 ? '아직 복습할 문제가 ' + left + '개 남았어요.' : '오늘 복습은 모두 끝났어요.',
+        line: left > 0 ? '아직 복습할 문제가 ' + left + '개 남았어요.' : (hskDue(0).length ? '문장 복습은 끝났어요. 복습할 단어가 ' + hskDue(0).length + '개 있어요.' : '오늘 복습은 모두 끝났어요.'),
         firstTry: firstTry, total: pool.length,
-        again: left > 0 ? { act: 'review-start', label: '이어서 복습하기' } : null
+        again: left > 0 ? { act: 'review-start', label: '이어서 복습하기' } : (hskDue(0).length ? { act: 'hsk-due', label: '이어서 단어 복습 (' + hskDue(0).length + '개)' } : null)
       };
     }
     clearResume(s.kind, s.lessonId);
@@ -3582,6 +3760,8 @@
       case 'words-close': if (state.s) { state.s.wordsOpen = false; render(); } break;
       case 'practice-lesson': startLessonSession('lesson', id); break;
       case 'review-start': startReview(); break;
+      case 'today-review': startTodayReview(); break;
+      case 'hsk-due': startHskDue(); break;
       case 'review-random': startRandomReview(); break;
       case 'review-weak': startWeak(); break;
       case 'dialog-start': startDialog(id); break;
@@ -3646,6 +3826,11 @@
         state.hsk = { lv: parseInt(id, 10), unknownOnly: false }; go('hsk'); break;
       case 'hsk-study': startHskStudy(parseInt(id, 10)); break;
       case 'hsk-quiz': startHskQuiz(parseInt(id, 10)); break;
+      case 'tone-start': startTone(parseInt(id, 10)); break;
+      case 'tone-pick': tonePick(parseInt(id, 10)); break;
+      case 'tone-slot': if (state.tn && !state.tn.res) { state.tn.cur = state.tn.cur.slice(0, parseInt(id, 10)); sfx('tap'); render(); } break;
+      case 'tone-next': toneNext(); break;
+      case 'tone-quit': stopSpeak(); go('hsk'); break;
       case 'hsk-flip': if (state.hc) { state.hc.flip = !state.hc.flip; sfx('tap'); render(); } break;
       case 'hsk-mark': window.flyCard(el.getAttribute('data-v') === 'yes'); break;
       case 'hsk-filter': state.hsk.unknownOnly = el.getAttribute('data-v') === 'unknown'; render(); break;

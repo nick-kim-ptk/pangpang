@@ -608,3 +608,17 @@ notify pgrst, 'reload schema';
 alter table public.ai_usage add column if not exists cache_read  int;
 alter table public.ai_usage add column if not exists cache_write int;
 notify pgrst, 'reload schema';
+
+-- v117: HSK 단어 복습 주기(간격 반복)를 기기끼리 맞추는 표. 안 만들어도 앱은 이 기기에서 잘 동작해요.
+create table if not exists public.user_srs (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  data jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now()
+);
+alter table public.user_srs enable row level security;
+drop policy if exists "user_srs own select" on public.user_srs;
+drop policy if exists "user_srs own insert" on public.user_srs;
+drop policy if exists "user_srs own update" on public.user_srs;
+create policy "user_srs own select" on public.user_srs for select using (auth.uid() = user_id);
+create policy "user_srs own insert" on public.user_srs for insert with check (auth.uid() = user_id);
+create policy "user_srs own update" on public.user_srs for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
