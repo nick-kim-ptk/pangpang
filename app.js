@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v120';
+  var APP_VERSION = 'v122';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -467,9 +467,21 @@
     try { Promise.resolve(sb.from('ai_fix').delete().eq('zh', natural)).catch(function () {}); } catch (e) { /* 무시 */ }
   }
   var fixUi = { seg: 'expr', n: {} };
+  // 모은 날짜: 오늘 / 1일 전 / 3개월 전 처럼 보여요
+  function agoText(iso) {
+    var d = new Date(iso);
+    if (!iso || isNaN(d)) return '';
+    var a = new Date(); a.setHours(0, 0, 0, 0); d.setHours(0, 0, 0, 0);
+    var n = Math.round((a - d) / 864e5);
+    if (n <= 0) return '오늘';
+    if (n < 30) return n + '일 전';
+    if (n < 365) return Math.floor(n / 30) + '개월 전';
+    return Math.floor(n / 365) + '년 전';
+  }
   function fixRowHtml(f, noDel) {
-    var x = f.kind === 'ask' || f.kind === 'say';
+    var x = f.kind === 'ask' || f.kind === 'say', ago = agoText(f.at);
     return '<div class="fixrow"><button class="fixrow-main" data-act="say" data-text="' + esc(f.natural) + '">' +
+      (ago ? '<span class="fix-ago">' + ago + '</span>' : '') +
       (x ? '<span class="xchip ' + f.kind + '">' + (f.kind === 'ask' ? '질문' : '대답') + '</span>' : '') +
       '<span class="zh">' + esc(f.natural) + '</span>' +
       (f.pinyin ? '<span class="py">' + esc(f.pinyin) + '</span>' : '') + (f.ko ? '<span class="why">' + esc(f.ko) + '</span>' : '') +
@@ -883,7 +895,7 @@
     var wdue = hskDue(0).length, rtot = due + wdue;
     var reviewCard = rtot > 0 ? '<div class="review-card big"><div class="lead">' + ppm('laptop', 92, 'rv-m') +
       '<div>' + (rtot > 20 ? '<span class="chip y rv-chip">오늘은 복습부터!</span>' : '') + '<b>오늘의 복습 ' + rtot + '개</b><div class="s">' + (due ? '문장 ' + due + '개' : '') + (due && wdue ? ' · ' : '') + (wdue ? '단어 ' + wdue + '개' : '') + '<br>잊기 전에 한 번 더 해요</div></div></div>' +
-      '<button class="btn btn-3d sm" data-act="today-review">복습 시작</button></div>' : '';
+      '<button class="btn btn-3d" data-act="today-review">복습 시작</button></div>' : '';
     // 오늘 레슨을 끝낸 날: 가볍게 더 해 볼 연습을 앞쪽에 보여줘요
     var lightCard = done && Object.keys(HSKW).length ? '<div class="light-card"><div class="lc-t">가볍게 더 연습해 볼까요?</div><div class="lc-b">' +
       '<button class="btn soft sm" data-act="tone-start" data-id="1">성조 연습</button>' +
@@ -1755,7 +1767,7 @@
   function aiHistorySection() {
     var list = state.chats || [];
     var head = '<div class="section-title" style="margin-top:28px">내 대화 기록</div>';
-    if (!list.length) return head + '<p class="hsk-note under-title">대화를 하면 말한 그대로 여기에 저장돼요.</p>';
+    if (!list.length) return head + '<div class="chat-empty">대화를 하면 말한 그대로<br>여기에 저장돼요.</div>';
     return head + '<ul class="list">' + list.slice(0, 3).map(chatRow).join('') + '</ul>' +
       (list.length > 3 ? '<button class="more-btn" data-act="chat-all">전체 보기 (' + list.length + '개)</button>' : '');
   }
@@ -1958,7 +1970,7 @@
     a.lk = kind; acRec = r; r.lang = kind === 'ko' ? 'ko-KR' : 'zh-CN'; r.interimResults = true; r.continuous = false; r.maxAlternatives = a.rep ? 5 : 1;
     var live = function () { var m = document.getElementById(kind === 'ko' ? 'ac-mic-ko' : 'ac-mic'), lv = document.getElementById('ac-live'); if (m) m.classList.toggle('on', !!a.listening); if (lv) { lv.textContent = a.listening ? (a.live || '듣고 있어요…') : ''; lv.classList.remove('hint'); lv.classList.toggle('wait', !a.live); } };
     r.onstart = function () { a.listening = true; a.live = ''; live(); if (!acHolding) { try { r.stop(); } catch (e) { /* 무시 */ } } };
-    r.onresult = function (e) { var rs = e.results[e.results.length - 1]; got = rs[0].transcript; alts = []; for (var z = 0; z < rs.length; z++) alts.push(rs[z].transcript); a.live = prev + got; live(); };
+    r.onresult = function (e) { var rs = e.results[e.results.length - 1]; got = rs[0].transcript; alts = []; for (var z = 0; z < rs.length; z++) alts.push(rs[z].transcript); };   // 듣는 동안엔 인식 중인 글자를 보여 주지 않고 '듣고 있어요…'만 보여요
     r.onerror = function (e) { errCode = e.error || 'error'; };
     r.onend = function () {
       if (acRec === r) acRec = null;
@@ -3460,9 +3472,7 @@
     r.onresult = function (e) {
       var res = e.results[e.results.length - 1];
       lastInterim = res[0].transcript;
-      s.live = prev + lastInterim;
-      var el = document.getElementById('live');
-      if (el) { el.textContent = prev + lastInterim; el.classList.remove('hint'); el.classList.remove('wait'); }
+      // 듣는 동안엔 인식 중인 글자를 보여 주지 않고 '듣고 있어요…'만 보여요
       if (res.isFinal) {
         finals = [];
         for (var i = 0; i < res.length; i++) finals.push(res[i].transcript);

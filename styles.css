@@ -1776,3 +1776,12 @@ html, body, * { touch-action: pan-x pan-y; }
 .pr-pro { position: absolute; top: 8px; right: 8px; display: inline-flex; align-items: center; gap: 2px; font-style: normal; font-size: 10px; font-weight: 800; color: var(--amber-ink); }
 .pr-pro svg { width: 11px; height: 11px; }
 .review-card.big .lead .ppm-laptop { --w: 92px !important; width: 92px; flex: none; margin: -4px 0 -6px; }
+
+/* v121 AI 대화 기록 빈 상태: 한 단계 크게, 가운데 정렬, 위아래 간격 */
+.chat-empty { text-align: center; font-size: 15px; line-height: 1.55; color: var(--ink-2); padding: 28px 16px; margin: 8px 0 0; background: var(--card); border-radius: 20px; box-shadow: inset 0 0 0 1.5px var(--line); word-break: keep-all; }
+
+/* v122 모은 문장 날짜(우측 상단), 홈 복습 버튼을 학습하기 버튼과 같게, 스크롤바 숨김 */
+.fix-ago { order: -1; justify-self: end; font-size: 12px; font-weight: 600; color: var(--ink-3); line-height: 1; margin-bottom: 2px; }
+.review-card.big .btn { min-height: 0; padding: 0 22px; }
+html, body, * { scrollbar-width: none; -ms-overflow-style: none; }
+*::-webkit-scrollbar { width: 0; height: 0; display: none; }
