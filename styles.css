@@ -1695,3 +1695,21 @@ html, body, * { touch-action: pan-x pan-y; }
 .q-peek .q-kr { font-size: 15px; color: var(--ink-3); margin-top: 2px; }
 .q-peek .q-hint { font-size: 13px; color: var(--ink-3); }
 .q-peek.on { animation: qzv .2s ease-out; }
+
+/* v114 카드 학습: 큰 중앙 카드 + 틴더식 스와이프 */
+.fc-wrap { display: flex; flex-direction: column; justify-content: center; min-height: 0; }
+.fc-stage { display: flex; align-items: center; justify-content: center; padding: 8px 0; }
+.fc-swipe { position: relative; min-height: min(62vh, 460px); margin: 0; touch-action: pan-y; user-select: none; -webkit-user-select: none; cursor: grab; transition: transform .22s ease, box-shadow .2s; outline: none; --lean: 0; }
+.fc-swipe.drag { transition: none; cursor: grabbing; }
+.fc-swipe.lean-yes { box-shadow: inset 0 0 0 3px #0e9f63, 0 0 0 0 transparent; background: color-mix(in srgb, #0e9f63 calc(var(--lean) * 14%), var(--card)); }
+.fc-swipe.lean-no { box-shadow: inset 0 0 0 3px #e5484d; background: color-mix(in srgb, #e5484d calc(var(--lean) * 12%), var(--card)); }
+.fc-swipe .fc-zh { font-family: var(--zh); white-space: nowrap; line-height: 1.15; }
+.fc-spk-tr { position: absolute; top: 12px; right: 12px; width: 44px; height: 44px; margin: 0; }
+.fc-lv { position: absolute; top: 20px; left: 18px; margin: 0; }
+.fc-back { min-height: 120px; display: flex; flex-direction: column; align-items: center; justify-content: center; margin-top: 10px; }
+.fc-back.on { animation: qzv .2s ease-out; }
+.fc-tag { position: absolute; top: 64px; padding: 4px 12px; border-radius: 10px; font-size: 18px; font-weight: 800; border: 3px solid; opacity: 0; transition: opacity .1s; pointer-events: none; }
+.fc-tag.yes { left: 18px; color: #0e9f63; transform: rotate(-12deg); }
+.fc-tag.no { right: 18px; color: #e5484d; transform: rotate(12deg); }
+.fc-swipe.lean-yes .fc-tag.yes, .fc-swipe.lean-no .fc-tag.no { opacity: var(--lean); }
+.fc-guide { display: flex; justify-content: space-between; font-size: 13px; color: var(--ink-3); padding: 4px 8px 0; }

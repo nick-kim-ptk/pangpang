@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v113';
+  var APP_VERSION = 'v114';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -2758,17 +2758,19 @@
     var c = state.hc, w = hskList(c.lv)[c.queue[c.i]], pct = Math.round(c.i / c.queue.length * 100);
     var top = '<div class="topbar"><button class="icon-btn" data-act="back" aria-label="그만하기">' + I.close + '</button>' +
       '<div class="progress"><i style="width:' + pct + '%"></i></div><span class="chip" style="min-width:48px;justify-content:center">' + c.i + '/' + c.queue.length + '</span></div>';
-    var card = '<button class="fc" data-act="hsk-flip" aria-label="카드 뒤집기"><div class="fc-lv">HSK ' + c.lv + '급</div><div class="fc-zh">' + esc(w[0]) + '</div>' +
-      (c.flip ? '<div class="fc-py">' + esc(w[1]) + '</div><div class="fc-kr">' + esc(kr(w[1])) + '</div><div class="fc-ko">' + esc(w[2]) + '</div>' : '<div class="fc-hint">눌러서 뜻 보기</div>') + '</button>' +
-      '<div class="fc-spk"><button class="round-btn" data-act="say" data-text="' + esc(w[0]) + '" aria-label="듣기">' + I.spk + '</button></div>';
-    var foot = c.flip
-      ? '<div class="footer fc-foot"><button class="btn gray" data-act="hsk-mark" data-v="no">몰라요</button><button class="btn green" data-act="hsk-mark" data-v="yes">알아요</button></div>'
-      : '<div class="footer"><button class="btn" data-act="hsk-flip">뜻 보기</button></div>';
-    return '<div class="screen">' + top + '<div class="qz-wrap">' + card + '</div>' + foot + '</div>';
+    var len = Math.max(1, Array.from(w[0]).length);
+    var card = '<div class="fc-stage"><div class="fc fc-swipe" id="fc-card" role="button" tabindex="0" aria-label="카드 뒤집기">' +
+      '<span class="fc-tag no">몰라요</span><span class="fc-tag yes">알아요</span>' +
+      '<button class="round-btn fc-spk-tr" data-act="say" data-text="' + esc(w[0]) + '" aria-label="듣기">' + I.spk + '</button>' +
+      '<div class="fc-lv">HSK ' + c.lv + '급</div>' +
+      '<div class="fc-zh" style="font-size:min(112px, calc((100vw - 90px) / ' + len + '))">' + esc(w[0]) + '</div>' +
+      '<div class="fc-back' + (c.flip ? ' on' : '') + '">' + (c.flip ? '<div class="fc-py">' + esc(w[1]) + '</div><div class="fc-kr">' + esc(kr(w[1])) + '</div><div class="fc-ko">' + esc(w[2]) + '</div>' : '<div class="fc-hint">카드를 누르면 뜻이 보여요</div>') + '</div></div></div>' +
+      '<div class="fc-guide"><span>← 몰라요</span><span>알아요 →</span></div>';
+    var foot = '<div class="footer fc-foot"><button class="btn gray" data-act="hsk-mark" data-v="no">몰라요</button><button class="btn green" data-act="hsk-mark" data-v="yes">알아요</button></div>';
+    return '<div class="screen">' + top + '<div class="qz-wrap fc-wrap">' + card + '</div>' + foot + '</div>';
   }
   function hskMark(yes) {
     var c = state.hc;
-    if (!c.flip) return;
     var i = c.queue[c.i];
     setHskKnown(c.lv, i, yes);
     if (yes) { c.known++; sfx('right', c.known); } else sfx('tap');
@@ -3615,8 +3617,8 @@
         state.hsk = { lv: parseInt(id, 10), unknownOnly: false }; go('hsk'); break;
       case 'hsk-study': startHskStudy(parseInt(id, 10)); break;
       case 'hsk-quiz': startHskQuiz(parseInt(id, 10)); break;
-      case 'hsk-flip': if (state.hc && !state.hc.flip) { state.hc.flip = true; sfx('tap'); render(); } break;
-      case 'hsk-mark': hskMark(el.getAttribute('data-v') === 'yes'); break;
+      case 'hsk-flip': if (state.hc) { state.hc.flip = !state.hc.flip; sfx('tap'); render(); } break;
+      case 'hsk-mark': window.flyCard(el.getAttribute('data-v') === 'yes'); break;
       case 'hsk-filter': state.hsk.unknownOnly = el.getAttribute('data-v') === 'unknown'; render(); break;
       case 'hsk-toggle':
         var hi = parseInt(id, 10), hv = state.hsk.lv, nowOn = !hskKnown(hv, hi);
@@ -3894,5 +3896,49 @@
       afterSplash(function () { go('tab', { tab: 'home' }); });
     }
   }
+  // 카드 학습: 틴더처럼 오른쪽=알아요, 왼쪽=몰라요, 탭=뜻 보기
+  (function () {
+    var d = null;
+    function card() { return document.getElementById('fc-card'); }
+    document.addEventListener('pointerdown', function (e) {
+      var c = card();
+      if (!c || state.screen !== 'hskstudy' || !c.contains(e.target) || e.target.closest('[data-act]')) return;
+      d = { x: e.clientX, y: e.clientY, dx: 0, id: e.pointerId, busy: false };
+      c.classList.add('drag');
+    });
+    document.addEventListener('pointermove', function (e) {
+      var c = card();
+      if (!d || !c || d.busy || e.pointerId !== d.id) return;
+      d.dx = e.clientX - d.x;
+      c.style.transform = 'translateX(' + d.dx + 'px) rotate(' + (d.dx / 18) + 'deg)';
+      var p = Math.min(1, Math.abs(d.dx) / 110);
+      c.classList.toggle('lean-yes', d.dx > 12); c.classList.toggle('lean-no', d.dx < -12);
+      c.style.setProperty('--lean', p);
+    });
+    function end(e) {
+      var c = card();
+      if (!d || !c || e.pointerId !== d.id) return;
+      var dx = d.dx, me = d; d = null;
+      c.classList.remove('drag');
+      if (Math.abs(dx) < 8) { c.style.transform = ''; c.classList.remove('lean-yes', 'lean-no'); if (e.type === 'pointerup') { state.hc.flip = !state.hc.flip; sfx('tap'); render(); } return; }
+      if (Math.abs(dx) > 90) {
+        me.busy = true; flyCard(dx > 0);
+      } else { c.style.transform = ''; c.classList.remove('lean-yes', 'lean-no'); }
+    }
+    document.addEventListener('pointerup', end);
+    document.addEventListener('pointercancel', end);
+    window.flyCard = flyCard;
+    function flyCard(yes) {
+      var c = card();
+      if (!c) return hskMark(yes);
+      c.classList.add('fly', yes ? 'lean-yes' : 'lean-no'); c.style.setProperty('--lean', 1);
+      c.style.transform = 'translateX(' + (yes ? 1 : -1) * (window.innerWidth + 120) + 'px) rotate(' + (yes ? 24 : -24) + 'deg)';
+      setTimeout(function () { hskMark(yes); }, 220);
+    }
+    document.addEventListener('keydown', function (e) {
+      if (state.screen !== 'hskstudy' || !card()) return;
+      if (e.key === 'ArrowRight') flyCard(true); else if (e.key === 'ArrowLeft') flyCard(false);
+    });
+  })();
   boot();
 })();
