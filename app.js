@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v119';
+  var APP_VERSION = 'v120';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -881,7 +881,7 @@
       '<button class="btn sm" data-act="open-lesson" data-id="' + nextTarget.id + '">' + (done ? '배우기' : '미리 보기') + '</button></div>' : '';
 
     var wdue = hskDue(0).length, rtot = due + wdue;
-    var reviewCard = rtot > 0 ? '<div class="review-card big"><div class="lead">' + mascot('laptop') +
+    var reviewCard = rtot > 0 ? '<div class="review-card big"><div class="lead">' + ppm('laptop', 92, 'rv-m') +
       '<div>' + (rtot > 20 ? '<span class="chip y rv-chip">오늘은 복습부터!</span>' : '') + '<b>오늘의 복습 ' + rtot + '개</b><div class="s">' + (due ? '문장 ' + due + '개' : '') + (due && wdue ? ' · ' : '') + (wdue ? '단어 ' + wdue + '개' : '') + '<br>잊기 전에 한 번 더 해요</div></div></div>' +
       '<button class="btn btn-3d sm" data-act="today-review">복습 시작</button></div>' : '';
     // 오늘 레슨을 끝낸 날: 가볍게 더 해 볼 연습을 앞쪽에 보여줘요
@@ -936,9 +936,11 @@
       '<p class="sub-title">' + '배운 내용을 활용해 보며 자연스럽게 익혀가요.' + '</p>' +
       '<div class="lesson-progress"><div class="row"><b>' + n + ' / ' + LESSONS.length + '</b><span>레슨 완료</span></div>' +
       '<div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + pct + '"><i style="width:' + pct + '%"></i></div></div>' +
-      '<ul class="list" style="margin-top:16px">' + list + '</ul>' +
+      practiceBlock() +
+      '<div class="section-title" style="margin-top:24px">레슨</div>' +
+      '<ul class="list" style="margin-top:0">' + list + '</ul>' +
       (take < LESSONS.length ? '<button class="more-btn" data-act="lessons-more">레슨 더보기 (' + Math.min(7, LESSONS.length - take) + '개 더 · 전체 ' + LESSONS.length + '개)</button>' : '') +
-      reviewBlock() + '</div>' + navHtml() + '</div>';
+      '</div>' + navHtml() + '</div>';
   }
 
   function dialogSection() {
@@ -952,47 +954,18 @@
         (dialogLocked(d.id) ? '<span class="chip lockchip">' + I.lock + 'PRO</span>' : '<span class="chip ' + (done ? 'green' : 'soft') + '">' + (done ? '완료' : '시작') + '</span>') + '</button></li>';
     }).join('') + '</ul>';
   }
-  function listenCard() {
-    var n = learnedQs().length;
-    return '<div class="weak-card"><div class="weak-txt"><div class="t">듣기 연습</div>' +
-      '<div class="s">' + (n >= 4 ? '소리를 듣고 뜻을 골라요 · ' + QUIZ_SIZE + '문제' : '레슨을 하나 끝내면 열려요') + '</div></div>' +
-      '<button class="pill-sm" data-act="quiz-listen"' + (n >= 4 ? '' : ' disabled') + '>시작</button></div>';
-  }
-  function weakCard() {
-    var n = weakRows().length;
-    return '<div class="weak-card"><div class="weak-txt"><div class="t">약한 문제 집중 연습</div>' +
-      '<div class="s">' + (n ? '자주 틀린 문제 ' + n + '개를 모아서 풀어요' : '아직 약한 문제가 없어요. 잘하고 있어요!') + '</div></div>' +
-      '<button class="pill-sm" data-act="review-weak"' + (n ? '' : ' disabled') + '>시작</button></div>';
-  }
-  // 레슨 탭 아래쪽에 붙는 '복습' 영역
-  function reviewBlock() {
-    var due = dueRows().length;
-    var learned = learnedLessons();
-    var take = lessonUi.rn || 7, shown = learned.slice(0, take);
-    var rows = shown.map(function (l) {
-      var m = mastered(l);
-      var no = LESSONS.indexOf(l) + 1;
-      return '<li><button class="item" data-act="review-lesson" data-id="' + l.id + '">' +
-        '<span class="num">' + no + '</span><span class="txt"><div class="t">' + esc(l.title) + '</div><div class="s">익숙해진 문제 ' + m + ' / ' + l.qs.length + '</div></span>' +
-        '<span class="chip soft">복습</span></button></li>';
-    }).join('');
-    return '<h2 class="big-title" style="margin-top:36px;font-size:26px">복습하기</h2>' +
-      '<p class="sub-title">배운 문장을 다시 말하면서 오래 기억해요.</p>' +
-      '<div class="today' + (due > 0 ? '' : ' done') + '" style="margin-top:0">' +
-        '<div class="today-top' + (due > 0 ? ' has-laptop' : '') + '"><span class="chip ' + (due > 0 ? 'y' : 'green') + '">' + (due > 0 ? '지금 복습할 문제' : '오늘 복습 완료') + '</span>' +
-        '<h2 style="font-size:34px">' + due + '개</h2></div>' +
-        (due > 0 ? '<p class="explain">한 번에 최대 ' + REVIEW_SIZE + '문제씩 해요</p>' : '') +
-        (due > 0 ? ppm('laptop', 132, 'today-m') : mascot('sleep', 'today-m')) +
-        (due > 0
-          ? '<button class="btn btn-3d" data-act="review-start">복습 시작</button>'
-          : '<button class="btn soft" data-act="review-random"' + (learned.length ? '' : ' disabled') + '>랜덤 복습하기</button>') +
-      '</div>' +
-      weakCard() +
-      speedCard() +
-      listenCard() +
-      '<div class="section-title">레슨별로 복습하기</div>' +
-      (learned.length ? '<ul class="list">' + rows + '</ul>' + (learned.length > take ? '<button class="more-btn" data-act="rlessons-more">더보기 (' + Math.min(7, learned.length - take) + '개 더)</button>' : '')
-        : emptyState('empty', { title: '아직 복습할 게 없어요', desc: '첫 레슨을 끝내면\n여기서 복습할 수 있어요' }));
+  // 레슨 탭 위쪽 '연습하기': 약한 문제 · 스피드 퀴즈 · 듣기 연습 (복습은 홈의 '오늘의 복습'이 맡아요)
+  function practiceBlock() {
+    var weak = weakRows().length, learnedN = learnedLessons().length, listenOk = learnedQs().length >= 4;
+    var sl = learnedN && speedLocked();
+    function card(act, title, sub, off, pro) {
+      return '<button class="pr-card' + (off ? ' off' : '') + '" data-act="' + act + '"' + (off ? ' disabled' : '') + '>' +
+        '<b>' + title + '</b><span>' + sub + '</span>' + (pro ? '<em class="pr-pro">' + I.lock + 'PRO</em>' : '') + '</button>';
+    }
+    return '<div class="section-title" style="margin-top:20px">연습하기</div><div class="pr-row">' +
+      card('review-weak', '약한 문제', weak ? weak + '개 모아 풀기' : '아직 없어요', !weak, false) +
+      card('speed-start', '스피드 퀴즈', learnedN ? SPEED_SIZE + '문제 · ' + SPEED_SEC + '초' : '레슨 후 열려요', !learnedN, sl) +
+      card('quiz-listen', '듣기 연습', listenOk ? QUIZ_SIZE + '문제' : '레슨 후 열려요', !listenOk, false) + '</div>';
   }
   // 하단 'AI 대화' 탭
   function viewAi() {
@@ -2402,12 +2375,6 @@
     if (spRec) { var r = spRec; spRec = null; try { r.onend = null; r.abort(); } catch (e) { /* 이미 멈춤 */ } }
     stopSpeak();
   }
-  function speedCard() {
-    var n = learnedLessons().length;
-    return '<div class="weak-card"><div class="weak-txt"><div class="t">스피드 퀴즈</div>' +
-      '<div class="s">' + (n ? '끝낸 레슨에서 ' + SPEED_SIZE + '문제 · ' + SPEED_SEC + '초 안에 대답해요' + (isPro() ? '' : (speedLocked() ? ' · 멤버십 필요' : ' · 무료 1회')) : '레슨을 하나 끝내면 열려요') + '</div></div>' +
-      '<button class="pill-sm' + (n && speedLocked() ? ' pro' : '') + '" data-act="speed-start"' + (n ? '' : ' disabled') + '>' + (n && speedLocked() ? I.lock + 'PRO' : '시작') + '</button></div>';
-  }
   function speedOptions(q) {
     var seen = {}, d = [];
     shuffle(learnedQs().filter(function (x) { return x.a && x.a.zh !== q.a.zh; })).forEach(function (x) {
@@ -3692,12 +3659,6 @@
     if (!qs.length) { toast('약한 문제가 아직 없어요'); return; }
     beginSession('review', rounds(qs, WEAK_SIZE));
   }
-  function startRandomReview() {
-    var pool = Object.keys(state.progress).map(function (id) { return QMAP[id]; }).filter(Boolean);
-    if (!pool.length) { toast('먼저 레슨을 하나 끝내 주세요'); return; }
-    beginSession('review', shuffle(mixLessons(shuffle(pool), REVIEW_SIZE)));
-  }
-
   /* ---------- 로그인/로그아웃 ---------- */
   async function signIn() {
     state.loginBusy = true;
@@ -3790,7 +3751,6 @@
       case 'ai-fix-more': var fk = el.getAttribute('data-k') || 'expr'; fixUi.n[fk] = (fixUi.n[fk] || 7) + 7; renderKeep(); break;
       case 'ai-seg': fixUi.seg = el.getAttribute('data-k') === 'fix' ? 'fix' : 'expr'; render(); break;
       case 'lessons-more': lessonUi.n = (lessonUi.n || lessonInitN()) + 7; renderKeep(); break;
-      case 'rlessons-more': lessonUi.rn = (lessonUi.rn || 7) + 7; renderKeep(); break;
       case 'ac-showko': if (state.ac) { var sk = state.ac.msgs[+el.getAttribute('data-i')]; if (sk) { sk.showKo = !sk.showKo; render(); } } break;
       case 'ac-ko': if (state.ac && state.ac.mode === 'chat' && !state.ac.busy && !state.ac.ended) { state.ac.ko = { opts: null, heard: '', busy: false }; render(); acScroll(); } break;
       case 'ac-ko-send': if (state.ac && state.ac.ko && !state.ac.ko.busy) { var kv = String(state.ac.koIn || '').trim(); if (kv) { state.ac.koIn = ''; acKoRun(kv); } } break;
@@ -3876,7 +3836,6 @@
       case 'review-start': startReview(); break;
       case 'today-review': startTodayReview(); break;
       case 'hsk-due': startHskDue(); break;
-      case 'review-random': startRandomReview(); break;
       case 'review-weak': startWeak(); break;
       case 'dialog-start': startDialog(id); break;
       case 'open-stats': go('stats'); break;
@@ -3911,7 +3870,6 @@
       case 'fb-send': sendFeedback(); break;
       case 'fb-done': go('prefs'); break;
       case 'focus-tag': startFocus(id); break;
-      case 'review-lesson': startLessonSession('review', id); break;
 
       case 'quit': quitPractice(); break;
       case 'modal-ok':
