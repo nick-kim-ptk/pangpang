@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v114';
+  var APP_VERSION = 'v115';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -1854,7 +1854,8 @@
     return '<div class="rep-diff"><div class="rd-t zh">' + chars.join('') + '</div>' +
       (miss.length ? '<div class="rd-l">빨간 글자를 다시 말해 보세요</div><ul class="rd-tips">' + tips + '</ul>' : '') + '</div>';
   }
-  function acMicDown(kind) {
+  function acMicDown(kind, prev) {
+    prev = prev || '';
     kind = kind === 'ko' ? 'ko' : 'zh';
     var a = state.ac;
     if (!a || a.mode !== 'chat' || a.busy || a.ended || acRec || (a.ko && a.ko.busy)) return;
@@ -1867,12 +1868,20 @@
     a.lk = kind; acRec = r; r.lang = kind === 'ko' ? 'ko-KR' : 'zh-CN'; r.interimResults = true; r.continuous = false; r.maxAlternatives = a.rep ? 5 : 1;
     var live = function () { var m = document.getElementById(kind === 'ko' ? 'ac-mic-ko' : 'ac-mic'), lv = document.getElementById('ac-live'); if (m) m.classList.toggle('on', !!a.listening); if (lv) { lv.textContent = a.listening ? (a.live || '듣고 있어요…') : ''; lv.classList.remove('hint'); lv.classList.toggle('wait', !a.live); } };
     r.onstart = function () { a.listening = true; a.live = ''; live(); if (!acHolding) { try { r.stop(); } catch (e) { /* 무시 */ } } };
-    r.onresult = function (e) { var rs = e.results[e.results.length - 1]; got = rs[0].transcript; alts = []; for (var z = 0; z < rs.length; z++) alts.push(rs[z].transcript); a.live = got; live(); };
+    r.onresult = function (e) { var rs = e.results[e.results.length - 1]; got = rs[0].transcript; alts = []; for (var z = 0; z < rs.length; z++) alts.push(rs[z].transcript); a.live = prev + got; live(); };
     r.onerror = function (e) { errCode = e.error || 'error'; };
     r.onend = function () {
       if (acRec === r) acRec = null;
+      if (state.ac !== a || state.screen !== 'aichat') { a.listening = false; acHolding = false; return; }
+      // 손가락이 아직 눌려 있는데 브라우저가 알아서 끊었다면, 이어서 계속 들어요
+      var fatal = errCode === 'not-allowed' || errCode === 'service-not-allowed' || errCode === 'audio-capture' || errCode === 'network';
+      if (acHolding && !fatal) {
+        var carry = prev + got;
+        acRec = null;
+        try { acMicDown(kind, carry); if (acRec) return; } catch (e) { /* 아래에서 마무리 */ }
+      }
       a.listening = false; acHolding = false;
-      if (state.ac !== a || state.screen !== 'aichat') return;
+      if (prev) { got = prev + got; alts = alts.length ? alts.map(function (t) { return prev + t; }) : []; }
       if (got) { a.live = ''; if (kind === 'ko') { if (!a.ko) a.ko = { opts: null, heard: '', busy: false }; acKoRun(got); } else if (a.rep) acRepDone(alts.length ? alts : got); else acSend(got); return; }
       a.live = '';
       if (errCode === 'not-allowed' || errCode === 'service-not-allowed') toast('마이크 권한을 허용해 주세요');
@@ -2767,7 +2776,7 @@
       '<div class="fc-back' + (c.flip ? ' on' : '') + '">' + (c.flip ? '<div class="fc-py">' + esc(w[1]) + '</div><div class="fc-kr">' + esc(kr(w[1])) + '</div><div class="fc-ko">' + esc(w[2]) + '</div>' : '<div class="fc-hint">카드를 누르면 뜻이 보여요</div>') + '</div></div></div>' +
       '<div class="fc-guide"><span>← 몰라요</span><span>알아요 →</span></div>';
     var foot = '<div class="footer fc-foot"><button class="btn gray" data-act="hsk-mark" data-v="no">몰라요</button><button class="btn green" data-act="hsk-mark" data-v="yes">알아요</button></div>';
-    return '<div class="screen">' + top + '<div class="qz-wrap fc-wrap">' + card + '</div>' + foot + '</div>';
+    return '<div class="screen fc-screen">' + top + '<div class="qz-wrap fc-wrap">' + card + '</div>' + foot + '</div>';
   }
   function hskMark(yes) {
     var c = state.hc;
@@ -3144,7 +3153,8 @@
     if (r.pass) setTimeout(function () { if (state.s === s) speak(q.a.zh); }, 250);
   }
 
-  function startListening() {
+  function startListening(prev) {
+    prev = prev || '';
     var s = state.s;
     var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) {
@@ -3178,9 +3188,9 @@
     r.onresult = function (e) {
       var res = e.results[e.results.length - 1];
       lastInterim = res[0].transcript;
-      s.live = lastInterim;
+      s.live = prev + lastInterim;
       var el = document.getElementById('live');
-      if (el) { el.textContent = lastInterim; el.classList.remove('hint'); el.classList.remove('wait'); }
+      if (el) { el.textContent = prev + lastInterim; el.classList.remove('hint'); el.classList.remove('wait'); }
       if (res.isFinal) {
         finals = [];
         for (var i = 0; i < res.length; i++) finals.push(res[i].transcript);
@@ -3190,8 +3200,15 @@
     r.onend = function () {
       if (rec === r) rec = null;
       if (state.s !== s || state.screen !== 'practice' || s.phase !== 'ask') return;
+      // 손가락이 아직 눌려 있는데 브라우저가 알아서 끊었다면, 이어서 계속 들어요
+      var fatal = errCode === 'not-allowed' || errCode === 'service-not-allowed' || errCode === 'audio-capture' || errCode === 'network';
+      if (holding && !fatal) {
+        var carry = prev + (finals.length ? finals[0] : lastInterim);
+        try { startListening(carry); return; } catch (e) { /* 아래에서 마무리 */ }
+      }
       s.listening = false;
       var list = finals.length ? finals : (lastInterim ? [lastInterim] : []);
+      if (prev) list = list.length ? list.map(function (t) { return prev + t; }) : [prev];
       if (list.length) { submit(list); return; }
       if (errCode === 'not-allowed' || errCode === 'service-not-allowed') {
         s.msg = '마이크 권한을 허용해 주세요. 브라우저·폰 설정에서 마이크를 켜면 돼요';
@@ -3225,9 +3242,8 @@
   function micUp() {
     if (!holding) return;
     holding = false;
-    var r = rec;
     clearTimeout(holdTimer);
-    holdTimer = setTimeout(function () { if (r && rec === r) { try { r.stop(); } catch (e) { /* noop */ } } }, 450);
+    holdTimer = setTimeout(function () { if (rec && !holding) { try { rec.stop(); } catch (e) { /* noop */ } } }, 450);
   }
   document.addEventListener('pointerdown', function (e) {
     var t = e.target && e.target.closest && e.target.closest('[data-hold="mic"]');

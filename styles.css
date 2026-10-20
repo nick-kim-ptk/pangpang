@@ -1713,3 +1713,7 @@ html, body, * { touch-action: pan-x pan-y; }
 .fc-tag.no { right: 18px; color: #e5484d; transform: rotate(12deg); }
 .fc-swipe.lean-yes .fc-tag.yes, .fc-swipe.lean-no .fc-tag.no { opacity: var(--lean); }
 .fc-guide { display: flex; justify-content: space-between; font-size: 13px; color: var(--ink-3); padding: 4px 8px 0; }
+
+/* v115 카드 학습: 카드가 날아갈 때 가로 스크롤바가 생기지 않게 */
+.fc-wrap { overflow: hidden; }
+.fc-screen { overflow-x: clip; }
