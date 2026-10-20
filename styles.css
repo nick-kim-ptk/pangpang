@@ -1803,3 +1803,28 @@ html, body, * { scrollbar-width: none; -ms-overflow-style: none; }
 
 .fixdel { opacity: 0; transition: opacity .15s; }
 .fixswipe.open .fixdel, .fixswipe.sw-drag .fixdel, .fixswipe.hint .fixdel { opacity: 1; }
+
+/* v124 밀었을 때 카드 뒤 영역 전체를 빨갛게 */
+.fixswipe.open, .fixswipe.sw-drag, .fixswipe.hint { background: #e5484d; }
+.fixdel { background: transparent; }
+.fixdel:active { background: rgba(0,0,0,.12); }
+
+/* v125 AI 대화 탭: 크레딧 줄 + 주제 입력이 들어간 큰 카드 */
+.ai-credit { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 8px 8px 16px; margin: 4px 0 12px; border-radius: 16px; background: var(--card); box-shadow: inset 0 0 0 1.5px var(--line); font-size: 14px; color: var(--ink-2); font-weight: 700; }
+.ai-credit b { color: var(--navy); font-size: 16px; margin-left: 4px; }
+.ai-credit-go { border: 0; border-radius: 999px; padding: 7px 16px; background: var(--y); color: var(--on-yellow, #1A2139); font: inherit; font-size: 13.5px; font-weight: 800; cursor: pointer; }
+.ai-hero.big { padding: 18px 16px 16px; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; }
+.ai-hero.big .ai-hero-lab, .ai-hero.big .ai-hero-in, .ai-hero.big .ai-hero-chips, .ai-hero.big .ai-hero-foot, .ai-hero.big .ai-hero-cost { grid-column: 1 / -1; position: relative; z-index: 1; }
+.ai-hero-lab { margin-top: 10px; font-size: 14px; font-weight: 700; color: #DCE3F7; }
+.ai-hero-in { width: 100%; box-sizing: border-box; height: 50px; margin-top: 6px; border: 0; border-radius: 14px; padding: 0 14px; background: rgba(255,255,255,.12); color: #FFF6E4; font: inherit; font-size: 16px; box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.18); }
+.ai-hero-in::placeholder { color: #9AA6C8; }
+.ai-hero-in:focus { outline: none; box-shadow: inset 0 0 0 2px var(--y); }
+.ai-hero-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.ai-chip { padding: 7px 12px; border: 0; border-radius: 999px; background: rgba(255,255,255,.1); color: #E5EAFB; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; box-shadow: inset 0 0 0 1px rgba(255,255,255,.16); }
+.ai-chip.on { background: var(--y); color: #1A2139; box-shadow: none; }
+.ai-hero.big .ai-hero-foot { margin-top: 14px; }
+.ai-hero-go:disabled { opacity: .45; box-shadow: none; }
+.ai-hero-cost { margin: 10px 0 0 !important; text-align: center; font-size: 12.5px !important; color: #B9C2DE; }
+.chat-empty.first { margin-top: 24px; }
+.ac-loading { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; min-height: 60dvh; text-align: center; color: var(--ink-2); }
+.ac-loading b { font-size: 18px; color: var(--navy); }
