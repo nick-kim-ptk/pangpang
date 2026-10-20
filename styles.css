@@ -1672,3 +1672,26 @@ body.kb .screen > .scroll { min-height: 0; }
 .adv-t b { font-size: 18px; font-weight: 800; }
 .adv-t span { font-size: 14px; color: var(--ink-2); margin-top: 2px; }
 .adv-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+
+/* v110 아이폰에서 두 번 탭해도 화면이 확대·축소되지 않게 (두 손가락 확대는 그대로 가능) */
+html, body, * { touch-action: manipulation; }
+
+/* v111 두 손가락 확대도 막아요 (앱 화면만. 글씨 확대는 앱 안 설정으로) */
+html, body, * { touch-action: pan-x pan-y; }
+
+/* v112 중국어 음성 안내 */
+.dialog p { white-space: pre-line; }
+.dialog p.left { text-align: left; }
+.set-t .set-sub { font-size: 13px; font-weight: 600; color: var(--ink-3); margin-top: 2px; }
+
+/* v113 단어·HSK 퀴즈: 큰 한자 + 눌러서 발음 보기, 듣기 버튼은 오른쪽 위 */
+.qz-prompt.qz-word { position: relative; padding: 40px 0 6px; }
+.qz-prompt.qz-word .qz-spk { position: absolute; top: 4px; right: 0; width: 44px; height: 44px; margin: 0; }
+.q-zh-btn { display: block; width: 100%; border: 0; background: none; padding: 6px 0; color: inherit; cursor: pointer; }
+.q-zh-btn:active { transform: scale(.98); }
+.qz-prompt .q-zh.big { display: block; line-height: 1.15; font-weight: 800; color: var(--navy); white-space: nowrap; font-family: var(--zh); }
+.q-peek { min-height: 66px; margin-top: 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.q-peek .q-py { font-size: 19px; font-weight: 700; color: var(--ink-2); }
+.q-peek .q-kr { font-size: 15px; color: var(--ink-3); margin-top: 2px; }
+.q-peek .q-hint { font-size: 13px; color: var(--ink-3); }
+.q-peek.on { animation: qzv .2s ease-out; }

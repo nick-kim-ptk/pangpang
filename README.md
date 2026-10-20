@@ -393,3 +393,16 @@ Supabase 로그인을 연결한 뒤에만 동작해요. 아직 실제 기기에�
 ```sql
 select kind, count(*) n, round(avg(in_tokens)) avg_in, round(avg(cache_read)) avg_cache_read, round(avg(cache_write)) avg_cache_write from public.ai_usage where at > now() - interval '1 day' group by kind;
 ```
+
+## v110
+- 아이폰 더블 탭 확대/축소 방지: 전체에 touch-action: manipulation 적용 (앱·검수 도구). 두 손가락 확대는 그대로 가능
+
+## v111
+- 멤버십 가입 상태인데 AI 대화 탭에 '멤버십 가입 전' 화면이 가끔 보이던 문제 수정: 크레딧을 새로 받는 동안이나 일시적 오류에서 이전 값을 유지하고(깜빡임 방지), 서버가 '멤버가 아니다'라고 확실히 답했을 때만 잠금 화면을 보여줌. 오류 시 자동 재시도(최대 4회)
+- 두 손가락 확대 방지(viewport maximum-scale·user-scalable=no, touch-action: pan-x pan-y, iOS gesture 이벤트 차단). 검수 도구는 확대 가능 그대로
+
+## v112
+- 폰에 중국어 읽기 음성이 없으면 엉뚱한 소리로 읽지 않고, 처음 한 번 설치 방법 안내(‘그래도 들어볼래요’ 선택 시 그대로 재생). 환경 설정 → 소리·화면에 ‘중국어 음성’ 상태와 ‘설치 방법’ 버튼 추가
+
+## v113
+- 단어·HSK 퀴즈 문제 화면: 병음·한글 발음 숨김, 한자를 영역 안에서 크게(글자 수에 맞춰 자동 조절), 한자를 누르면(또는 답을 고르면) 발음 표시, 듣기 버튼은 오른쪽 위

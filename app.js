@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v108';
+  var APP_VERSION = 'v113';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -177,8 +177,27 @@
     loadVoices();
     window.speechSynthesis.onvoiceschanged = loadVoices;
   }
+  // 이 폰에 중국어 읽기 음성이 있는지: 'yes' / 'no' / 'unknown'(목록이 아직 비어 있어 모를 때)
+  function zhVoiceState() {
+    if (!('speechSynthesis' in window)) return 'no';
+    if (!voices.length) loadVoices();
+    if (!voices.length) return 'unknown';
+    return voices.some(function (x) { return /^(zh|cmn|yue)/i.test(x.lang) || /chinese|中文|普通话|mandarin/i.test(x.name || ''); }) ? 'yes' : 'no';
+  }
+  var zhGuideShown = false;
+  var ZH_GUIDE = '이 폰에는 중국어 읽기 음성이 없어서 소리가 이상하게 나올 수 있어요.\n\n1) 설정 → 일반 → 언어 → 텍스트 음성 변환\n2) 선호하는 엔진을 ‘Google 음성 합성’으로\n3) 톱니바퀴 → 언어 → 중국어 음성 데이터 내려받기\n4) 앱을 완전히 닫았다가 다시 열기\n\n※ 폰 종류에 따라 메뉴 이름이 조금 달라요.';
+  function showZhGuide() {
+    zhGuideShown = true;
+    askConfirm({ title: '중국어 음성이 필요해요', body: ZH_GUIDE, ok: '알겠어요', cancel: '그래도 들어볼래요', m: 'sleep', left: true }, null, function () { speakForce = true; render(); });
+  }
+  var speakForce = false;
   function speak(text, rate, onend) {
     if (!('speechSynthesis' in window) || !text) { if (onend) onend(); return; }
+    if (!speakForce && zhVoiceState() === 'no') {          // 중국어 음성이 없으면 엉뚱한 소리로 읽지 않고 안내해요
+      if (!zhGuideShown) showZhGuide();
+      if (onend) onend();
+      return;
+    }
     window.speechSynthesis.cancel();
     var u = new SpeechSynthesisUtterance(String(text).replace(/[“”"]/g, ''));
     u.lang = 'zh-CN';
@@ -391,15 +410,27 @@
     auth: '로그인이 필요해요.'
   };
   async function loadAi() {
-    state.ai = null;
-    if (!sb || isGuest() || state.entErr || !isPro()) return;
+    var prev = state.ai;       // 새로 받는 동안·잠깐 실패했을 때 멤버십 화면이 깜빡 '가입 전'으로 바뀌지 않게, 이전 값을 지키지 않고 바로 비우지 않아요
+    if (!sb || isGuest() || state.entErr || !isPro()) { state.ai = null; state.aiOff = false; return; }
     try {
       var r = await sb.rpc('ai_wallet_get');
       if (r.error) throw r.error;
       var d = r.data || {};
-      state.ai = d.ok && d.member ? { monthly: d.monthly | 0, topup: d.topup | 0, grant: d.grant | 0 } : null;
-    } catch (e) { state.ai = null; }   // 표가 아직 없으면 AI 메뉴를 숨겨요
+      if (d.ok && d.member) { state.ai = { monthly: d.monthly | 0, topup: d.topup | 0, grant: d.grant | 0 }; state.aiOff = false; aiTries = 0; }
+      else { state.ai = null; state.aiOff = true; }   // 서버가 '멤버가 아니다'라고 확실히 답한 경우만
+    } catch (e) {
+      state.ai = prev || null;
+      var code = e && (e.code || '');
+      state.aiOff = (code === '42883' || code === 'PGRST202');   // 함수가 아직 없을 때만 AI 메뉴를 숨겨요
+      if (!state.aiOff) aiRetry();                                  // 일시적인 오류는 잠시 뒤 다시 받아요
+    }
     if (state.ai) await loadFixes();
+  }
+  var aiTries = 0, aiRetryT = null;
+  function aiRetry() {
+    if (aiTries >= 4 || aiRetryT) return;
+    aiTries++;
+    aiRetryT = setTimeout(function () { aiRetryT = null; loadAi().then(function () { if (state.screen === 'tab') render(); }); }, 2500 * aiTries);
   }
   /* AI가 고쳐 준 문장·모은 표현 (AI 대화 탭에 보여요). 서버 표 ai_fix가 있으면 거기에, 없으면 이 기기에 저장해요 */
   var FIX_KEY = 'pangpang.aifix';
@@ -475,7 +506,7 @@
     return '<div class="screen"><div class="topbar"><button class="icon-btn" data-act="back" aria-label="뒤로">' + I.back + '</button></div>' +
       '<div class="scroll" style="padding-top:4px"><h1 class="big-title" style="margin-top:0">내가 모은 문장</h1>' + aiFixFull() + '<div style="height:60px"></div></div></div>';
   }
-  function aiOn() { return !!(sb && !isGuest() && !state.entErr && state.ai && isPro()); }
+  function aiOn() { return !!(sb && !isGuest() && !state.entErr && isPro() && !state.aiOff); }
   function aiBal() { return state.ai ? state.ai.monthly + state.ai.topup : 0; }
   function isPro() {
     if (!sb) return true;                 // 미리보기 모드는 전부 열려 있어요
@@ -1284,7 +1315,7 @@
       var r = await sb.functions.invoke('ai-coach', { body: { action: 'correct', zh: q.zh, ko: q.ko, answer: s.heard } });
       if (r.error) throw r.error;
       var d = r.data || {};
-      if (typeof d.monthly === 'number' && typeof d.topup === 'number' && state.ai) { state.ai.monthly = d.monthly; state.ai.topup = d.topup; }
+      if (typeof d.monthly === 'number' && typeof d.topup === 'number') { state.ai = state.ai || { monthly: 0, topup: 0, grant: 15 }; state.ai.monthly = d.monthly; state.ai.topup = d.topup; }
       var noRetry = d.error === 'no_credit' || d.error === 'not_member' || d.error === 'auth';
       s.aiRes[key] = d.ok ? { res: d.result } : noRetry ? { err: AI_ERR[d.error] } : { err: '선생님이 도착하지 않았어요.', retry: true };
     } catch (e) {
@@ -1654,7 +1685,7 @@
     var r = await sb.functions.invoke('ai-coach', { body: body });
     if (r.error) throw r.error;
     var d = r.data || {};
-    if (typeof d.monthly === 'number' && typeof d.topup === 'number' && state.ai) { state.ai.monthly = d.monthly; state.ai.topup = d.topup; }
+    if (typeof d.monthly === 'number' && typeof d.topup === 'number') { state.ai = state.ai || { monthly: 0, topup: 0, grant: 15 }; state.ai.monthly = d.monthly; state.ai.topup = d.topup; }
     return d;
   }
   // 대화를 마칠 때: 이번 대화에서 자주 묻고 답할 만한 표현을 골라 복습 탭에 모아 둬요(크레딧 없음)
@@ -1870,7 +1901,7 @@
       '<div class="scroll" style="padding-top:4px"><h1 class="big-title" style="margin-top:0">AI 대화</h1>' +
       '<p class="sub-title">AI 선생님과 대화하고, 말한 문장을 자연스럽게 고쳐 받는 데 쓰는 크레딧이에요. 대화는 한 번 주고받을 때 2크레딧, 문장 교정은 1크레딧이 들어요.</p>' +
       '<div class="ai-wallet plain"><div class="aw-top"><span>남은 크레딧</span><b>' + aiBal() + '</b></div><div class="aw-s">이번 달 지급 ' + state.ai.monthly + ' · 충전분 ' + state.ai.topup + '</div></div>' +
-      '<ul class="perks"><li>' + I.check + '멤버십이면 매달 ' + (state.ai.grant || 15) + '크레딧을 드려요 (남아도 다음 달로 넘어가지 않아요)</li>' +
+      '<ul class="perks"><li>' + I.check + '멤버십이면 매달 ' + ((state.ai && state.ai.grant) || 15) + '크레딧을 드려요 (남아도 다음 달로 넘어가지 않아요)</li>' +
       '<li>' + I.check + '충전한 크레딧은 매달 지급분을 다 쓴 뒤에 쓰고, 사라지지 않아요</li></ul>' +
       '<div class="packs">' + packs + '</div>' +
       '<div class="notice pay-test"><span>지금은 테스트모드입니다. 결제가 되지 않아요.</span></div><div style="height:24px"></div></div></div>';
@@ -1964,6 +1995,7 @@
       '<div class="scroll" style="padding-top:4px"><h1 class="big-title" style="margin-top:0">환경 설정</h1>' +
       '<div class="section-title" style="margin-top:8px">소리 · 화면</div><div class="set-card">' +
         '<div class="set-row"><div class="set-t">효과음·진동</div>' + seg('set-sound', p.sound ? 'on' : 'off', [['on', '켜짐'], ['off', '꺼짐']]) + '</div>' +
+        '<div class="set-row"><div class="set-t">중국어 음성' + (function () { var z = zhVoiceState(); return '<div class="set-sub">' + (z === 'yes' ? '사용할 수 있어요' : z === 'no' ? '이 폰에 없어요' : '확인 중이에요') + '</div>'; })() + '</div><button class="pill-sm" data-act="zh-guide">설치 방법</button></div>' +
         '<div class="set-row"><div class="set-t">화면</div>' + seg('set-theme', p.theme, [['auto', '자동'], ['light', '라이트'], ['dark', '다크']]) + '</div></div>' +
       (extra ? '<div class="section-title" style="margin-top:24px">알림 · 앱 설치</div><div class="set-card">' + extra + '</div>' : '') +
       ((sb ? 1 : 0) ? '<div class="section-title" style="margin-top:24px">이용권 · 계정</div><div class="set-card">' +
@@ -2071,7 +2103,7 @@
 
   /* ---------- 확인 팝업 (앱 화면과 같은 시트 디자인) ---------- */
   function askConfirm(opts, onOk, onNo) {
-    state.modal = { title: opts.title, body: opts.body, ok: opts.ok || '확인', cancel: opts.cancel || '취소', danger: !!opts.danger, m: opts.m || 'ask', onOk: onOk, onNo: onNo };
+    state.modal = { title: opts.title, body: opts.body, ok: opts.ok || '확인', cancel: opts.cancel || '취소', danger: !!opts.danger, left: !!opts.left, m: opts.m || 'ask', onOk: onOk, onNo: onNo };
     render();
   }
   function closeModal() { state.modal = null; render(); }
@@ -2080,7 +2112,7 @@
     if (!m) return '';
     return '<div class="scrim modal" data-act="modal-cancel" aria-hidden="true"></div>' +
       '<div class="dialog" role="alertdialog" aria-modal="true" aria-label="' + esc(m.title) + '">' + mascot(m.m, 'm') +
-      '<h3>' + esc(m.title) + '</h3><p>' + esc(m.body) + '</p>' +
+      '<h3>' + esc(m.title) + '</h3><p' + (m.left ? ' class="left"' : '') + '>' + esc(m.body) + '</p>' +
       '<div class="btns"><button class="btn' + (m.danger ? ' danger' : '') + '" data-act="modal-ok">' + esc(m.ok) + '</button>' +
       '<button class="btn gray" data-act="' + (m.onNo ? 'modal-no' : 'modal-cancel') + '">' + esc(m.cancel) + '</button></div></div>';
   }
@@ -2831,7 +2863,7 @@
   function quizNext() {
     var z = state.z;
     if (z.picked === null) return;
-    z.i++; z.picked = null;
+    z.i++; z.picked = null; z.peek = false;
     if (z.i >= z.items.length) { finishQuiz(); return; }
     render(); speakQuiz();
   }
@@ -2860,8 +2892,12 @@
       prompt = '<div class="qz-prompt"><button class="listen-btn" data-act="say" data-text="' + esc(it.zh) + '" aria-label="다시 듣기">' + I.spk + '</button>' +
         '<div class="qz-cap">소리를 듣고 알맞은 뜻을 골라요</div></div>';
     } else {
-      prompt = '<div class="qz-prompt"><div class="q-zh">' + esc(it.zh) + '</div><div class="q-py">' + esc(it.py) + '</div><div class="q-kr">' + esc(kr(it.py)) + '</div>' +
-        '<button class="round-btn" data-act="say" data-text="' + esc(it.zh) + '" aria-label="듣기" style="margin-top:12px">' + I.spk + '</button></div>';
+      // 한자를 크게 보여 주고, 발음(병음·한글)은 한자를 누르거나 답을 고르면 보여요. 듣기 버튼은 오른쪽 위
+      var peek = !!z.peek || z.picked !== null, len = Math.max(1, Array.from(it.zh).length);
+      prompt = '<div class="qz-prompt qz-word">' +
+        '<button class="round-btn qz-spk" data-act="say" data-text="' + esc(it.zh) + '" aria-label="듣기">' + I.spk + '</button>' +
+        '<button class="q-zh-btn" data-act="qz-peek" aria-label="한자 발음 보기" aria-expanded="' + peek + '"><span class="q-zh big" style="font-size:min(104px, calc((100vw - 64px) / ' + len + '))">' + esc(it.zh) + '</span></button>' +
+        '<div class="q-peek' + (peek ? ' on' : '') + '">' + (peek ? '<div class="q-py">' + esc(it.py) + '</div><div class="q-kr">' + esc(kr(it.py)) + '</div>' : '<div class="q-hint">한자를 누르면 발음이 보여요</div>') + '</div></div>';
     }
     var opts = '<div class="qz-opts">' + it.options.map(function (o, i) {
       var cls = 'opt';
@@ -3402,6 +3438,7 @@
       case 'open-aicharge': go('aicharge'); break;
       case 'open-aiall': go('aiall'); break;
       case 'open-prefs': go('prefs'); break;
+      case 'zh-guide': askConfirm({ title: '중국어 음성 설치 방법', body: ZH_GUIDE, ok: '알겠어요', cancel: '닫기', m: 'sleep', left: true }); break;
       case 'open-about': go('about'); break;
       case 'open-advisor': go('advisor'); break;
       case 'open-review': location.href = 'review.html'; break;
@@ -3593,6 +3630,7 @@
       case 'quiz-listen': startQuiz('listen'); break;
       case 'quiz-word': startQuiz('word'); break;
       case 'quiz-pick': quizPick(parseInt(id, 10)); break;
+      case 'qz-peek': if (state.z) { state.z.peek = !state.z.peek; render(); } break;
       case 'quiz-next': quizNext(); break;
       case 'quiz-quit': stopSpeak(); go(state.z && state.z.hsk ? 'hsk' : 'tab'); break;
       case 'fav': toggleFav(el.getAttribute('data-text')); break;
