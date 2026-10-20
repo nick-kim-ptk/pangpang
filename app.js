@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v125';
+  var APP_VERSION = 'v127';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -375,10 +375,13 @@
     sfx(i >= 0 ? 'tap' : 'pop');
     setProfile({ favs: f });
   }
+  function spkBtn(text) {
+    return '<button class="row-spk" data-act="say" data-text="' + esc(text) + '" aria-label="듣기">' + I.spk + '</button>';
+  }
   function phraseRow(ph) {
     return '<div class="prow"><button class="pmain" data-act="say" data-text="' + esc(ph[0]) + '" aria-label="듣기">' +
-      '<div class="zh p-zh2">' + esc(ph[0]) + '</div><div class="py">' + esc(ph[1]) + '</div><div class="kr">' + esc(kr(ph[1])) + '</div><div class="ko">' + esc(ph[2]) + '</div></button>' +
-      '<button class="star' + (isFav(ph[0]) ? ' on' : '') + '" data-act="fav" data-text="' + esc(ph[0]) + '" aria-pressed="' + (isFav(ph[0]) ? 'true' : 'false') + '" aria-label="문장 저장">' + I.star + '</button></div>';
+      '<div class="zh p-zh2">' + esc(ph[0]) + '</div><div class="py">' + esc(ph[1]) + '</div><div class="kr">' + esc(kr(ph[1])) + '</div><div class="ko">' + esc(ph[2]) + '</div></button><div class="prow-btns">' + spkBtn(ph[0]) +
+      '<button class="star' + (isFav(ph[0]) ? ' on' : '') + '" data-act="fav" data-text="' + esc(ph[0]) + '" aria-pressed="' + (isFav(ph[0]) ? 'true' : 'false') + '" aria-label="문장 저장">' + I.star + '</button></div></div>';
   }
   function nickname() { return (state.profile && state.profile.nickname || '').trim(); }
 
@@ -487,7 +490,7 @@
       '<span class="zh">' + esc(f.natural) + '</span>' +
       (f.pinyin ? '<span class="py">' + esc(f.pinyin) + '</span>' : '') + (f.ko ? '<span class="why">' + esc(f.ko) + '</span>' : '') +
       (f.mine ? '<span class="mine">내가 한 말 · ' + esc(f.mine) + '</span>' : '') +
-      (f.why ? '<span class="why">' + esc(f.why) + '</span>' : '') + '</button></div>';
+      (f.why ? '<span class="why">' + esc(f.why) + '</span>' : '') + '</button>' + spkBtn(f.natural) + '</div>';
     if (noDel) return row;
     // 전체 보기: 왼쪽으로 밀면 휴지통이 나와요
     return '<div class="fixswipe"><button class="fixdel" data-act="ai-fix-del" data-t="' + esc(f.natural) + '" aria-label="삭제">' + ICON_TRASH + '</button>' + row + '</div>';
@@ -801,7 +804,7 @@
     function b(id, label, icon) {
       return '<button data-act="tab" data-id="' + id + '"' + (state.tab === id ? ' aria-current="page"' : '') + '>' + icon + '<span>' + label + '</span></button>';
     }
-    return '<nav class="nav" aria-label="메뉴">' + b('home', '홈', I.home) + b('lessons', '레슨', I.list) + b('review', 'AI 대화', I.chat) + b('words', '단어장', I.book) + b('me', '마이', I.user) + '</nav>';
+    return '<nav class="nav" aria-label="메뉴">' + b('home', '홈', I.home) + b('lessons', '레슨', I.list) + b('review', 'AI 대화', I.chat + (aiOn() && !aiUsed() ? '<i class="nav-dot" aria-hidden="true"></i>' : '')) + b('words', '단어장', I.book) + b('me', '마이', I.user) + '</nav>';
   }
 
   // 소개글의 첫 문장까지만 (예: "오늘은 … 배워볼 거예요.")
@@ -984,12 +987,12 @@
   }
   // 하단 'AI 대화' 탭
   function viewAi() {
-    var head = '<h1 class="big-title">AI 대화</h1><p class="sub-title">AI 선생님과 편하게 말해 보고, 모은 표현을 다시 익혀요.</p>';
+    var head = '<h1 class="big-title">AI 대화</h1><p class="sub-title">틀려도 괜찮아요. 편하게 말해 보세요.</p>';
     var body;
     if (aiOn()) {
       if ((!state.chats || state.chatsUid !== (state.user && state.user.id)) && !state.chatsBusy) { state.chatsBusy = true; chatsInit().then(function () { state.chatsBusy = false; if (state.screen === 'tab' && state.tab === 'review') renderKeep(); }); }
       var noExpr = !aiFixes().some(function (f) { return f.kind === 'ask' || f.kind === 'say'; });
-      body = aiCreditBar() + aiEntry() + ((state.chats || []).length || !noExpr ? aiHistorySection() + aiFixSection() : '<div class="chat-empty first">첫 대화를 해보면<br>지난 대화와 다시 써 볼 표현이<br>여기에 쌓여요.</div>');
+      body = aiCreditBar() + aiEntry() + ((state.chats || []).length || !noExpr ? aiHistorySection() + aiFixSection() : '<div class="chat-empty first">대화하면 지난 대화와<br>다시 써 볼 표현이<br>여기에 쌓여요.</div>');
     }
     else body = '<div class="ai-lock"><div class="ai-lock-t">AI 대화는 멤버십에서 쓸 수 있어요</div><p>AI 선생님과 자유롭게 대화하고, 말이 막히면 한국어로 물어보고, 고쳐 받은 문장과 표현을 모아 복습해요.</p>' +
       '<button class="btn" data-act="open-pay">멤버십 보기</button></div>';
@@ -1526,6 +1529,12 @@
 
   /* ---------- AI 자유 대화 (가이드형): 상황을 고르면 AI가 먼저 말을 걸고, 뭐라고 말할지 알려 줘요 ---------- */
   var AI_CHAT_COST = 2, acRec = null;   // 한 번 주고받을 때마다 2크레딧
+  // 한 번이라도 AI와 대화해 봤는지 (뱃지 문구와 탭의 빨간 점에 써요)
+  function aiUsedKey() { return 'pangpang.aiused.' + (state.user ? state.user.id : 'x'); }
+  function aiUsed() {
+    try { if (localStorage.getItem(aiUsedKey())) return true; } catch (e) { /* 무시 */ }
+    return (state.chats || chatsLocal()).length > 0 || aiFixes().length > 0;
+  }
   function aiCreditBar() {
     if (!aiOn()) return '';
     return '<div class="ai-credit"><span>내 크레딧 <b>' + aiBal() + '</b></span><button class="ai-credit-go" data-act="open-aicharge">충전</button></div>';
@@ -1537,10 +1546,12 @@
     var low = aiBal() < AI_CHAT_COST;
     return '<div class="ai-hero big">' +
       '<div class="ai-hero-art">' + ppm('ai', 96) + '</div>' +
-      '<div class="ai-hero-txt"><span class="ai-hero-chip">신규 기능</span><h2>AI 자유 대화</h2></div>' +
+      '<div class="ai-hero-txt"><span class="ai-hero-chip">' + (aiUsed() ? '대표 기능' : '신규 기능') + '</span><h2>AI 자유 대화</h2><p>AI 선생님과 자유롭게 이야기해요</p></div>' +
       '<label class="ai-hero-lab" for="ai-topic">어떤 이야기를 해볼까요?</label>' +
       '<input id="ai-topic" class="ai-hero-in" maxlength="30" autocomplete="off" spellcheck="false" placeholder="예: 내일 친구랑 점심 약속 잡기" value="' + esc(t) + '">' +
-      '<div class="ai-hero-chips">' + chips + '</div>' +
+      '<p class="ai-hero-note">주제를 입력하지 않아도 대화를 시작할 수 있어요.</p>' +
+      '<div class="ai-hero-chips' + (state.aiChipsOpen ? ' open' : '') + '">' + chips + '</div>' +
+      '<button class="ai-chips-more" data-act="ai-chips-more" hidden>' + (state.aiChipsOpen ? '접기' : '더보기') + '</button>' +
       '<div class="ai-hero-foot"><button class="ai-hero-go" data-act="ai-go"' + (low ? ' disabled' : '') + '>대화 시작하기</button></div>' +
       '<p class="ai-hero-cost">' + (low ? '크레딧이 부족해요. 위의 충전 버튼으로 충전해 주세요.' : '한 번 대화할 때마다 ' + AI_CHAT_COST + ' 크레딧이 소모돼요.') + '</p></div>';
   }
@@ -1682,7 +1693,7 @@
     if (w.err) return head + '<p class="hsk-note under-title">표현을 고르지 못했어요. 다음 대화에서는 꼭 모아 드릴게요.</p>';
     return head + '<p class="hsk-note under-title">AI 대화 탭에 저장했어요. 눌러서 소리를 들어 보세요.</p><div class="fixlist">' + (w.items || []).map(function (x) {
       return '<div class="fixrow"><button class="fixrow-main" data-act="say" data-text="' + esc(x.zh) + '"><span class="xchip ' + (x.kind === 'ask' ? 'ask' : 'say') + '">' + (x.kind === 'ask' ? '질문' : '대답') + '</span><span class="zh">' + esc(x.zh) + '</span>' +
-        (x.py ? '<span class="py">' + esc(x.py) + '</span>' : '') + (x.ko ? '<span class="why">' + esc(x.ko) + '</span>' : '') + '</button></div>';
+        (x.py ? '<span class="py">' + esc(x.py) + '</span>' : '') + (x.ko ? '<span class="why">' + esc(x.ko) + '</span>' : '') + '</button>' + spkBtn(x.zh) + '</div>';
     }).join('') + '</div>';
   }
   function acEnd(a) {
@@ -1835,6 +1846,7 @@
       var d = await acCall({ action: 'chat_start', scenario: { id: 'free', title: topic, intro: intro } });
       a.busy = false;
       if (!d.ok) { toast(AI_ERR[d.error] || '대화를 시작하지 못했어요. 잠시 후 다시 해 주세요'); acFailRender(a); return; }
+      try { localStorage.setItem(aiUsedKey(), '1'); } catch (e) { /* 무시 */ }
       state.ac = { mode: 'chat', startAt: new Date().toISOString(), scenario: { id: 'free', title: topic }, sid: d.sid, msgs: [Object.assign({ who: 'them' }, d.turn.reply)], sug: d.turn.suggestions || [], turns: 0, input: '', busy: false, ended: false, fixes: [], wait: true };
       render(); acScroll();
       acReveal(state.ac, d.turn.reply.zh);
@@ -2247,6 +2259,14 @@
       '<div class="btns"><button class="btn' + (m.danger ? ' danger' : '') + '" data-act="modal-ok">' + esc(m.ok) + '</button>' +
       '<button class="btn gray" data-act="' + (m.onNo ? 'modal-no' : 'modal-cancel') + '">' + esc(m.cancel) + '</button></div></div>';
   }
+  // 추천 주제 칩이 2줄을 넘을 때만 '더보기'를 보여요
+  function fitChips() {
+    var c = $app.querySelector && $app.querySelector('.ai-hero-chips'), b = $app.querySelector && $app.querySelector('.ai-chips-more');
+    if (!c || !b) return;
+    if (state.aiChipsOpen) { b.hidden = false; return; }
+    b.hidden = !(c.scrollHeight > c.clientHeight + 2);
+  }
+  window.addEventListener('resize', fitChips);
   function fitGreet() {
     var h = $app.querySelector && $app.querySelector('.home-greet h1');
     if (!h) return;
@@ -2288,6 +2308,7 @@
     else if (state.screen === 'done') html = viewDone();
     $app.innerHTML = html + modalHtml();
     fitGreet();
+    fitChips();
     if (state.screen === 'aiall' && !state.aiallHint) {   // 처음 들어오면 첫 카드가 살짝 밀렸다 돌아와서 삭제 방법을 알려 줘요
       var fs = $app.querySelector('.fixswipe');
       if (fs) { state.aiallHint = true; fs.classList.add('hint'); fs.firstChild && fs.lastChild.addEventListener('animationend', function () { fs.classList.remove('hint'); }); }
@@ -3768,6 +3789,12 @@
       case 'open-advisor': go('advisor'); break;
       case 'open-review': location.href = 'review.html'; break;
       case 'ai-why': aiWhyLoad(); break;
+      case 'ai-chips-more': {
+        state.aiChipsOpen = !state.aiChipsOpen;
+        var ch = document.querySelector('.ai-hero-chips'); if (ch) ch.classList.toggle('open', !!state.aiChipsOpen);
+        el.textContent = state.aiChipsOpen ? '접기' : '더보기';
+        break;
+      }
       case 'ai-chip': {
         state.acTopic = AC_TOPICS[+el.getAttribute('data-i')] || '';
         var inp0 = document.getElementById('ai-topic'); if (inp0) inp0.value = state.acTopic;
