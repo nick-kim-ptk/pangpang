@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v115';
+  var APP_VERSION = 'v116';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -839,8 +839,8 @@
     var st = streak();
 
     var nick = nickname();
-    var gl = Math.max(GREETS[greetIdx][0].length, GREETS[greetIdx][1].length);   // 두 줄이 한 줄씩 들어가도록 글자 크기를 길이에 맞춰요
-    var head = '<div class="home-greet"><h1 style="font-size:min(32px, calc((100vw - 56px) / ' + (gl * 0.95).toFixed(1) + '))">' + esc(GREETS[greetIdx][0]) + '<br>' + esc(GREETS[greetIdx][1]) + '</h1></div>';
+    // 다른 페이지 제목과 같은 크기(32px)로 두고, 화면이 좁아 한 줄에 안 들어갈 때만 실제 글자 폭을 재서 줄여요 (fitGreet)
+    var head = '<div class="home-greet"><h1><span class="gl">' + esc(GREETS[greetIdx][0]) + '</span><br><span class="gl">' + esc(GREETS[greetIdx][1]) + '</span></h1></div>';
 
     var ans = todayAnswers(), goal = state.profile.goal;
     // 목표를 넘기면 150%처럼 그대로 보여 주고, 막대도 목표선(100%)을 넘어 계속 길어져요 (최대 300%까지)
@@ -2125,6 +2125,18 @@
       '<div class="btns"><button class="btn' + (m.danger ? ' danger' : '') + '" data-act="modal-ok">' + esc(m.ok) + '</button>' +
       '<button class="btn gray" data-act="' + (m.onNo ? 'modal-no' : 'modal-cancel') + '">' + esc(m.cancel) + '</button></div></div>';
   }
+  function fitGreet() {
+    var h = $app.querySelector && $app.querySelector('.home-greet h1');
+    if (!h) return;
+    var box = h.parentElement, gls = h.querySelectorAll('.gl'), i, w = 0;
+    h.style.fontSize = '';
+    var base = parseFloat(getComputedStyle(h).fontSize) || 32;
+    for (i = 0; i < gls.length; i++) w = Math.max(w, gls[i].getBoundingClientRect().width);
+    var avail = box.clientWidth;
+    if (w > avail && avail > 0) h.style.fontSize = (Math.floor(base * avail / w * 10) / 10 - 0.3) + 'px';
+  }
+  window.addEventListener('resize', fitGreet);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitGreet);
   function render() {
     var html = '';
     if (state.screen === 'loading') html = viewLoading();
@@ -2150,6 +2162,7 @@
     else if (state.screen === 'hskstudy') html = viewHskStudy();
     else if (state.screen === 'done') html = viewDone();
     $app.innerHTML = html + modalHtml();
+    fitGreet();
     if (backAnim) {
       backAnim = false;
       var scr = $app.querySelector && $app.querySelector('.screen');

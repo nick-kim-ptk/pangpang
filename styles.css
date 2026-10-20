@@ -1717,3 +1717,6 @@ html, body, * { touch-action: pan-x pan-y; }
 /* v115 카드 학습: 카드가 날아갈 때 가로 스크롤바가 생기지 않게 */
 .fc-wrap { overflow: hidden; }
 .fc-screen { overflow-x: clip; }
+
+/* v116 홈 인사말: 줄 폭을 재서 맞추기 위해 줄을 inline-block으로 */
+.home-greet h1 .gl { display: inline-block; white-space: nowrap; }
