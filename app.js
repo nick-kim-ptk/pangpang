@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v130';
+  var APP_VERSION = 'v132';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -3709,7 +3709,7 @@
   });
 
   /* ---------- 기억 사슬 (v130): 한자 카드를 쌓아 가며 몇 단계까지 기억하는지 ---------- */
-  var CH_LIVES = 3, CH_ACTIVE = 10, CH_Q_MAX = 10, CH_GRAD = 2, CH_NEW_MAX = 3;
+  var CH_LIVES = 3, CH_GRID = 12, CH_SIM_MAX = 5, CH_OLD_MS = 2000, CH_ACTIVE = 10, CH_Q_MAX = 10, CH_GRAD = 2, CH_NEW_MAX = 3;
   var CH_HEART = '<svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.3 3 5 6.4 5c2 0 3.8 1.1 5.6 3.2C13.8 6.100 15.600 5 17.600 5 21 5 23.100 8.300 21.600 11.800 19.500 16.400 12 21 12 21z" fill="currentColor"/></svg>';
   function chKey() { return 'pangpang.chain.' + (state.user ? state.user.id : 'x'); }
   function chRecAll() { try { return JSON.parse(localStorage.getItem(chKey()) || '{}'); } catch (e) { return {}; } }
@@ -3742,7 +3742,7 @@
     if (!fresh.length && !c.active.length) { c.stage--; chOver(true); return; }
     c.active = c.active.concat(fresh);
     c.stageGrads = 0;
-    var oldMs = Math.max(500, Math.round(900 - c.stage * 14));
+    var oldMs = CH_OLD_MS;
     c.seq = shuffle(oldList.slice()).map(function (a) { return { i: a.i, kind: 'old', ms: oldMs }; })
       .concat(fresh.map(function (a) { return { i: a.i, kind: 'new', ms: 3200 }; }));
     c.si = 0; c.phase = 'intro'; c.tok++;
@@ -3763,15 +3763,34 @@
     if (!c || c.phase !== 'intro') return;
     clearTimeout(c.timer); c.si++; chShowSeq();
   }
+  var CH_LOOK = ["己已巳", "未末", "土士", "人入八", "大太犬天夫", "日目白百自", "午牛", "力刀九几", "木本禾", "玉王主", "买卖", "休体", "请清情晴青", "间问闻", "现视观", "妈吗马码骂", "我找或", "那哪都部", "他她它", "喝渴", "住往注", "做作", "到倒", "在左右有", "说谁讲", "字学", "河可何", "两雨", "时对", "晚免", "理里", "钱线", "园圆", "常掌", "待持", "万方", "汉汗", "师帅", "球求", "经轻", "机几", "极级", "忙忘", "完元", "病痛", "近远", "进过", "床庆", "但担", "候侯", "午干千", "了子", "乐药", "发友", "看着", "想相", "样洋", "么公", "坐座", "房访", "睡垂", "饭饮饿", "钟种", "张长", "头买", "雪雪雨", "姐组", "爸爷", "哥歌", "弟第", "妹味", "脚脸", "病满", "块快", "坏环", "办务", "边过", "先老", "北比", "白的", "吧把", "被披", "没设", "只贝见", "难谁", "错借", "知和", "知如", "刚钢", "岁多", "冷今", "热热然", "影景", "音意", "因困", "同问", "听所", "吃乞", "给络", "算管", "笑笔", "第茶", "蓝篮", "累果", "课果", "票栗", "穿空", "牙芽", "药约", "药乐", "再冉", "百面", "面西", "要西", "西四", "四回", "回国", "国图", "图团", "医区", "所听", "新亲", "商高", "京凉", "京就", "吃吗", "晴睛", "睛情", "球理", "周用", "用月", "月明", "明朋", "朋服", "服报", "报很", "很得", "得待", "往主", "中申甲由", "古右石", "且具真", "开井并共", "无元兄先充", "少小水米", "买头实", "司同问间", "向回问", "开关", "干于平", "千于子", "土上王", "工土干", "士土工", "口日曰", "目且自", "门问间", "字字宇", "守字完安宅", "安案", "家象", "写与", "考老", "孝教", "找我戏", "成城盛", "功攻", "识试", "话活舌", "语说话", "读卖续", "诉说", "该这", "还不环", "过边迈", "进近远运", "送迎", "道首", "选洗", "张帐长", "站占", "点店", "电雷", "雨雪", "云去会", "会合", "令今冷", "食良", "七匕", "六大", "十千", "二三", "三王", "五吾", "四西", "八人", "九丸", "万历", "百白", "零雾", "元完", "角用", "分份", "公么", "为办", "办力", "多夕", "夜夕", "名多", "外夕", "岁山", "出击", "生主", "性姓", "姓性", "她姐", "妹姐", "妻妾", "娘良", "儿几", "几九", "孩该", "校较", "样羊", "养羊", "美姜", "着看", "着差", "差羞", "算第", "等待", "笔毛", "笑夭", "第弟", "简间", "管馆", "馆饭", "饿我", "饱包", "包胞", "跑泡", "跳桃", "路各", "客各", "落洛", "着著", "影京", "京景", "凉京", "就京", "高亮", "亮高", "低底", "低纸", "纸低", "报服", "假段", "健建", "键建", "信言", "语话", "记已", "已己", "讲进", "课谁", "谁难", "准谁", "推谁"];
+  var CH_LOOK_MAP = {};
+  CH_LOOK.forEach(function (g, gi) { Array.from(g).forEach(function (ch) { (CH_LOOK_MAP[ch] = CH_LOOK_MAP[ch] || []).push(gi); }); });
+  // 두 한자가 같거나 모양이 비슷하면 점수 (같은 글자 2점, 비슷한 글자 3점)
+  function chCharSim(a, b) {
+    if (a === b) return 2;
+    var A = CH_LOOK_MAP[a], B = CH_LOOK_MAP[b];
+    return A && B && A.some(function (x) { return B.indexOf(x) >= 0; }) ? 3 : 0;
+  }
+  function chSim(t, w) {
+    var T = Array.from(t), W = Array.from(w), s = 0;
+    T.forEach(function (x) { var m = 0; W.forEach(function (y) { m = Math.max(m, chCharSim(x, y)); }); s += m; });
+    return s ? s + (T.length === W.length ? 1 : 0) : 0;
+  }
   function chGridFor(c, ti) {
     var list = hskList(c.lv), t = list[ti], used = {}, pick = [ti];
     used[chPy(t)] = 1;
     function add(i) {
-      if (pick.length >= 9 || pick.indexOf(i) >= 0) return;
+      if (pick.length >= CH_GRID || pick.indexOf(i) >= 0) return;
       var k = chPy(list[i]);
       if (used[k]) return;
       used[k] = 1; pick.push(i);
     }
+    // 1) 모양이 비슷한 단어를 먼저 몇 개 섞어요 (소리는 다른 것만)
+    var sims = [];
+    list.forEach(function (w, i) { if (i !== ti) { var s = chSim(t[0], w[0]); if (s > 0) sims.push({ i: i, s: s + Math.random() * 0.9 }); } });
+    sims.sort(function (x, y) { return y.s - x.s; });
+    sims.slice(0, 24).forEach(function (x) { if (pick.length < 1 + CH_SIM_MAX) add(x.i); });
     shuffle(c.active.map(function (a) { return a.i; })).forEach(add);
     shuffle(c.grads.slice()).forEach(add);
     shuffle(list.map(function (_, i) { return i; })).forEach(add);
@@ -3818,6 +3837,8 @@
     }
     c.grad = grad;
     render();
+    var fbEl = document.querySelector('.ch-fb');
+    if (fbEl && fbEl.scrollIntoView) fbEl.scrollIntoView({ block: 'nearest' });
     speak(hskList(c.lv)[ti][0], 0.9);
     clearTimeout(c.timer);
     c.timer = setTimeout(function () {

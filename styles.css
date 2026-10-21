@@ -2004,3 +2004,12 @@ html, body, * { scrollbar-width: none; -ms-overflow-style: none; }
   .ch-stats { margin-top: var(--sp-3); }
   .done-screen .ch-done { padding-bottom: calc(140px + var(--safe-b, 0px)); }
 }
+
+/* v131 기억 사슬: 12칸(3×4), 예전 카드 2초 */
+.ch-tile { aspect-ratio: 5 / 4; }
+@media (max-height: 700px) {
+  .ch-q .listen-btn { width: 60px; height: 60px; }
+  .ch-q .listen-btn svg { width: 28px; height: 28px; }
+  .ch-fb { min-height: 52px; padding-top: var(--sp-2); padding-bottom: var(--sp-2); }
+  .ch-grid { gap: var(--sp-2); }
+}
