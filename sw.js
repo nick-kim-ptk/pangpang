@@ -4,7 +4,12 @@ var SHELL = ['./', 'index.html', 'styles.css', 'config.js', 'lessons.js', 'scene
   'manifest.webmanifest', 'img/ic-heart.webp', 'img/ai-promo.webp', 'img/ic-heart-empty.webp', 'img/ic-grad-cap.webp', 'img/ic-chain.webp', 'img/ic-flame.webp', 'img/ic-medal.webp', 'img/ic-trophy.webp', 'img/ic-stage-flag.webp', 'img/ch-trophy.webp', 'img/ch-love.webp', 'img/ch-clear.webp', 'img/ch-grad.webp', 'img/ch-sad.webp', 'img/ch-cheer.webp', 'img/ch-focus.webp', 'img/ch-fire.webp', 'img/icon-192.png', 'img/icon-512.png', 'img/icon-maskable-512.png', 'img/snail-cheer.webp', 'img/pp-cheer.webp', 'img/pp-calm.webp', 'img/pp-wink.webp', 'img/snail-reading.webp', 'img/snail-phone-body.webp', 'img/snail-phone-blink.webp', 'img/snail-phone-marks.webp', 'img/pm/hello-body.webp', 'img/pm/hello-blink.webp', 'img/pm/hello-nihao.webp', 'img/pm/hello-annyeong.webp', 'img/pm/book-body.webp', 'img/pm/book-blink.webp', 'img/pm/ai-body.webp', 'img/pm/ai-blink.webp', 'img/pm/ai-marks.webp', 'img/pm/laptop-body.webp', 'img/pm/laptop-blink.webp', 'img/pm/laptop-desk.webp', 'img/qz-ok.webp', 'img/qz-no.webp'];
 
 self.addEventListener('install', function (e) {
-  e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(SHELL); }).then(function () { return self.skipWaiting(); }));
+  // 브라우저에 저장된 옛 파일(GitHub Pages는 10분간 저장)을 거치지 않고 서버에서 새로 받아요
+  e.waitUntil(caches.open(CACHE).then(function (c) {
+    return Promise.all(SHELL.map(function (u) {
+      return fetch(u, { cache: 'reload' }).then(function (res) { if (res.ok) return c.put(u, res); }).catch(function () { /* 하나 실패해도 계속 */ });
+    }));
+  }).then(function () { return self.skipWaiting(); }));
 });
 self.addEventListener('activate', function (e) {
   e.waitUntil(caches.keys().then(function (keys) {
@@ -16,7 +21,7 @@ self.addEventListener('fetch', function (e) {
   var req = e.request;
   if (req.method !== 'GET' || new URL(req.url).origin !== location.origin) return;
   e.respondWith(
-    fetch(req).then(function (res) {
+    fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' }).then(function (res) {
       var copy = res.clone();
       caches.open(CACHE).then(function (c) { c.put(req, copy); });
       return res;
