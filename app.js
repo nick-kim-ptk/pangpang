@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v152';
+  var APP_VERSION = 'v153';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -1099,8 +1099,11 @@
           '<button role="tab" class="seg-b' + (state.introTab === 'qs' ? ' on' : '') + '" data-act="intro-tab" data-id="qs" aria-selected="' + (state.introTab === 'qs') + '">문제 문장 ' + l.qs.length + '</button></div>' +
         (state.introTab === 'qs'
           ? '<div class="qlist">' + l.qs.map(function (q, n) {
-              return '<div class="qgrp"><span class="qno">' + (n + 1) + '</span>' + wordRow([q.zh, q.py, q.ko]) +
-                '<div class="qans">' + wordRow([q.a.zh, q.a.py, q.a.ko]) + '</div></div>';
+              function line(s, cls) {
+                return '<button class="qline' + cls + '" data-act="say" data-text="' + esc(s.zh) + '" aria-label="듣기"><span class="qtx"><span class="zh q-zh">' + esc(s.zh) + '</span>' +
+                  '<span class="py">' + esc(s.py) + '</span><span class="ko">' + esc(s.ko) + '</span></span><span class="spk">' + I.spk + '</span></button>';
+              }
+              return '<div class="qcard"><span class="qno">' + (n + 1) + '</span>' + line(q, '') + line(q.a, ' ans') + '</div>';
             }).join('') + '</div>'
           : '<div class="words">' + l.words.map(wordRow).join('') + '</div>') +
       '</div>' +
@@ -3113,17 +3116,19 @@
       return '<button class="hsk-mode' + (locked ? ' lk' : '') + (cls ? ' ' + cls : '') + '" data-act="' + act + '" data-id="' + lv + '"><span class="hm-ico">' + ico + '</span>' +
         '<b>' + title + '</b><span class="hm-sub">' + sub + '</span>' + (tag ? '<em class="hm-tag">' + tag + '</em>' : '') + '</button>';
     }
-    return '<div class="section-title" style="margin-top:28px">HSK 단어</div><p class="hsk-note under-title">' + HSK_NOTE + '</p>' + dueCard + chips +
+    var listCard = '<button class="hsk-list-link" data-act="hsk-open" data-id="' + lv + '"><span class="hl-t">' + lv + '급 단어 목록</span>' +
+      '<span class="hl-s">' + n + '개 중 ' + k + '개 익혔어요</span><span class="hl-chev"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg></span>' +
+      '<span class="meter g hl-m"><i style="width:' + pct + '%"></i></span></button>';
+    return '<div class="hsk-main">' + dueCard + chips +
       (locked ? '<p class="hsk-lock-note">' + I.lock + ' ' + lv + '급은 멤버십이 필요해요. 1급은 무료예요.</p>' : '') +
+      listCard +
       '<div class="hsk-modes">' +
       mode('hsk-study', '🃏', '카드 학습', '밀어서 외우기', '') +
       mode('hsk-quiz', '📝', '퀴즈', '소리·뜻 고르기', '') +
       mode('ch-start', icn('chain'), '기억 사슬', rec.best ? '최고 ' + rec.best + '단계' : '몇 단계까지 갈까?', rec.plays ? '' : 'NEW') +
       mode('tone-start', '🎵', '성조 연습', '소리로 성조 맞히기', '') +
       mode('rain-start', '🌧️', '소나기 퀴즈', '떨어지는 한자를 잡아요', rnBest(lv) ? '' : 'NEW', 'wide') + '</div>' +
-      '<button class="hsk-list-link" data-act="hsk-open" data-id="' + lv + '"><span class="hl-t">단어 목록 보기</span>' +
-      '<span class="hl-s">' + n + '개 중 ' + k + '개 익혔어요</span><span class="hl-chev"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg></span>' +
-      '<span class="meter g hl-m"><i style="width:' + pct + '%"></i></span></button>';
+      '<p class="hsk-note hsk-foot">' + HSK_NOTE + '</p></div>';
   }
   function hskRow(lv, w, i) {
     var on = hskKnown(lv, i);

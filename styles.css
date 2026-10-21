@@ -2342,3 +2342,19 @@ html, body, * { scrollbar-width: none; -ms-overflow-style: none; }
 .qgrp { position: relative; display: grid; gap: var(--sp-1); padding-left: 30px; }
 .qno { position: absolute; left: 0; top: 14px; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 800; background: var(--soft); color: var(--ink-2); }
 .qans { padding-left: var(--sp-4); border-left: 3px solid var(--y); }
+
+/* v153 문제 문장 카드, HSK 탭 구성 */
+.qlist { gap: var(--sp-3); }
+.qcard { position: relative; display: grid; gap: 0; padding: var(--sp-2) var(--sp-4) var(--sp-3); border-radius: 18px; background: var(--card); box-shadow: inset 0 0 0 1.5px var(--line); }
+.qcard .qno { position: static; width: 22px; height: 22px; margin: var(--sp-1) 0 0; }
+.qline { display: flex; align-items: flex-start; gap: var(--sp-3); width: 100%; padding: var(--sp-2) 0; border: 0; background: none; font: inherit; color: var(--ink); text-align: left; cursor: pointer; }
+.qline .qtx { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.qline .q-zh { font-size: 18px; font-weight: 700; line-height: 1.35; overflow-wrap: anywhere; }
+.qline .py { font-size: 13px; color: var(--ink-3); overflow-wrap: anywhere; }
+.qline .ko { font-size: 13px; color: var(--ink-2); }
+.qline .spk { flex: none; margin-top: 4px; color: var(--navy); }
+.qline.ans { margin-top: var(--sp-1); padding: var(--sp-2) var(--sp-3); border-radius: 12px; background: var(--soft); }
+.qline.ans .q-zh { font-size: 16px; }
+.hsk-main { padding-top: var(--sp-4); }
+.hsk-main .hsk-list-link { margin-top: var(--sp-3); margin-bottom: var(--sp-3); }
+.hsk-foot { margin: var(--sp-4) 0 0; text-align: center; font-size: 12px; color: var(--ink-3); }
