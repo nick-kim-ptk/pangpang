@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v134';
+  var APP_VERSION = 'v137';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -902,7 +902,7 @@
 
     var wdue = hskDue(0).length, rtot = due + wdue;
     var reviewCard = rtot > 0 ? '<div class="review-card big"><div class="lead">' + ppm('laptop', 92, 'rv-m') +
-      '<div>' + (rtot > 20 ? '<span class="chip y rv-chip">오늘은 복습부터!</span>' : '') + '<b>오늘의 복습 ' + rtot + '개</b><div class="s">' + (due ? '문장 ' + due + '개' : '') + (due && wdue ? ' · ' : '') + (wdue ? '단어 ' + wdue + '개' : '') + '<br>잊기 전에 한 번 더 해요</div></div></div>' +
+      '<div>' + '<b>오늘의 복습 ' + rtot + '개</b><div class="s">' + (due ? '문장 ' + due + '개' : '') + (due && wdue ? ' · ' : '') + (wdue ? '단어 ' + wdue + '개' : '') + '<br>잊기 전에 한 번 더 해요</div></div></div>' +
       '<button class="btn btn-3d" data-act="today-review">복습 시작</button></div>' : '';
     // 오늘 레슨을 끝낸 날: 가볍게 더 해 볼 연습을 앞쪽에 보여줘요
     var lightCard = done && Object.keys(HSKW).length ? '<div class="light-card"><div class="lc-t">가볍게 더 연습해 볼까요?</div><div class="lc-b">' +
@@ -959,7 +959,7 @@
       '<div class="lesson-progress"><div class="row"><b>' + n + ' / ' + LESSONS.length + '</b><span>레슨 완료</span></div>' +
       '<div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + pct + '"><i style="width:' + pct + '%"></i></div></div>' +
       practiceBlock() +
-      '<div class="section-title" style="margin-top:24px">레슨</div>' +
+      '<div class="section-title" style="margin-top:24px">말하기 레슨</div>' +
       '<ul class="list" style="margin-top:0">' + list + '</ul>' +
       (take < LESSONS.length ? '<button class="more-btn" data-act="lessons-more">레슨 더보기 (' + Math.min(7, LESSONS.length - take) + '개 더 · 전체 ' + LESSONS.length + '개)</button>' : '') +
       '</div>' + navHtml() + '</div>';
@@ -3283,7 +3283,7 @@
       var peek = !!z.peek || z.picked !== null, len = Math.max(1, Array.from(it.zh).length);
       prompt = '<div class="qz-prompt qz-word">' +
         '<button class="round-btn qz-spk" data-act="say" data-text="' + esc(it.zh) + '" aria-label="듣기">' + I.spk + '</button>' +
-        '<button class="q-zh-btn" data-act="qz-peek" aria-label="한자 발음 보기" aria-expanded="' + peek + '"><span class="q-zh big" style="font-size:min(104px, calc((100vw - 64px) / ' + len + '))">' + esc(it.zh) + '</span></button>' +
+        '<button class="q-zh-btn" data-act="qz-peek" aria-label="한자 발음 보기" aria-expanded="' + peek + '"><span class="q-zh big" style="font-size:min(104px, 11.5dvh, calc((100vw - 64px) / ' + len + '))">' + esc(it.zh) + '</span></button>' +
         '<div class="q-peek' + (peek ? ' on' : '') + '">' + (peek ? '<div class="q-py">' + esc(it.py) + '</div><div class="q-kr">' + esc(kr(it.py)) + '</div>' : '<div class="q-hint">한자를 누르면 발음이 보여요</div>') + '</div></div>';
     }
     var opts = '<div class="qz-opts">' + it.options.map(function (o, i) {
@@ -3304,7 +3304,7 @@
     verdict += '</div>';
     var foot = z.picked !== null
       ? '<div class="footer"><button class="btn ' + (it.options[z.picked].ok ? 'green' : '') + '" data-act="quiz-next">' + (z.i + 1 >= z.items.length ? '결과 보기' : '다음') + '</button></div>' : '';
-    return '<div class="screen">' + top + '<div class="qz-wrap">' + prompt + verdict + opts + reveal + '</div>' + foot + '</div>';
+    return '<div class="screen qz-fit">' + top + '<div class="qz-wrap qz-ctr' + (z.picked !== null ? ' qz-foot' : '') + '">' + prompt + verdict + opts + reveal + '</div>' + foot + '</div>';
   }
 
   /* ---------- 연습 세션 ---------- */
@@ -3732,6 +3732,7 @@
   var CH_LIVES = 3, CH_GRID = 12, CH_SIM_MAX = 5, CH_OLD_MS = 2000, CH_ACTIVE = 10, CH_Q_MAX = 10, CH_GRAD = 2, CH_NEW_MAX = 3;
   var CH_HEART = '<svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.3 3 5 6.4 5c2 0 3.8 1.1 5.6 3.2C13.8 6.100 15.600 5 17.600 5 21 5 23.100 8.300 21.600 11.800 19.500 16.400 12 21 12 21z" fill="currentColor"/></svg>';
   function icn(name, cls) { return '<img class="ic ic-' + name + (cls ? ' ' + cls : '') + '" src="img/ic-' + name + '.webp" alt="" draggable="false">'; }
+  function chImg(n, cls) { return '<img class="chr ' + (cls || '') + '" src="img/ch-' + n + '.webp" alt="" draggable="false">'; }
   function chKey() { return 'pangpang.chain.' + (state.user ? state.user.id : 'x'); }
   function chRecAll() { try { return JSON.parse(localStorage.getItem(chKey()) || '{}'); } catch (e) { return {}; } }
   function chRec(lv) { var r = chRecAll()[lv] || {}; return { best: r.best || 0, grads: r.grads || 0, plays: r.plays || 0 }; }
@@ -3887,7 +3888,7 @@
   }
   function chainDone(r) {
     return '<div class="screen done-screen">' + (r.isBest ? confetti() : '') + '<div class="hero ch-done">' +
-      '<div class="stage">' + mascot(r.stage >= 5 ? 'love' : 'cheer') + '</div>' +
+      '<div class="stage">' + chImg(r.isBest || r.all ? 'trophy' : r.stage >= 5 ? 'love' : r.stage >= 3 ? 'cheer' : 'focus', 'chr-done') + '</div>' +
       '<div class="ch-big"><span>' + icn('stage-flag') + (r.all ? 'ALL CLEAR' : 'STAGE') + '</span><b>' + r.stage + '</b></div>' +
       '<h1>' + (r.all ? '이 급의 단어를 모두 만났어요!' : r.stage + '단계까지 기억했어요') + '</h1>' +
       '<p>' + (r.isBest ? icn('trophy') + ' 최고 기록을 새로 세웠어요!' : 'HSK ' + r.lv + '급 최고 기록은 ' + r.best + '단계예요') + '</p>' +
@@ -3927,7 +3928,7 @@
     }
     if (c.phase === 'clear') {
       var nx = Math.min(CH_NEW_MAX, Math.max(1, CH_ACTIVE - c.active.length));
-      return '<div class="screen">' + top + '<div class="ch-clear">' + confetti() + '<div class="ch-clear-ico">' + icn('medal') + '</div><h1>STAGE ' + c.stage + ' CLEAR!</h1>' +
+      return '<div class="screen">' + top + '<div class="ch-clear">' + confetti() + '<div class="ch-clear-ico">' + chImg(c.stageGrads ? 'grad' : c.combo >= 5 ? 'fire' : 'clear', 'chr-clear') + '</div><h1>STAGE ' + c.stage + ' CLEAR!</h1>' +
         '<p>' + (c.stageGrads ? icn('grad-cap') + ' 카드 ' + c.stageGrads + '장 졸업' : '다음 단계로 가요') + '</p>' +
         '<div class="ch-clear-sum"><span>' + icn('chain') + ' 기억 중 <b>' + c.active.length + '</b></span><span>' + icn('grad-cap') + ' 졸업 <b>' + c.grads.length + '</b></span></div></div></div>';
     }
@@ -3937,7 +3938,7 @@
       if (fb) cls += i === ti ? ' ok' : (pos === c.pick ? ' no' : ' dim');
       return '<button class="' + cls + '" data-act="ch-pick" data-id="' + pos + '"' + (fb ? ' disabled' : '') + ' style="font-size:' + chFit(w[0], false) + '"><span>' + esc(w[0]) + '</span></button>';
     }).join('');
-    var fbHtml = fb ? '<div class="ch-fb ' + (c.ok ? 'ok' : 'no') + '"><b class="zh">' + esc(t[0]) + '</b><span>' + esc(t[1]) + ' · ' + esc(t[2].split(',')[0]) + '</span>' +
+    var fbHtml = fb ? '<div class="ch-fb ' + (c.ok ? 'ok' : 'no') + '">' + chImg(!c.ok ? 'sad' : c.grad ? 'grad' : c.combo >= 3 ? 'fire' : 'cheer', 'chr-fb') + '<b class="zh">' + esc(t[0]) + '</b><span>' + esc(t[1]) + ' · ' + esc(t[2].split(',')[0]) + '</span>' +
       (c.ok ? '<em>' + (c.grad ? icn('grad-cap') + ' 졸업!' : '+1') + '</em>' : '<em>' + (c.timeout ? '시간 초과' : '아쉬워요') + '</em>') + '</div>' : '<div class="ch-fb ghost"></div>';
     var bar = fb ? '<div class="ch-timer"><i style="width:0"></i></div>' : '<div class="ch-timer run"><i style="animation-duration:' + c.secs + 's"></i></div>';
     return '<div class="screen">' + top + '<div class="qz-wrap ch-wrap">' + chStrip(c) +

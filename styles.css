@@ -2058,3 +2058,71 @@ html, body, * { scrollbar-width: none; -ms-overflow-style: none; }
 .ch-stats .ic { width: 32px; height: 32px; margin: 0 auto var(--sp-1); }
 .hm-ico { display: block; height: 34px; margin-bottom: var(--sp-2); }
 .hm-ico .ic { width: 34px; height: 34px; vertical-align: top; }
+
+/* v135 기억 사슬 캐릭터 */
+.chr { display: block; position: relative; z-index: 1; -webkit-user-drag: none; user-select: none; pointer-events: none; }
+.ch-fb { grid-template-columns: auto 1fr auto auto; }
+.ch-fb .chr-fb { grid-column: 4; grid-row: 1; width: 48px; height: 48px; margin: -6px calc(var(--sp-1) * -1) -6px 0; animation: chpop .35s ease; }
+.ch-fb em { grid-column: 3; grid-row: 1; }
+.ch-done .stage .chr-done { width: 164px; height: 164px; max-width: none; object-fit: contain; margin: 0 auto; }
+.chr-clear { width: 148px; height: 148px; animation: chpop .5s ease; }
+@media (max-height: 640px) { .chr-clear { width: 116px; height: 116px; } .ch-done .stage .chr-done { width: 120px; height: 120px; } .ch-fb .chr-fb { width: 40px; height: 40px; } }
+
+/* v136 결과 화면 간격 */
+.ch-done .stage { margin-bottom: var(--sp-4); }
+.ch-done .ch-big { margin-top: var(--sp-2); gap: var(--sp-2); }
+.ch-done .ch-big span { line-height: 1.2; }
+.ch-stats { margin-top: var(--sp-5); }
+.ch-stats div { gap: var(--sp-2); justify-items: center; padding: var(--sp-4) var(--sp-2) var(--sp-3); }
+.ch-stats .ic { margin: 0; }
+.ch-stats b { line-height: 1; }
+.ch-stats span { line-height: 1.2; }
+.ch-done .hsk-note { margin-top: var(--sp-4) !important; }
+@media (max-height: 640px) { .ch-done .stage { margin-bottom: var(--sp-2); } .ch-stats { margin-top: var(--sp-4); } .ch-stats div { padding-top: var(--sp-3); } .ch-done .hsk-note { margin-top: var(--sp-3) !important; } }
+@media (max-height: 640px) {
+  .ch-done .stage { height: 104px; }
+  .ch-done .stage .chr-done { width: 100px; height: 100px; }
+  .ch-done .ch-big b { font-size: 44px; }
+  .ch-done h1 { font-size: 22px; }
+  .ch-stats .ic { width: 24px; height: 24px; }
+  .ch-stats div { gap: var(--sp-1); padding: var(--sp-2); }
+  .ch-stats { margin-top: var(--sp-3); }
+  .ch-done .hsk-note { display: none; }
+}
+
+/* v137 퀴즈 가운데 정렬·카드 키움 / 이번 주 체크 */
+.qz-wrap.qz-ctr::before, .qz-wrap.qz-ctr::after { content: ""; flex: 1 1 0; min-height: 0; }
+.qz-wrap.qz-ctr::after { flex-grow: 1.15; }
+.qz-ctr .qz-slot { margin: var(--sp-2) 0; min-height: 64px; }
+.qz-ctr .qz-opts { gap: var(--sp-3); margin-top: 0; }
+.qz-ctr .opt { padding: 0 20px; min-height: clamp(48px, 7.8dvh, 64px); font-size: clamp(16px, 2.5dvh, 18px); display: flex; align-items: center; border-radius: 18px; }
+.qz-ctr .qz-prompt.qz-word { padding-top: 44px; padding-bottom: var(--sp-1); }
+.week .d i { display: grid; place-items: center; }
+.week .d.on i::after { content: ""; width: 16px; height: 16px; background: var(--navy, #1b2559); -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'><path d='M5 12.5l4.5 4.5L19 7.5'/></svg>") center / contain no-repeat; mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'><path d='M5 12.5l4.5 4.5L19 7.5'/></svg>") center / contain no-repeat; }
+@media (max-height: 640px) {
+  .qz-ctr .opt { min-height: 44px; font-size: 16px; }
+  .qz-ctr .qz-opts { gap: var(--sp-2); }
+  .qz-ctr .qz-slot { min-height: 52px; margin: var(--sp-1) 0; }
+  .qz-ctr .qz-prompt.qz-word { padding-top: 38px; }
+}
+.screen.qz-fit { flex: none; height: 100dvh; min-height: 0; overflow: clip; }
+.screen.qz-fit .qz-wrap { min-height: 0; }
+
+/* v137 높이 맞춤 */
+.qz-ctr .qz-slot { min-height: 56px; margin: var(--sp-1) 0; }
+.qz-ctr .qz-prompt.qz-word { padding-top: 36px; }
+.qz-ctr .opt { min-height: clamp(46px, 7.2dvh, 62px); }
+@media (max-height: 640px) {
+  .qz-ctr .qz-slot { min-height: 40px; }
+  .qz-ctr .qz-verdict img { display: none; }
+  .qz-ctr .qz-prompt.qz-word { padding-top: 32px; }
+  .qz-ctr .opt { min-height: 42px; }
+  .qz-ctr .qz-opts { gap: 6px; }
+}
+@media (max-height: 640px) {
+  .screen.qz-fit .footer { padding-top: 6px; padding-bottom: calc(10px + var(--safe-b, 0px)); }
+  .qz-ctr { padding-bottom: 8px; }
+  .qz-ctr .qz-slot { min-height: 30px; }
+  .qz-ctr .qv-t span, .qz-ctr .q-kr { display: none; }
+  .qz-ctr .qz-prompt .q-zh.big { font-size: min(72px, 9.5dvh) !important; }
+}
