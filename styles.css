@@ -2335,3 +2335,10 @@ html, body, * { scrollbar-width: none; -ms-overflow-style: none; }
 
 /* v151 단어장: 레슨 단어 섹션 */
 .stats.two { grid-template-columns: 1fr 1fr; margin-top: 12px; }
+
+/* v152 레슨 소개: 단어 / 문제 문장 */
+.intro-seg { margin-bottom: var(--sp-3); }
+.qlist { display: grid; gap: var(--sp-4); }
+.qgrp { position: relative; display: grid; gap: var(--sp-1); padding-left: 30px; }
+.qno { position: absolute; left: 0; top: 14px; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 800; background: var(--soft); color: var(--ink-2); }
+.qans { padding-left: var(--sp-4); border-left: 3px solid var(--y); }

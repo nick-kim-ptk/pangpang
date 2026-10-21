@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v151';
+  var APP_VERSION = 'v152';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -808,7 +808,7 @@
     function b(id, label, icon) {
       return '<button data-act="tab" data-id="' + id + '"' + (state.tab === id ? ' aria-current="page"' : '') + '>' + icon + '<span>' + label + '</span></button>';
     }
-    return '<nav class="nav" aria-label="메뉴">' + b('home', '홈', I.home) + b('lessons', '레슨', I.list) + b('review', 'AI 대화', I.chat + (aiOn() && !aiUsed() ? '<i class="nav-dot" aria-hidden="true"></i>' : '')) + b('words', '단어장', I.book) + b('me', '마이', I.user) + '</nav>';
+    return '<nav class="nav" aria-label="메뉴">' + b('home', '홈', I.home) + b('lessons', '레슨', I.list) + b('review', 'AI 대화', I.chat + (aiOn() && !aiUsed() ? '<i class="nav-dot" aria-hidden="true"></i>' : '')) + b('words', 'HSK', I.book) + b('me', '마이', I.user) + '</nav>';
   }
 
   // 소개글의 첫 문장까지만 (예: "오늘은 … 배워볼 거예요.")
@@ -1068,26 +1068,11 @@
     if (el) el.innerHTML = wordsListHtml();
   }
   function viewWords() {
-    var learned = learnedLessons();
-    var wordCount = learned.reduce(function (n, l) { return n + l.words.length; }, 0);
-    var lessonSec = '<div class="section-title" style="margin-top:28px">레슨 단어</div>' +
-      '<div class="stats two">' +
-        '<div class="stat"><b>' + learned.length + '/' + LESSONS.length + '</b><span>배운 레슨</span></div>' +
-        '<div class="stat"><b>' + wordCount + '</b><span>레슨 단어</span></div>' +
-      '</div>' +
-      (wordCount >= 4 ? '<button class="btn btn-3d quiz-btn" data-act="quiz-word">단어 퀴즈 풀기</button>' : '') +
-      (learned.length
-        ? '<div class="w-tools"><input id="w-search" class="w-search" type="search" placeholder="단어 검색 (한자·병음·뜻)" value="' + esc(wordsUi.q) + '" aria-label="단어 검색" autocomplete="off">' +
-          '<button class="pill-sm" data-act="w-all">' + (Object.keys(wordsOpenMap()).some(function (k) { return wordsUi.open[k]; }) ? '모두 접기' : '모두 펼치기') + '</button></div>' +
-          '<div id="w-list">' + wordsListHtml() + '</div>'
-        : emptyState('empty', { title: '아직 쌓인 단어가 없어요', desc: '첫 레슨을 끝내면\n단어가 여기에 쌓여요', cta: { act: 'tab', id: 'lessons', label: '레슨 보러 가기' } }));
-
     return '<div class="screen"><div class="scroll with-nav">' +
-      '<div class="tab-head"><div><h1 class="big-title">단어장</h1>' +
-      '<p class="sub-title" style="margin-bottom:0">배운 단어가 쌓여요.<br>눌러서 들어 보세요.</p></div>' + ppm('book', 92) + '</div>' +
+      '<div class="tab-head"><div><h1 class="big-title">HSK</h1>' +
+      '<p class="sub-title" style="margin-bottom:0">급을 고르고<br>단어를 익혀 보세요.</p></div>' + ppm('book', 92) + '</div>' +
       hskSection() +
       phraseSections() +
-      lessonSec +
       '</div>' + navHtml() + '</div>';
   }
 
@@ -1102,14 +1087,22 @@
   function viewIntro() {
     var l = lessonById(state.lessonId);
     var learned = !!state.done[l.id];
+    if (state.introFor !== l.id) { state.introFor = l.id; state.introTab = 'words'; }
     return '<div class="screen">' +
       '<div class="topbar"><button class="icon-btn" data-act="back" aria-label="뒤로">' + I.back + '</button></div>' +
       '<div class="scroll" style="padding-bottom:8px">' +
         '<div class="intro-head"><div><span class="chip y lesson-no">' + (LESSONS.indexOf(l) + 1) + '번째 레슨</span><h1 class="big-title" style="margin-top:8px">' + esc(l.title) + '</h1>' +
         '<p class="sub-title" style="margin-bottom:0">' + esc(l.intro) + '</p></div></div>' +
         '<div class="pattern" style="margin-top:16px"><div class="zh">' + esc(l.pattern.zh) + '</div><div class="py" style="margin-top:2px">' + esc(l.pattern.py) + '</div><div class="kr">' + esc(kr(l.pattern.py)) + '</div><div class="ko" style="margin-top:2px">' + esc(l.pattern.ko) + '</div></div>' +
-        '<div class="section-title" style="margin-top:24px">오늘 배울 말</div>' +
-        '<div class="words">' + l.words.map(wordRow).join('') + '</div>' +
+        '<div class="seg-row intro-seg" role="tablist" style="margin-top:24px">' +
+          '<button role="tab" class="seg-b' + (state.introTab !== 'qs' ? ' on' : '') + '" data-act="intro-tab" data-id="words" aria-selected="' + (state.introTab !== 'qs') + '">단어 보기 ' + l.words.length + '</button>' +
+          '<button role="tab" class="seg-b' + (state.introTab === 'qs' ? ' on' : '') + '" data-act="intro-tab" data-id="qs" aria-selected="' + (state.introTab === 'qs') + '">문제 문장 ' + l.qs.length + '</button></div>' +
+        (state.introTab === 'qs'
+          ? '<div class="qlist">' + l.qs.map(function (q, n) {
+              return '<div class="qgrp"><span class="qno">' + (n + 1) + '</span>' + wordRow([q.zh, q.py, q.ko]) +
+                '<div class="qans">' + wordRow([q.a.zh, q.a.py, q.a.ko]) + '</div></div>';
+            }).join('') + '</div>'
+          : '<div class="words">' + l.words.map(wordRow).join('') + '</div>') +
       '</div>' +
       '<div class="footer"><button class="btn" data-act="practice-lesson" data-id="' + l.id + '">' + (learned ? '다시 연습하기' : '말하기 연습 시작') + '</button></div>' +
     '</div>';
@@ -4796,7 +4789,7 @@
         if (pg) pg.textContent = hskList(hv).length + '개 중 ' + hskCount(hv) + '개 익혔어요';
         break;
       case 'quiz-listen': startQuiz('listen'); break;
-      case 'quiz-word': startQuiz('word'); break;
+      case 'intro-tab': state.introTab = id === 'qs' ? 'qs' : 'words'; sfx('tap'); renderKeep(); break;
       case 'quiz-pick': quizPick(parseInt(id, 10)); break;
       case 'qz-peek': if (state.z) { state.z.peek = !state.z.peek; render(); } break;
       case 'quiz-next': quizNext(); break;
