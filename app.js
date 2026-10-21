@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v153';
+  var APP_VERSION = 'v154';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -2189,22 +2189,18 @@
       var r = state.daily[dayStr(d)];
       dots += '<div class="d' + (r && r.answers > 0 ? ' on' : '') + (i === 0 ? ' today-d' : '') + '">' + days[d.getDay()] + '<i></i></div>';
     }
-    var solved = Object.keys(state.progress).filter(function (k) { return QMAP[k] && state.progress[k].box >= 4; }).length;
+    var hskTotal = [1, 2, 3, 4].reduce(function (s, l) { return s + (HSKW[l] ? hskCount(l) : 0); }, 0);
     return '<div class="screen"><div class="scroll with-nav">' +
       '<div class="tab-head"><div><h1 class="big-title">' + (nickname() ? esc(nickname()) + '님,<br>' : '') + '오늘도 화이팅!</h1>' +
       '<p class="sub-title" style="margin-bottom:0">내 학습 기록이에요.</p></div>' + ppm('hello', 100) + '</div>' +
       meCard(initial, email) + memberCard() +
+      '<div class="sec-head"><h2 class="section-title">학습 통계</h2><button class="sec-more" data-act="open-stats">전체 보기<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg></button></div>' +
       '<div class="stats">' +
-        '<div class="stat"><b>' + learned.length + '/' + LESSONS.length + '</b><span>배운 레슨</span></div>' +
-        '<div class="stat"><b>' + wordCount + '</b><span>배운 단어</span></div>' +
         '<div class="stat"><b>' + streak() + '일</b><span>연속 학습</span></div>' +
+        '<div class="stat"><b>' + hskTotal + '</b><span>익힌 단어</span></div>' +
+        '<div class="stat"><b>' + (dueRows().length + hskDue(0).length) + '</b><span>복습할 것</span></div>' +
       '</div>' +
-      '<div class="section-title" style="margin-top:24px">최근 7일</div><div class="week">' + dots + '</div>' +
-      '<div class="stats" style="grid-template-columns:repeat(2,1fr)">' +
-        '<div class="stat"><b>' + solved + '</b><span>익숙해진 문제</span></div>' +
-        '<div class="stat"><b>' + dueRows().length + '</b><span>복습할 문제</span></div>' +
-      '</div>' +
-      '<button class="btn soft quiz-btn" data-act="open-stats">학습 통계 · 약점 분석 보기</button>' +
+      '<p class="week-lab">최근 7일</p><div class="week">' + dots + '</div>' +
       settingsCard() + menuCard() +
       '<div class="me-actions">' +
         (sb ? '<button class="btn gray" data-act="logout">로그아웃</button>'
@@ -2449,6 +2445,10 @@
         return '<div class="prow"><button class="pmain" data-act="say" data-text="' + esc(q.a.zh) + '"><div class="zh p-zh2">' + esc(q.a.zh) + '</div><div class="py">' + esc(q.a.py) + '</div><div class="kr">' + esc(kr(q.a.py)) + '</div><div class="ko">' + esc(q.a.ko) + '</div></button>' +
           '<span class="chip soft">' + r.wrong + '번</span></div>';
       }).join('') + '</div>' : '';
+    var hskHtml = HSKW[1] ? '<div class="section-title" style="margin-top:24px">HSK 급별 진도</div><div class="words">' + [1, 2, 3, 4].map(function (l) {
+      var n = hskList(l).length, k = hskCount(l), pct = n ? Math.round(k / n * 100) : 0;
+      return '<div class="lm"><div class="lm-top"><span>' + l + '급</span><b>' + k + '/' + n + '</b></div><div class="meter g"><i style="width:' + pct + '%"></i></div></div>';
+    }).join('') + '</div>' : '';
     var lessonHtml = learned.length ? '<div class="section-title" style="margin-top:24px">레슨별 숙련도</div><div class="words">' + learned.map(function (l) {
       var m = mastered(l), pct = Math.round(m / l.qs.length * 100);
       return '<div class="lm"><div class="lm-top"><span>' + esc(l.title) + '</span><b>' + pct + '%</b></div><div class="meter g"><i style="width:' + pct + '%"></i></div></div>';
@@ -2458,13 +2458,14 @@
       '<h1 class="big-title" style="margin-top:0">학습 통계</h1><p class="sub-title">내 공부 흐름과 약한 부분이에요.</p>' +
       '<div class="stats" style="grid-template-columns:repeat(2,1fr)">' +
         '<div class="stat"><b>' + allAnswers + '</b><span>지금까지 푼 문제</span></div>' +
-        '<div class="stat"><b>' + streak() + '일</b><span>연속 학습</span></div>' +
         '<div class="stat"><b>' + acc + '%</b><span>한 번에 맞힌 비율</span></div>' +
         '<div class="stat"><b>' + activeDays + '/7일</b><span>이번 주 공부한 날</span></div>' +
+        '<div class="stat"><b>' + learned.length + '/' + LESSONS.length + '</b><span>배운 레슨</span></div>' +
       '</div>' +
       '<div class="section-title" style="margin-top:24px">최근 7일 푼 문제 · ' + weekTotal + '개</div>' +
       '<div class="chart"><div class="goalline" style="bottom:calc(' + goalPos + '% * 0.62 + 40px)"><span>목표 ' + goal + '</span></div><div class="bars">' + bars + '</div></div>' +
-      '<div class="section-title" style="margin-top:24px">약점 분석</div>' + tagHtml + worstHtml + lessonHtml +
+      hskHtml +
+      '<div class="section-title" style="margin-top:24px">약점 분석</div>' + tagHtml + lessonHtml +
       '<div style="height:24px"></div></div></div>';
   }
 
