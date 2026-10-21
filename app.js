@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v128';
+  var APP_VERSION = 'v130';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -600,7 +600,7 @@
 
   /* ---------- 화면 이동 ---------- */
   // 뒤로 가기: 폰의 뒤로 제스처·버튼(기록)과 화면 왼쪽 가장자리에서 오른쪽으로 미는 동작을 같이 처리해요
-  var SUBSCREEN = { pay: 1, privacy: 1, login: 1, intro: 1, practice: 1, quiz: 1, stats: 1, done: 1, hsk: 1, hskstudy: 1, tone: 1, feedback: 1, speed: 1, account: 1, coupon: 1, aicharge: 1, aichat: 1, aiall: 1, aichats: 1, aichatlog: 1, scene: 1, prefs: 1, about: 1, advisor: 1 };
+  var SUBSCREEN = { pay: 1, privacy: 1, login: 1, intro: 1, practice: 1, quiz: 1, stats: 1, done: 1, hsk: 1, hskstudy: 1, tone: 1, feedback: 1, speed: 1, account: 1, coupon: 1, aicharge: 1, aichat: 1, aiall: 1, aichats: 1, aichatlog: 1, scene: 1, chain: 1, prefs: 1, about: 1, advisor: 1 };
   var inSub = false, ignorePop = 0, backAnim = false;
   function syncHistory(screen) {
     try {
@@ -634,6 +634,7 @@
     else if (sc === 'pay') go('tab');
     else if (sc === 'privacy') go(state.privFrom === 'login' ? 'login' : 'tab');
     else if (sc === 'speed') { stopSpeed(); go('tab'); }
+    else if (sc === 'chain') { chStop(); go('hsk'); }
     else if (sc === 'scene') { stopSpeak(); scStopRec(); state.sc = null; go('tab'); }
     else if (sc === 'done') go('tab', { tab: 'home' });
     else if (sc === 'feedback' || sc === 'account' || sc === 'coupon') go('prefs');
@@ -1483,6 +1484,7 @@
   function viewDone() {
     var r = state.result;
     if (r.kind === 'speed') return speedDone(r);
+    if (r.kind === 'chain') return chainDone(r);
     var st = streak();
     return '<div class="screen done-screen">' + ((r.goalHit || r.milestone) ? confetti() : '') + '<div class="hero">' +
       '<div class="stage">' + mascot(r.kind === 'lesson' ? 'love' : 'cheer') + '</div>' +
@@ -2266,10 +2268,22 @@
   function fitChips() {
     var c = $app.querySelector && $app.querySelector('.ai-hero-chips'), b = $app.querySelector && $app.querySelector('.ai-chips-more');
     if (!c || !b) return;
-    if (state.aiChipsOpen) { b.hidden = false; return; }
-    b.hidden = !(c.scrollHeight > c.clientHeight + 2);
+    c.style.maxHeight = '';
+    var top0 = c.getBoundingClientRect().top, kids = Array.prototype.slice.call(c.children).map(function (k) {
+      var r = k.getBoundingClientRect(); return { t: Math.round(r.top - top0), b: r.bottom - top0 };
+    }), tops = [];
+    kids.forEach(function (k) { if (tops.indexOf(k.t) < 0) tops.push(k.t); });
+    var many = tops.length > 2;
+    if (state.aiChipsOpen) { b.hidden = !many; return; }
+    if (many) {   // 정확히 2줄만 보이게 (2번째 줄 끝에서 자르고, 아래 여유 4px)
+      var bottom = 0;
+      kids.forEach(function (k) { if (k.t === tops[1]) bottom = Math.max(bottom, k.b); });
+      c.style.maxHeight = Math.ceil(bottom + 4) + 'px';
+    }
+    b.hidden = !many;
   }
   window.addEventListener('resize', fitChips);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitChips);
   function fitGreet() {
     var h = $app.querySelector && $app.querySelector('.home-greet h1');
     if (!h) return;
@@ -2309,6 +2323,7 @@
     else if (state.screen === 'hskstudy') html = viewHskStudy();
     else if (state.screen === 'tone') html = viewTone();
     else if (state.screen === 'scene') html = viewScene();
+    else if (state.screen === 'chain') html = viewChain();
     else if (state.screen === 'done') html = viewDone();
     $app.innerHTML = html + modalHtml();
     fitGreet();
@@ -3085,6 +3100,7 @@
       '<div class="hsk-new"><em class="perk-tag" style="margin:0">개정된 신 HSK 3.0</em> 새 시험 기준 단어예요</div>' +
       '<div class="hsk-btns"><button class="btn" data-act="hsk-study" data-id="' + lv + '">카드 학습</button>' +
       '<button class="btn gray" data-act="hsk-quiz" data-id="' + lv + '">퀴즈</button></div>' +
+      '<div class="hsk-btns2 ch-entry"><button class="ch-btn" data-act="ch-start" data-id="' + lv + '"><span class="ch-btn-ico">🔗</span><span class="ch-btn-t"><b>기억 사슬</b><em>소리 듣고 한자 찾기 · 몇 단계까지 갈까?</em></span><span class="ch-btn-best">' + (chRec(lv).best ? '최고 ' + chRec(lv).best + '단계' : '도전') + '</span></button></div>' +
       '<div class="hsk-btns2"><button class="btn soft" data-act="tone-start" data-id="' + lv + '">성조 연습 (소리 듣고 성조 맞히기)</button></div>' +
       '<div class="seg-row"><button class="seg-b' + (!h.unknownOnly ? ' on' : '') + '" data-act="hsk-filter" data-v="all">전체</button>' +
       '<button class="seg-b' + (h.unknownOnly ? ' on' : '') + '" data-act="hsk-filter" data-v="unknown">모르는 단어만</button></div>' +
@@ -3439,7 +3455,7 @@
     var A = Array.from(Grade.normalize(zh)), B = Array.from(Grade.normalize(heard));
     return A.length ? scLcs(A, B) / A.length : 0;
   }
-  function scReset(c) { c.tries = 0; c.heard = ''; c.pass = false; c.picked = null; c.msg = ''; c.listening = false; c.noSR = false; }
+  function scReset(c) { c.tries = 0; c.heard = ''; c.pass = false; c.picked = null; c.msg = ''; c.listening = false; c.noSR = false; c.gloss = -1; }
   function startScene(id) {
     var sc = sceneById(id);
     if (!sc) return;
@@ -3506,12 +3522,33 @@
     return '<div class="sc-stage"><b>' + n + '</b>' + SC_STAGE[c.stage] + '</div>';
   }
   function scVerdict(ok, c) {
+    if (ok === null) return '<div class="qz-slot"></div>';
     return '<div class="qz-slot"><div class="qz-verdict ' + (ok ? 'ok' : 'no') + '" role="status"><img src="img/' + (ok ? 'qz-ok' : 'qz-no') + '.webp" alt="" draggable="false">' +
       '<div class="qv-t"><b>' + (ok ? '맞았어요!' : '틀렸어요!') + '</b><span>' + (ok ? (c.combo >= 2 ? '연속 ' + c.combo + '번 정답' : '잘했어요') : '괜찮아요, 정답을 확인해 봐요') + '</span></div></div></div>';
   }
-  function scLineBox(l, cls) {
-    return '<div class="sc-line ' + (cls || '') + '"><div class="sc-zh">' + esc(l[0]) + '</div><div class="sc-py">' + esc(l[1]) + '</div>' +
-      (kr(l[1]) ? '<div class="sc-kr">' + esc(kr(l[1])) + '</div>' : '') + '<div class="sc-ko">' + esc(l[2]) + '</div></div>';
+  function scCurLine(c) {
+    var sc = sceneById(c.id);
+    return c.stage === 'speak' ? sc.lines[c.i] : sc.lines[c[c.stage][c.i].i];
+  }
+  function scChunks(l, key) {
+    var c = state.sc;
+    return '<div class="sc-chunks">' + l[4].map(function (ch, i) {
+      return '<button class="sc-chunk' + (key && ch[0].indexOf(key) >= 0 ? ' key' : '') + (c.gloss === i ? ' on' : '') + '" data-act="sc-chunk" data-i="' + i + '">' +
+        '<span class="sc-cz">' + esc(ch[0]) + '</span><span class="sc-cp">' + esc(ch[1]) + '</span></button>';
+    }).join('') + '</div>';
+  }
+  function scLineView(l, key) {
+    var c = state.sc, g = c.gloss >= 0 ? l[4][c.gloss] : null;
+    return '<div class="sc-line">' + scChunks(l, key) +
+      '<div class="sc-gloss' + (g ? ' on' : '') + '">' + (g ? '<b>' + esc(g[0].replace(/[，。？！]/g, '')) + '</b> ' + esc(g[2]) : '덩어리를 누르면 소리와 뜻이 나와요') + '</div>' +
+      '<div class="sc-ko">' + esc(l[2]) + '</div></div>';
+  }
+  // 한글 발음은 기본으로 숨겨요. 눌러서 보거나, 따라 말하기를 통과하면 보여요
+  function scKrRow(l) {
+    var c = state.sc, k = kr(l[1]);
+    if (!k) return '';
+    var show = state.scKr || c.pass || c.picked !== null;
+    return '<button class="sc-krtog' + (show ? ' on' : '') + '" data-act="sc-kr">' + (show ? esc(k) : '한글 발음 보기') + '</button>';
   }
   function viewScene() {
     var c = state.sc, sc = sceneById(c.id);
@@ -3520,8 +3557,8 @@
     if (c.stage === 'speak') {
       var l = sc.lines[c.i], canSkip = c.pass || c.tries >= 2 || c.noSR;
       var live = c.pass ? '' : c.msg ? esc(c.msg) : c.tries ? '다시 한번 말해 보세요' : '버튼을 누른 채로 따라 말해요';
-      var body = '<div class="qz-wrap">' + scStageTag(c) + '<div class="sc-ctx"><span>' + sc.icon + ' ' + esc(sc.title) + '</span><em>' + (c.i + 1) + '번째 문장</em></div>' +
-        '<div class="sc-card"><button class="round-btn sc-spk" data-act="say" data-text="' + esc(l[0]) + '" aria-label="듣기">' + I.spk + '</button>' + scLineBox(l, c.pass ? 'ok' : '') + '</div>' +
+      var body = '<div class="qz-wrap sc-pad">' + scStageTag(c) + '<div class="sc-ctx"><span>' + sc.icon + ' ' + esc(sc.title) + '</span><em>' + (c.i + 1) + '번째 문장</em></div>' +
+        '<div class="sc-card"><button class="round-btn sc-spk" data-act="say" data-text="' + esc(l[0]) + '" aria-label="듣기">' + I.spk + '</button>' + scLineView(l) + '</div>' + scKrRow(l) +
         (c.pass ? scVerdict(true, c) : (c.heard ? '<div class="sc-heard">들린 말: ' + esc(c.heard) + '</div>' : '')) + '</div>';
       var foot;
       if (c.pass) foot = '<div class="footer"><button class="btn green" data-act="sc-next">다음</button></div>';
@@ -3534,8 +3571,8 @@
     if (c.stage === 'blank') {
       var parts = l2[0].split(l2[3]).map(esc);
       var shown = answered ? parts.join('<mark class="sc-key">' + esc(l2[3]) + '</mark>') : parts.join('<span class="sc-blank">＿＿</span>');
-      prompt = '<div class="sc-card sc-q"><div class="sc-zh big">' + shown + '</div><div class="sc-ko">' + esc(l2[2]) + '</div>' +
-        (answered ? '<div class="sc-py">' + esc(l2[1]) + '</div>' : '') + '</div>';
+      prompt = answered ? '<div class="sc-card">' + scLineView(l2, l2[3]) + '</div>' + scKrRow(l2)
+        : '<div class="sc-card sc-q"><div class="sc-zh big">' + shown + '</div><div class="sc-ko">' + esc(l2[2]) + '</div></div>';
       ok = answered && it.opts[c.picked] === it.ans;
       opts = '<div class="qz-opts">' + it.opts.map(function (o, i) {
         var cls = 'opt zh-opt';
@@ -3551,14 +3588,14 @@
         return '<button class="' + cls + '" data-act="sc-pick" data-id="' + i + '"' + (answered ? ' disabled' : '') + '>' + esc(o.ko) + '</button>';
       }).join('') + '</div>';
     }
-    var reveal = answered && c.stage === 'listen' ? '<div class="qz-reveal"><div class="zh">' + esc(l2[0]) + '</div><div class="py">' + esc(l2[1]) + '</div><div class="kr">' + esc(kr(l2[1])) + '</div></div>' : '';
+    var reveal = answered && c.stage === 'listen' ? '<div class="sc-card sc-reveal">' + scLineView(l2) + '</div>' + scKrRow(l2) : '';
     var foot2 = answered ? '<div class="footer"><button class="btn ' + (ok ? 'green' : '') + '" data-act="sc-next">' + (last ? 'AI 미션으로' : '다음') + '</button></div>' : '';
-    return '<div class="screen">' + top + '<div class="qz-wrap">' + scStageTag(c) + prompt + (answered ? scVerdict(ok, c) : '') + opts + reveal + '</div>' + foot2 + '</div>';
+    return '<div class="screen">' + top + '<div class="qz-wrap sc-pad">' + scStageTag(c) + prompt + scVerdict(answered ? ok : null, c) + opts + reveal + '</div>' + foot2 + '</div>';
   }
   function viewSceneMission() {
     var c = state.sc, sc = sceneById(c.id), on = aiOn(), enough = on && aiBal() >= AI_CHAT_COST;
     var note = !on ? 'AI 대화는 멤버십에서 쓸 수 있어요. 지금은 건너뛰고 마칠 수 있어요.' : (enough ? '대화 한 번에 ' + AI_CHAT_COST + ' 크레딧이 소모돼요.' : '크레딧이 부족해요. 지금은 건너뛰고 마칠 수 있어요.');
-    return '<div class="screen">' + scTop(c) + '<div class="qz-wrap sc-mis">' + scStageTag(c) +
+    return '<div class="screen">' + scTop(c) + '<div class="qz-wrap sc-pad sc-mis">' + scStageTag(c) +
       '<div class="sc-mis-ico">' + sc.icon + '</div><h1 class="big-title" style="margin:6px 0 4px">배운 말로 직접 해 봐요</h1>' +
       '<p class="sub-title" style="margin:0 0 16px">방금 익힌 문장을 AI 선생님과 실제처럼 써 보는 미션이에요.</p>' +
       '<div class="sc-mis-card"><span>오늘의 미션</span><b>' + esc(sc.mission) + '</b></div>' +
@@ -3670,6 +3707,202 @@
       scHoldTimer = setTimeout(function () { if (scRec && !scHolding) { try { scRec.stop(); } catch (e) { /* noop */ } } }, 450);
     });
   });
+
+  /* ---------- 기억 사슬 (v130): 한자 카드를 쌓아 가며 몇 단계까지 기억하는지 ---------- */
+  var CH_LIVES = 3, CH_ACTIVE = 10, CH_Q_MAX = 10, CH_GRAD = 2, CH_NEW_MAX = 3;
+  var CH_HEART = '<svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.3 3 5 6.4 5c2 0 3.8 1.1 5.6 3.2C13.8 6.100 15.600 5 17.600 5 21 5 23.100 8.300 21.600 11.800 19.500 16.400 12 21 12 21z" fill="currentColor"/></svg>';
+  function chKey() { return 'pangpang.chain.' + (state.user ? state.user.id : 'x'); }
+  function chRecAll() { try { return JSON.parse(localStorage.getItem(chKey()) || '{}'); } catch (e) { return {}; } }
+  function chRec(lv) { var r = chRecAll()[lv] || {}; return { best: r.best || 0, grads: r.grads || 0, plays: r.plays || 0 }; }
+  function chSaveRec(c) {
+    var all = chRecAll(), r = all[c.lv] || { best: 0, grads: 0, plays: 0 };
+    var isBest = c.stage > r.best;
+    r.best = Math.max(r.best, c.stage); r.grads = Math.max(r.grads, c.grads.length); r.plays = (r.plays || 0) + 1;
+    all[c.lv] = r;
+    try { localStorage.setItem(chKey(), JSON.stringify(all)); } catch (e) { /* 무시 */ }
+    return isBest;
+  }
+  function chPy(w) { return String(w[1]).replace(/[\s'’]/g, '').toLowerCase(); }
+  function chAlive(c, tok) { return state.screen === 'chain' && state.ch === c && c.tok === tok; }
+  function chStop() { var c = state.ch; if (c) { c.tok++; clearTimeout(c.timer); clearTimeout(c.qt); } stopSpeak(); }
+  function startChain(lv) {
+    var list = hskList(lv);
+    if (!list.length) return;
+    if (hskLocked(lv)) { go('pay', { payWhy: 'HSK ' + lv + '급은 멤버십이 필요해요. 1급은 무료예요.' }); return; }
+    var idx = list.map(function (_, i) { return i; }), unk = shuffle(idx.filter(function (i) { return !hskKnown(lv, i); })), kn = shuffle(idx.filter(function (i) { return hskKnown(lv, i); }));
+    state.ch = { lv: lv, order: unk.concat(kn), next: 0, stage: 0, active: [], grads: [], lives: CH_LIVES, combo: 0, maxCombo: 0, right: 0, tok: 0, phase: 'intro', seq: [], si: 0, qs: [], qi: 0, grid: [], pick: -1, stageGrads: 0 };
+    go('chain');
+    chNextStage();
+  }
+  function chNextStage() {
+    var c = state.ch, oldList = c.active.slice(0, CH_ACTIVE);
+    c.stage++;
+    var want = c.stage <= CH_ACTIVE ? 1 : Math.min(CH_NEW_MAX, Math.max(1, CH_ACTIVE - c.active.length)), fresh = [];
+    while (fresh.length < want && c.next < c.order.length) fresh.push({ i: c.order[c.next++], streak: 0 });
+    if (!fresh.length && !c.active.length) { c.stage--; chOver(true); return; }
+    c.active = c.active.concat(fresh);
+    c.stageGrads = 0;
+    var oldMs = Math.max(500, Math.round(900 - c.stage * 14));
+    c.seq = shuffle(oldList.slice()).map(function (a) { return { i: a.i, kind: 'old', ms: oldMs }; })
+      .concat(fresh.map(function (a) { return { i: a.i, kind: 'new', ms: 3200 }; }));
+    c.si = 0; c.phase = 'intro'; c.tok++;
+    chShowSeq();
+  }
+  function chShowSeq() {
+    var c = state.ch, tok = c.tok;
+    if (c.si >= c.seq.length) { chStartAsk(); return; }
+    var it = c.seq[c.si], w = hskList(c.lv)[it.i];
+    c.phase = 'intro';
+    render();
+    speak(w[0], it.kind === 'new' ? 0.8 : 1.15);
+    clearTimeout(c.timer);
+    c.timer = setTimeout(function () { if (chAlive(c, tok) && c.phase === 'intro') { c.si++; chShowSeq(); } }, it.ms);
+  }
+  function chSkip() {
+    var c = state.ch;
+    if (!c || c.phase !== 'intro') return;
+    clearTimeout(c.timer); c.si++; chShowSeq();
+  }
+  function chGridFor(c, ti) {
+    var list = hskList(c.lv), t = list[ti], used = {}, pick = [ti];
+    used[chPy(t)] = 1;
+    function add(i) {
+      if (pick.length >= 9 || pick.indexOf(i) >= 0) return;
+      var k = chPy(list[i]);
+      if (used[k]) return;
+      used[k] = 1; pick.push(i);
+    }
+    shuffle(c.active.map(function (a) { return a.i; })).forEach(add);
+    shuffle(c.grads.slice()).forEach(add);
+    shuffle(list.map(function (_, i) { return i; })).forEach(add);
+    return shuffle(pick);
+  }
+  function chStartAsk() {
+    var c = state.ch;
+    var pool = c.active.slice(), n = Math.min(pool.length, CH_Q_MAX);
+    var newIds = c.seq.filter(function (s) { return s.kind === 'new'; }).map(function (s) { return s.i; });
+    var must = pool.filter(function (a) { return newIds.indexOf(a.i) >= 0; });
+    var weak = shuffle(pool.filter(function (a) { return newIds.indexOf(a.i) < 0 && a.streak === 0; }));
+    var rest = shuffle(pool.filter(function (a) { return newIds.indexOf(a.i) < 0 && a.streak > 0; }));
+    c.qs = shuffle(must.concat(weak, rest).slice(0, n)).map(function (a) { return a.i; });
+    c.qi = 0;
+    chAsk();
+  }
+  function chSecs(c) { return Math.max(4, Math.min(6, 6 - c.stage * 0.08)); }
+  function chAsk() {
+    var c = state.ch, tok = ++c.tok, ti = c.qs[c.qi];
+    c.phase = 'ask'; c.pick = -1; c.grid = chGridFor(c, ti); c.secs = chSecs(c);
+    render();
+    setTimeout(function () { if (chAlive(c, tok) && c.phase === 'ask') speak(hskList(c.lv)[ti][0], 0.85); }, 250);
+    clearTimeout(c.qt);
+    c.qt = setTimeout(function () { if (chAlive(c, tok) && c.phase === 'ask') chAnswer(-1); }, c.secs * 1000 + 300);
+  }
+  function chAnswer(pos) {
+    var c = state.ch;
+    if (!c || c.phase !== 'ask') return;
+    clearTimeout(c.qt);
+    var ti = c.qs[c.qi], tok = ++c.tok, ok = pos >= 0 && c.grid[pos] === ti, a = c.active.filter(function (x) { return x.i === ti; })[0], grad = false;
+    c.phase = 'fb'; c.pick = pos; c.ok = ok; c.timeout = pos < 0;
+    if (ok) {
+      c.right++; c.combo++; c.maxCombo = Math.max(c.maxCombo, c.combo); a.streak++;
+      sfx('right', c.combo);
+      if (c.stage >= CH_ACTIVE && a.streak >= CH_GRAD) {
+        grad = true; c.active = c.active.filter(function (x) { return x !== a; });
+        c.grads.push(ti); c.stageGrads++;
+        setHskKnown(c.lv, ti, true); srsGrade(c.lv, ti, true);
+      }
+    } else {
+      c.lives--; c.combo = 0; a.streak = 0;
+      srsGrade(c.lv, ti, false);
+      sfx('wrong');
+    }
+    c.grad = grad;
+    render();
+    speak(hskList(c.lv)[ti][0], 0.9);
+    clearTimeout(c.timer);
+    c.timer = setTimeout(function () {
+      if (!chAlive(c, tok)) return;
+      if (c.lives <= 0) { chOver(false); return; }
+      c.qi++;
+      if (c.qi >= c.qs.length) chClear(); else chAsk();
+    }, ok ? 1000 : 1700);
+  }
+  function chClear() {
+    var c = state.ch, tok = ++c.tok;
+    c.phase = 'clear';
+    sfx('goal');
+    render();
+    clearTimeout(c.timer);
+    c.timer = setTimeout(function () { if (chAlive(c, tok)) chNextStage(); }, 1600);
+  }
+  function chOver(all) {
+    var c = state.ch;
+    chStop();
+    var best0 = chRec(c.lv).best, isBest = chSaveRec(c);
+    var result = { kind: 'chain', lv: c.lv, stage: c.stage, grads: c.grads.length, right: c.right, maxCombo: c.maxCombo, isBest: isBest && c.stage > 1, best: Math.max(best0, c.stage), all: !!all };
+    sfx(isBest ? 'goal' : 'done');
+    go('done', { result: result });
+  }
+  function chainDone(r) {
+    return '<div class="screen done-screen">' + (r.isBest ? confetti() : '') + '<div class="hero ch-done">' +
+      '<div class="stage">' + mascot(r.stage >= 5 ? 'love' : 'cheer') + '</div>' +
+      '<div class="ch-big"><span>' + (r.all ? 'ALL CLEAR' : 'STAGE') + '</span><b>' + r.stage + '</b></div>' +
+      '<h1>' + (r.all ? '이 급의 단어를 모두 만났어요!' : r.stage + '단계까지 기억했어요') + '</h1>' +
+      '<p>' + (r.isBest ? '최고 기록을 새로 세웠어요!' : 'HSK ' + r.lv + '급 최고 기록은 ' + r.best + '단계예요') + '</p>' +
+      '<div class="ch-stats"><div><b>' + r.grads + '</b><span>졸업한 카드</span></div><div><b>' + r.right + '</b><span>맞힌 문제</span></div><div><b>' + r.maxCombo + '</b><span>최고 연속</span></div></div>' +
+      '<p class="hsk-note" style="text-align:center;margin:12px 0 0">틀린 단어는 내일 복습에 나와요</p>' +
+      '</div><div class="footer" style="padding-left:0;padding-right:0">' +
+      '<button class="btn" data-act="ch-start" data-id="' + r.lv + '">다시 도전</button>' +
+      '<button class="btn gray" data-act="ch-back" data-id="' + r.lv + '">HSK ' + r.lv + '급으로</button></div></div>';
+  }
+  function chTop(c) {
+    var hearts = '';
+    for (var k = 0; k < CH_LIVES; k++) hearts += '<span class="ch-heart' + (k < c.lives ? ' on' : '') + (c.phase === 'fb' && !c.ok && k === c.lives ? ' pop' : '') + '">' + CH_HEART + '</span>';
+    return '<div class="topbar ch-top"><button class="icon-btn" data-act="ch-quit" aria-label="그만하기">' + I.close + '</button>' +
+      '<div class="ch-hearts" aria-label="남은 목숨 ' + c.lives + '개">' + hearts + '</div>' +
+      '<span class="chip y ch-stage">STAGE ' + c.stage + '</span></div>';
+  }
+  function chStrip(c) {
+    return '<div class="ch-strip"><span>🔗 기억 중 <b>' + c.active.length + '</b></span><span>🎓 졸업 <b>' + c.grads.length + '</b></span>' +
+      (c.combo >= 2 ? '<span class="ch-combo">🔥 ' + c.combo + '연속</span>' : '') + '</div>';
+  }
+  function chFit(zh, big) {
+    var n = Array.from(zh).length;
+    return big ? 'min(' + (n === 1 ? 120 : n === 2 ? 96 : 72) + 'px, calc((100vw - 96px) / ' + n + '))' : (n === 1 ? 40 : n === 2 ? 30 : 22) + 'px';
+  }
+  function viewChain() {
+    var c = state.ch, list = hskList(c.lv), top = chTop(c);
+    if (c.phase === 'intro') {
+      if (!c.seq[c.si]) return '<div class="screen"></div>';
+      var it = c.seq[c.si], w = list[it.i], isNew = it.kind === 'new';
+      var dots = c.seq.map(function (s, k) { return '<i class="' + (k < c.si ? 'done' : k === c.si ? 'cur' : '') + (s.kind === 'new' ? ' nw' : '') + '"></i>'; }).join('');
+      return '<div class="screen">' + top + '<div class="qz-wrap ch-wrap">' + chStrip(c) +
+        '<button class="ch-card ' + (isNew ? 'new' : 'old') + '" data-act="ch-skip" aria-label="다음으로">' +
+        '<span class="ch-tag">' + (isNew ? '✨ 새 카드' : '다시 보기') + '</span>' +
+        '<span class="ch-zh" style="font-size:' + chFit(w[0], true) + '">' + esc(w[0]) + '</span><span class="ch-py">' + esc(w[1]) + '</span>' +
+        (isNew ? '<span class="ch-ko">' + esc(w[2]) + '</span><span class="ch-tap">화면을 누르면 넘어가요</span>' : '<span class="ch-ko ch-ghost">&nbsp;</span>') + '</button>' +
+        '<div class="ch-dots">' + dots + '</div></div></div>';
+    }
+    if (c.phase === 'clear') {
+      var nx = Math.min(CH_NEW_MAX, Math.max(1, CH_ACTIVE - c.active.length));
+      return '<div class="screen">' + top + '<div class="ch-clear">' + confetti() + '<div class="ch-clear-ico">🏅</div><h1>STAGE ' + c.stage + ' CLEAR!</h1>' +
+        '<p>' + (c.stageGrads ? '🎓 카드 ' + c.stageGrads + '장 졸업' : '다음 단계로 가요') + '</p>' +
+        '<div class="ch-clear-sum"><span>🔗 기억 중 <b>' + c.active.length + '</b></span><span>🎓 졸업 <b>' + c.grads.length + '</b></span></div></div></div>';
+    }
+    var ti = c.qs[c.qi], t = list[ti], fb = c.phase === 'fb';
+    var tiles = c.grid.map(function (i, pos) {
+      var w = list[i], cls = 'ch-tile';
+      if (fb) cls += i === ti ? ' ok' : (pos === c.pick ? ' no' : ' dim');
+      return '<button class="' + cls + '" data-act="ch-pick" data-id="' + pos + '"' + (fb ? ' disabled' : '') + ' style="font-size:' + chFit(w[0], false) + '"><span>' + esc(w[0]) + '</span></button>';
+    }).join('');
+    var fbHtml = fb ? '<div class="ch-fb ' + (c.ok ? 'ok' : 'no') + '"><b class="zh">' + esc(t[0]) + '</b><span>' + esc(t[1]) + ' · ' + esc(t[2].split(',')[0]) + '</span>' +
+      (c.ok ? '<em>' + (c.grad ? '🎓 졸업!' : '+1') + '</em>' : '<em>' + (c.timeout ? '시간 초과' : '아쉬워요') + '</em>') + '</div>' : '<div class="ch-fb ghost"></div>';
+    var bar = fb ? '<div class="ch-timer"><i style="width:0"></i></div>' : '<div class="ch-timer run"><i style="animation-duration:' + c.secs + 's"></i></div>';
+    return '<div class="screen">' + top + '<div class="qz-wrap ch-wrap">' + chStrip(c) +
+      '<div class="ch-q"><button class="listen-btn' + (fb ? '' : ' ping') + '" data-act="ch-hear" aria-label="다시 듣기">' + I.spk + '</button>' +
+      '<div class="qz-cap">소리를 듣고 한자를 찾아요 · ' + (c.qi + 1) + '/' + c.qs.length + '</div></div>' +
+      bar + '<div class="ch-grid">' + tiles + '</div>' + fbHtml + '</div></div>';
+  }
 
   function startDialog(id) {
     var d = (window.DIALOGS || []).filter(function (x) { return x.id === id; })[0];
@@ -4250,6 +4483,12 @@
       case 'chat-open': state.chatFrom = state.screen === 'aichats' ? 'all' : 'tab'; go('aichatlog', { chatId: id }); break;
       case 'chat-all': go('aichats'); break;
       case 'chat-del': askConfirm({ title: '이 기록을 지울까요?', body: '지운 대화는 되돌릴 수 없어요.', ok: '지우기', cancel: '취소', danger: true }, function () { chatDel(id); goBack(); toast('기록을 지웠어요'); }); break;
+      case 'ch-start': startChain(parseInt(id, 10)); break;
+      case 'ch-skip': chSkip(); break;
+      case 'ch-pick': chAnswer(+id); break;
+      case 'ch-hear': if (state.ch && state.ch.phase === 'ask') speak(hskList(state.ch.lv)[state.ch.qs[state.ch.qi]][0], 0.85); break;
+      case 'ch-quit': if (state.ch && state.ch.stage > 1) { chSaveRec(state.ch); } chStop(); go('hsk'); break;
+      case 'ch-back': state.hsk = state.hsk || { lv: parseInt(id, 10) }; go('hsk'); break;
       case 'tone-start': startTone(parseInt(id, 10)); break;
       case 'tone-pick': tonePick(parseInt(id, 10)); break;
       case 'tone-slot': if (state.tn && !state.tn.res) { state.tn.cur = state.tn.cur.slice(0, parseInt(id, 10)); sfx('tap'); render(); } break;
@@ -4258,6 +4497,11 @@
       case 'sc-next': scAdvance(); break;
       case 'sc-skip': if (state.sc) { state.sc.combo = 0; scAdvance(); } break;
       case 'sc-pick': scPick(+id); break;
+      case 'sc-kr': state.scKr = !state.scKr; render(); break;
+      case 'sc-chunk': if (state.sc) {
+        var scl = scCurLine(state.sc), sci = +el.getAttribute('data-i');
+        state.sc.gloss = sci; speak(scl[4][sci][0].replace(/[，。？！]/g, ''), 0.75); render();
+      } break;
       case 'sc-quit': stopSpeak(); scStopRec(); state.sc = null; go('tab'); break;
       case 'sc-mission': scFinish(true); break;
       case 'sc-finish': scFinish(false); break;
