@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v141';
+  var APP_VERSION = 'v147';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -600,7 +600,7 @@
 
   /* ---------- 화면 이동 ---------- */
   // 뒤로 가기: 폰의 뒤로 제스처·버튼(기록)과 화면 왼쪽 가장자리에서 오른쪽으로 미는 동작을 같이 처리해요
-  var SUBSCREEN = { pay: 1, privacy: 1, login: 1, intro: 1, practice: 1, quiz: 1, stats: 1, done: 1, hsk: 1, hskstudy: 1, tone: 1, feedback: 1, speed: 1, account: 1, coupon: 1, aicharge: 1, aichat: 1, aiall: 1, aichats: 1, aichatlog: 1, scene: 1, chain: 1, prefs: 1, about: 1, advisor: 1 };
+  var SUBSCREEN = { pay: 1, privacy: 1, login: 1, intro: 1, practice: 1, quiz: 1, stats: 1, done: 1, hsk: 1, hskstudy: 1, tone: 1, feedback: 1, speed: 1, account: 1, coupon: 1, aicharge: 1, aichat: 1, aiall: 1, aichats: 1, aichatlog: 1, scene: 1, chain: 1, phrases: 1, prefs: 1, about: 1, advisor: 1 };
   var inSub = false, ignorePop = 0, backAnim = false;
   function syncHistory(screen) {
     try {
@@ -638,7 +638,7 @@
     else if (sc === 'scene') { stopSpeak(); scStopRec(); state.sc = null; go('tab'); }
     else if (sc === 'done') go('tab', { tab: 'home' });
     else if (sc === 'feedback' || sc === 'account' || sc === 'coupon') go('prefs');
-    else if (sc === 'intro' || sc === 'stats' || sc === 'aicharge' || sc === 'aiall' || sc === 'prefs' || sc === 'about' || sc === 'advisor') go('tab');
+    else if (sc === 'intro' || sc === 'stats' || sc === 'aicharge' || sc === 'aiall' || sc === 'phrases' || sc === 'prefs' || sc === 'about' || sc === 'advisor') go('tab');
   }
   window.addEventListener('popstate', function () {
     if (ignorePop > 0) { ignorePop--; return; }
@@ -876,7 +876,7 @@
     var basePct = Math.min(goalPct, 100) / scale * 100, tickPct = 100 / scale * 100, fillPct = Math.min(goalPct, 300) / scale * 100;
     var capTxt = goalPct > 100 ? '목표보다 ' + (ans - goal) + '문제 더 했어요' : '오늘 목표를 채웠어요';
     var goalCard = '<div class="goal-card' + (hit ? ' hit' : '') + (goalPct > 100 ? ' over' : '') + '"><div class="goal-top"><span>오늘 목표</span>' +
-      (hit ? '<em class="goal-pct">달성!</em>' : '<b>' + Math.min(ans, 9999) + ' / ' + goal + '문제</b>') + '</div>' +
+      (hit ? '<em class="goal-pct">달성!</em>' : '<b>' + Math.min(Math.round(ans / goal * 100), 999) + '%</b>') + '</div>' +
       '<div class="goal-bar"><i class="gb-base" style="width:' + basePct + '%"></i>' +
       (goalPct > 100 ? '<i class="gb-over" style="left:' + tickPct + '%;width:' + (fillPct - tickPct) + '%"></i><span class="gb-tick" style="left:' + tickPct + '%"></span>' : '') + '</div>' +
       (hit ? '<div class="goal-sub"><span>' + capTxt + '</span><span>' + Math.min(ans, 9999) + ' / ' + goal + '문제</span></div>' : '') + '</div>';
@@ -915,7 +915,8 @@
       '<div class="row"><div class="txt"><div class="zh p-zh">' + esc(ph[0]) + '</div><div class="py p-py">' + esc(ph[1]) + '</div>' +
       '<div class="kr p-kr">' + esc(kr(ph[1])) + '</div><div class="ko p-ko">' + esc(ph[2]) + '</div></div>' +
       '<div class="p-btns"><button class="round-btn" data-act="say" data-text="' + esc(ph[0]) + '" aria-label="오늘의 한 문장 듣기">' + I.spk + '</button>' +
-      '<button class="star' + (isFav(ph[0]) ? ' on' : '') + '" data-act="fav" data-text="' + esc(ph[0]) + '" aria-pressed="' + (isFav(ph[0]) ? 'true' : 'false') + '" aria-label="문장 저장">' + I.star + '</button></div></div></div>' : '';
+      '<button class="star' + (isFav(ph[0]) ? ' on' : '') + '" data-act="fav" data-text="' + esc(ph[0]) + '" aria-pressed="' + (isFav(ph[0]) ? 'true' : 'false') + '" aria-label="문장 저장">' + I.star + '</button></div></div>' +
+      '<button class="phrase-past" data-act="open-phrases">지난 문장 보기<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg></button></div>' : '';
     return '<div class="screen"><div class="scroll with-nav home-scroll' + (rtot > 0 ? ' has-review' : '') + '">' + head + goalCard + reviewCard + todayCard + lightCard + phraseCard + nextCard + '</div>' + navHtml() + '</div>';
   }
 
@@ -956,11 +957,10 @@
       '<h1 class="big-title">전체 레슨</h1>' +
       '<p class="sub-title">' + '배운 내용을 활용해 보며 자연스럽게 익혀가요.' + '</p>' +
       scenesSection() +
-      (SCENES.length ? '<div class="section-title sc-old">기존 레슨</div>' : '') +
-      '<div class="lesson-progress"><div class="row"><b>' + n + ' / ' + LESSONS.length + '</b><span>레슨 완료</span></div>' +
-      '<div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + pct + '"><i style="width:' + pct + '%"></i></div></div>' +
       practiceBlock() +
       '<div class="section-title" style="margin-top:24px">말하기 레슨</div>' +
+      '<div class="lesson-progress"><div class="row"><b>' + n + ' / ' + LESSONS.length + '</b><span>레슨 완료</span></div>' +
+      '<div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + pct + '"><i style="width:' + pct + '%"></i></div></div>' +
       '<ul class="list" style="margin-top:0">' + list + '</ul>' +
       (take < LESSONS.length ? '<button class="more-btn" data-act="lessons-more">레슨 더보기 (' + Math.min(7, LESSONS.length - take) + '개 더 · 전체 ' + LESSONS.length + '개)</button>' : '') +
       '</div>' + navHtml() + '</div>';
@@ -1010,7 +1010,7 @@
       '<button class="btn btn-3d" data-act="' + (member ? 'open-pay' : 'ai-login') + '">' + (member ? '멤버십 보기' : '회원가입 · 로그인') + '</button></div>';
   }
   function viewAi() {
-    var head = '<h1 class="big-title">AI 대화</h1><p class="sub-title">틀려도 괜찮아요. 편하게 말해 보세요.</p>';
+    var head = '<h1 class="big-title">AI 대화</h1>' + (aiOn() ? '<p class="sub-title">틀려도 괜찮아요. 편하게 말해 보세요.</p>' : '');
     var body;
     if (aiOn()) {
       if ((!state.chats || state.chatsUid !== (state.user && state.user.id)) && !state.chatsBusy) { state.chatsBusy = true; chatsInit().then(function () { state.chatsBusy = false; if (state.screen === 'tab' && state.tab === 'review') renderKeep(); }); }
@@ -1026,10 +1026,17 @@
     var favs = state.profile.favs.map(function (zh) { return PHRASES.filter(function (p) { return p[0] === zh; })[0]; }).filter(Boolean);
     var h = '';
     if (favs.length) h += '<div class="section-title" style="margin-top:28px">저장한 문장 ' + favs.length + '</div><div class="words">' + favs.map(phraseRow).join('') + '</div>';
-    var past = [];
-    for (var i = 1; i <= 6; i++) { var p = phraseAt(i); if (p && past.indexOf(p) < 0) past.push(p); }
-    if (past.length) h += '<div class="section-title" style="margin-top:28px">지난 오늘의 한 문장</div><div class="words">' + past.map(phraseRow).join('') + '</div>';
     return h;
+  }
+  // 지난 오늘의 한 문장: 홈의 '지난 문장 보기'에서 열려요 (어제부터 최대 30개)
+  function viewPhrases() {
+    var past = [];
+    for (var i = 1; i <= 30; i++) { var p = phraseAt(i); if (p && past.indexOf(p) < 0) past.push(p); }
+    return '<div class="screen"><div class="topbar"><button class="icon-btn" data-act="back" aria-label="뒤로">' + I.back + '</button></div>' +
+      '<div class="scroll" style="padding-top:4px"><h1 class="big-title" style="margin-top:0">지난 오늘의 한 문장</h1>' +
+      '<p class="sub-title">어제부터 최근 ' + past.length + '개예요. 듣고, 별을 눌러 저장해요.</p>' +
+      (past.length ? '<div class="words">' + past.map(phraseRow).join('') + '</div>' : '<div class="chat-empty">아직 지난 문장이 없어요.</div>') +
+      '<div style="height:60px"></div></div></div>';
   }
   // 단어장: 레슨이 많아져도 보기 편하도록 레슨별로 접고 펼치고, 검색할 수 있어요
   var wordsUi = { open: null, q: '' };
@@ -2333,6 +2340,7 @@
     else if (state.screen === 'coupon') html = viewCoupon();
     else if (state.screen === 'aicharge') html = viewAiCharge();
     else if (state.screen === 'aiall') html = viewAiAll();
+    else if (state.screen === 'phrases') html = viewPhrases();
     else if (state.screen === 'aichats') html = viewChatAll();
     else if (state.screen === 'aichatlog') html = viewChatLog();
     else if (state.screen === 'prefs') html = viewPrefs();
@@ -3550,8 +3558,12 @@
       '<span class="chip" style="min-width:48px;justify-content:center">' + (c.stage === 'mission' ? total : Math.min(done + (resolved ? 0 : 1), total)) + '/' + total + '</span></div>';
   }
   function scStageTag(c) {
-    var n = { speak: 1, blank: 2, listen: 3, mission: 4 }[c.stage];
-    return '<div class="sc-stage"><b>' + n + '</b>' + SC_STAGE[c.stage] + '</div>';
+    if (c.stage === 'mission') return '<div class="sc-stage"><b>' + I.check + '</b>' + SC_STAGE.mission + '</div>';
+    var order = ['speak', 'blank', 'listen'], cur = order.indexOf(c.stage);
+    return '<ol class="sc-steps" aria-label="진행 단계">' + order.map(function (k, i) {
+      var st = i < cur ? 'done' : i === cur ? 'on' : '';
+      return '<li class="' + st + '"' + (i === cur ? ' aria-current="step"' : '') + '><b>' + (i < cur ? I.check : i + 1) + '</b><span>' + SC_STAGE[k] + '</span></li>';
+    }).join('') + '</ol>';
   }
   function scVerdict(ok, c) {
     if (ok === null) return '<div class="qz-slot"></div>';
@@ -3589,22 +3601,22 @@
     if (c.stage === 'speak') {
       var l = sc.lines[c.i], canSkip = c.pass || c.tries >= 2 || c.noSR;
       var live = c.pass ? '' : c.msg ? esc(c.msg) : c.tries ? '다시 한번 말해 보세요' : '버튼을 누른 채로 따라 말해요';
-      var body = '<div class="qz-wrap sc-pad">' + scStageTag(c) + '<div class="sc-ctx"><span>' + sc.icon + ' ' + esc(sc.title) + '</span><em>' + (c.i + 1) + '번째 문장</em></div>' +
-        '<div class="sc-card"><button class="round-btn sc-spk" data-act="say" data-text="' + esc(l[0]) + '" aria-label="듣기">' + I.spk + '</button>' + scLineView(l) + '</div>' + scKrRow(l) +
-        (c.pass ? scVerdict(true, c) : (c.heard ? '<div class="sc-heard">들린 말: ' + esc(c.heard) + '</div>' : '')) + '</div>';
+      var body = '<div class="qz-wrap sc-fit">' + scStageTag(c) + '<div class="sc-ctx"><span>' + sc.icon + ' ' + esc(sc.title) + '</span><em>' + (c.i + 1) + '번째 문장</em></div><div class="sc-main">' +
+        '<div class="sc-box"><div class="sc-card"><button class="round-btn sc-spk" data-act="say" data-text="' + esc(l[0]) + '" aria-label="듣기">' + I.spk + '</button>' + scLineView(l) + '</div>' + scKrRow(l) + '</div>' +
+        '<div class="sc-heard-slot">' + (!c.pass && c.heard ? '<div class="sc-heard">들린 말: ' + esc(c.heard) + '</div>' : '') + '</div></div></div>';
       var foot;
-      if (c.pass) foot = '<div class="footer"><button class="btn green" data-act="sc-next">다음</button></div>';
+      if (c.pass) foot = qzFoot(true, true, c.combo >= 2 ? '연속 ' + c.combo + '번 정답' : '잘했어요', 'sc-next', '다음');
       else foot = '<div class="mic-area"><div id="live" class="live hint">' + live + '</div>' +
         (c.noSR ? '' : '<button id="scmic" class="mic' + (c.listening ? ' on' : '') + '" data-hold="scmic" aria-label="누른 채로 따라 말하기">' + I.mic + '</button>') +
         (canSkip ? '<button class="link-btn" data-act="sc-skip">' + (c.noSR ? '따라 말했어요' : '넘어가기') + '</button>' : '<div style="height:20px"></div>') + '</div>';
-      return '<div class="screen">' + top + body + foot + '</div>';
+      return '<div class="screen qz-fit">' + top + body + foot + '</div>';
     }
     var it = c[c.stage][c.i], l2 = sc.lines[it.i], answered = c.picked !== null, prompt, opts, ok = false;
     if (c.stage === 'blank') {
       var parts = l2[0].split(l2[3]).map(esc);
       var shown = answered ? parts.join('<mark class="sc-key">' + esc(l2[3]) + '</mark>') : parts.join('<span class="sc-blank">＿＿</span>');
-      prompt = answered ? '<div class="sc-card">' + scLineView(l2, l2[3]) + '</div>' + scKrRow(l2)
-        : '<div class="sc-card sc-q"><div class="sc-zh big">' + shown + '</div><div class="sc-ko">' + esc(l2[2]) + '</div></div>';
+      prompt = '<div class="sc-box">' + (answered ? '<div class="sc-card">' + scLineView(l2, l2[3]) + '</div>' + scKrRow(l2)
+        : '<div class="sc-card sc-q"><div class="sc-zh big">' + shown + '</div><div class="sc-ko">' + esc(l2[2]) + '</div></div>') + '</div>';
       ok = answered && it.opts[c.picked] === it.ans;
       opts = '<div class="qz-opts">' + it.opts.map(function (o, i) {
         var cls = 'opt zh-opt';
@@ -3612,7 +3624,8 @@
         return '<button class="' + cls + '" data-act="sc-pick" data-id="' + i + '"' + (answered ? ' disabled' : '') + '>' + esc(o) + '</button>';
       }).join('') + '</div>';
     } else {
-      prompt = '<div class="qz-prompt"><button class="listen-btn" data-act="say" data-text="' + esc(l2[0]) + '" aria-label="다시 듣기">' + I.spk + '</button><div class="qz-cap">소리를 듣고 알맞은 뜻을 골라요</div></div>';
+      prompt = '<div class="sc-box">' + (answered ? '<div class="sc-card sc-reveal"><button class="round-btn sc-spk" data-act="say" data-text="' + esc(l2[0]) + '" aria-label="듣기">' + I.spk + '</button>' + scLineView(l2) + '</div>' + scKrRow(l2)
+        : '<div class="qz-prompt sc-listen"><button class="listen-btn" data-act="say" data-text="' + esc(l2[0]) + '" aria-label="다시 듣기">' + I.spk + '</button><div class="qz-cap">소리를 듣고 알맞은 뜻을 골라요</div></div>') + '</div>';
       ok = answered && it.opts[c.picked].ok;
       opts = '<div class="qz-opts">' + it.opts.map(function (o, i) {
         var cls = 'opt';
@@ -3620,9 +3633,8 @@
         return '<button class="' + cls + '" data-act="sc-pick" data-id="' + i + '"' + (answered ? ' disabled' : '') + '>' + esc(o.ko) + '</button>';
       }).join('') + '</div>';
     }
-    var reveal = answered && c.stage === 'listen' ? '<div class="sc-card sc-reveal">' + scLineView(l2) + '</div>' + scKrRow(l2) : '';
-    var foot2 = answered ? '<div class="footer"><button class="btn ' + (ok ? 'green' : '') + '" data-act="sc-next">' + (last ? 'AI 미션으로' : '다음') + '</button></div>' : '';
-    return '<div class="screen">' + top + '<div class="qz-wrap sc-pad">' + scStageTag(c) + prompt + scVerdict(answered ? ok : null, c) + opts + reveal + '</div>' + foot2 + '</div>';
+    var foot2 = qzFoot(answered, ok, ok ? (c.combo >= 2 ? '연속 ' + c.combo + '번 정답' : '잘했어요') : '괜찮아요, 정답을 확인해 봐요', 'sc-next', last ? 'AI 미션으로' : '다음');
+    return '<div class="screen qz-fit">' + top + '<div class="qz-wrap sc-fit">' + scStageTag(c) + '<div class="sc-ctx"><span>' + sc.icon + ' ' + esc(sc.title) + '</span><em>' + (c.i + 1) + '번째 문제</em></div><div class="sc-main">' + prompt + opts + '</div></div>' + foot2 + '</div>';
   }
   function viewSceneMission() {
     var c = state.sc, sc = sceneById(c.id), on = aiOn(), enough = on && aiBal() >= AI_CHAT_COST;
@@ -4341,6 +4353,7 @@
       case 'open-account': go('account'); break;
       case 'open-coupon': go('coupon'); break;
       case 'open-aicharge': go('aicharge'); break;
+      case 'open-phrases': go('phrases'); break;
       case 'open-aiall': state.aiallHint = false; go('aiall'); break;
       case 'open-prefs': go('prefs'); break;
       case 'zh-guide': askConfirm({ title: '중국어 음성 설치 방법', body: ZH_GUIDE, ok: '알겠어요', cancel: '닫기', m: 'sleep', left: true }); break;
@@ -4352,6 +4365,7 @@
         state.aiChipsOpen = !state.aiChipsOpen;
         var ch = document.querySelector('.ai-hero-chips'); if (ch) ch.classList.toggle('open', !!state.aiChipsOpen);
         el.textContent = state.aiChipsOpen ? '접기' : '더보기';
+        fitChips();   // 닫혀 있을 때 정해 둔 높이 제한을 풀거나(펼침) 다시 2줄로 자름(접기)
         break;
       }
       case 'ai-chip': {
