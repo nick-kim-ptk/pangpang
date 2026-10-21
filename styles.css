@@ -2332,3 +2332,6 @@ html, body, * { scrollbar-width: none; -ms-overflow-style: none; }
 /* v150 소나기 퀴즈 시작 화면 간격 */
 .rn-rules { margin-bottom: var(--sp-3); }
 .rn-pytog { margin-top: var(--sp-4); }
+
+/* v151 단어장: 레슨 단어 섹션 */
+.stats.two { grid-template-columns: 1fr 1fr; margin-top: 12px; }

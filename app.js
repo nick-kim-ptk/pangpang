@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v150';
+  var APP_VERSION = 'v151';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -1070,25 +1070,24 @@
   function viewWords() {
     var learned = learnedLessons();
     var wordCount = learned.reduce(function (n, l) { return n + l.words.length; }, 0);
-    var body = learned.length
-      ? '<div class="section-title" style="margin-top:28px">배운 단어</div>' +
-        '<div class="w-tools"><input id="w-search" class="w-search" type="search" placeholder="단어 검색 (한자·병음·뜻)" value="' + esc(wordsUi.q) + '" aria-label="단어 검색" autocomplete="off">' +
-        '<button class="pill-sm" data-act="w-all">' + (Object.keys(wordsOpenMap()).some(function (k) { return wordsUi.open[k]; }) ? '모두 접기' : '모두 펼치기') + '</button></div>' +
-        '<div id="w-list">' + wordsListHtml() + '</div>'
-      : '';
+    var lessonSec = '<div class="section-title" style="margin-top:28px">레슨 단어</div>' +
+      '<div class="stats two">' +
+        '<div class="stat"><b>' + learned.length + '/' + LESSONS.length + '</b><span>배운 레슨</span></div>' +
+        '<div class="stat"><b>' + wordCount + '</b><span>레슨 단어</span></div>' +
+      '</div>' +
+      (wordCount >= 4 ? '<button class="btn btn-3d quiz-btn" data-act="quiz-word">단어 퀴즈 풀기</button>' : '') +
+      (learned.length
+        ? '<div class="w-tools"><input id="w-search" class="w-search" type="search" placeholder="단어 검색 (한자·병음·뜻)" value="' + esc(wordsUi.q) + '" aria-label="단어 검색" autocomplete="off">' +
+          '<button class="pill-sm" data-act="w-all">' + (Object.keys(wordsOpenMap()).some(function (k) { return wordsUi.open[k]; }) ? '모두 접기' : '모두 펼치기') + '</button></div>' +
+          '<div id="w-list">' + wordsListHtml() + '</div>'
+        : emptyState('empty', { title: '아직 쌓인 단어가 없어요', desc: '첫 레슨을 끝내면\n단어가 여기에 쌓여요', cta: { act: 'tab', id: 'lessons', label: '레슨 보러 가기' } }));
 
     return '<div class="screen"><div class="scroll with-nav">' +
       '<div class="tab-head"><div><h1 class="big-title">단어장</h1>' +
       '<p class="sub-title" style="margin-bottom:0">배운 단어가 쌓여요.<br>눌러서 들어 보세요.</p></div>' + ppm('book', 92) + '</div>' +
-      '<div class="stats">' +
-        '<div class="stat"><b>' + learned.length + '/' + LESSONS.length + '</b><span>배운 레슨</span></div>' +
-        '<div class="stat"><b>' + wordCount + '</b><span>배운 단어</span></div>' +
-        '<div class="stat"><b>' + streak() + '일</b><span>연속 학습</span></div>' +
-      '</div>' +
-      (wordCount >= 4 ? '<button class="btn btn-3d quiz-btn" data-act="quiz-word">단어 퀴즈 풀기</button>' : '') +
       hskSection() +
       phraseSections() +
-      (learned.length ? body : emptyState('empty', { title: '아직 쌓인 단어가 없어요', desc: '첫 레슨을 끝내면\n단어가 여기에 쌓여요', cta: { act: 'tab', id: 'lessons', label: '레슨 보러 가기' } })) +
+      lessonSec +
       '</div>' + navHtml() + '</div>';
   }
 
