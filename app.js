@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v147';
+  var APP_VERSION = 'v148';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -600,7 +600,7 @@
 
   /* ---------- 화면 이동 ---------- */
   // 뒤로 가기: 폰의 뒤로 제스처·버튼(기록)과 화면 왼쪽 가장자리에서 오른쪽으로 미는 동작을 같이 처리해요
-  var SUBSCREEN = { pay: 1, privacy: 1, login: 1, intro: 1, practice: 1, quiz: 1, stats: 1, done: 1, hsk: 1, hskstudy: 1, tone: 1, feedback: 1, speed: 1, account: 1, coupon: 1, aicharge: 1, aichat: 1, aiall: 1, aichats: 1, aichatlog: 1, scene: 1, chain: 1, phrases: 1, prefs: 1, about: 1, advisor: 1 };
+  var SUBSCREEN = { pay: 1, privacy: 1, login: 1, intro: 1, practice: 1, quiz: 1, stats: 1, done: 1, hsk: 1, hskstudy: 1, tone: 1, feedback: 1, speed: 1, account: 1, coupon: 1, aicharge: 1, aichat: 1, aiall: 1, aichats: 1, aichatlog: 1, scene: 1, chain: 1, rain: 1, phrases: 1, prefs: 1, about: 1, advisor: 1 };
   var inSub = false, ignorePop = 0, backAnim = false;
   function syncHistory(screen) {
     try {
@@ -635,6 +635,7 @@
     else if (sc === 'privacy') go(state.privFrom === 'login' ? 'login' : 'tab');
     else if (sc === 'speed') { stopSpeed(); go('tab'); }
     else if (sc === 'chain') { chStop(); go('tab', { tab: 'words' }); }
+    else if (sc === 'rain') { rnStop(); go('tab', { tab: 'words' }); }
     else if (sc === 'scene') { stopSpeak(); scStopRec(); state.sc = null; go('tab'); }
     else if (sc === 'done') go('tab', { tab: 'home' });
     else if (sc === 'feedback' || sc === 'account' || sc === 'coupon') go('prefs');
@@ -2351,8 +2352,10 @@
     else if (state.screen === 'tone') html = viewTone();
     else if (state.screen === 'scene') html = viewScene();
     else if (state.screen === 'chain') html = viewChain();
+    else if (state.screen === 'rain') html = viewRain();
     else if (state.screen === 'done') html = viewDone();
     $app.innerHTML = html + modalHtml();
+    if (state.screen === 'rain') rnAttach();
     fitGreet();
     fitChips();
     if (state.screen === 'aiall' && !state.aiallHint) {   // 처음 들어오면 첫 카드가 살짝 밀렸다 돌아와서 삭제 방법을 알려 줘요
@@ -3114,8 +3117,8 @@
     var chips = '<div class="hsk-chips" role="tablist" aria-label="HSK 급 선택">' + [1, 2, 3, 4].map(function (l) {
       return '<button role="tab" class="hsk-chip' + (l === lv ? ' on' : '') + '" data-act="hsk-lv" data-id="' + l + '" aria-selected="' + (l === lv) + '">' + (hskLocked(l) ? '<i class="hc-lock">' + I.lock + '</i>' : '') + l + '급</button>';
     }).join('') + '</div>';
-    function mode(act, ico, title, sub, tag) {
-      return '<button class="hsk-mode' + (locked ? ' lk' : '') + '" data-act="' + act + '" data-id="' + lv + '"><span class="hm-ico">' + ico + '</span>' +
+    function mode(act, ico, title, sub, tag, cls) {
+      return '<button class="hsk-mode' + (locked ? ' lk' : '') + (cls ? ' ' + cls : '') + '" data-act="' + act + '" data-id="' + lv + '"><span class="hm-ico">' + ico + '</span>' +
         '<b>' + title + '</b><span class="hm-sub">' + sub + '</span>' + (tag ? '<em class="hm-tag">' + tag + '</em>' : '') + '</button>';
     }
     return '<div class="section-title" style="margin-top:28px">HSK 단어</div><p class="hsk-note under-title">' + HSK_NOTE + '</p>' + dueCard + chips +
@@ -3124,7 +3127,8 @@
       mode('hsk-study', '🃏', '카드 학습', '밀어서 외우기', '') +
       mode('hsk-quiz', '📝', '퀴즈', '소리·뜻 고르기', '') +
       mode('ch-start', icn('chain'), '기억 사슬', rec.best ? '최고 ' + rec.best + '단계' : '몇 단계까지 갈까?', rec.plays ? '' : 'NEW') +
-      mode('tone-start', '🎵', '성조 연습', '소리로 성조 맞히기', '') + '</div>' +
+      mode('tone-start', '🎵', '성조 연습', '소리로 성조 맞히기', '') +
+      mode('rain-start', '🌧️', '소나기 퀴즈', '떨어지는 한자를 잡아요', rnBest(lv) ? '' : 'NEW', 'wide') + '</div>' +
       '<button class="hsk-list-link" data-act="hsk-open" data-id="' + lv + '"><span class="hl-t">단어 목록 보기</span>' +
       '<span class="hl-s">' + n + '개 중 ' + k + '개 익혔어요</span><span class="hl-chev"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg></span>' +
       '<span class="meter g hl-m"><i style="width:' + pct + '%"></i></span></button>';
@@ -3971,6 +3975,205 @@
       bar + '<div class="ch-grid">' + tiles + '</div>' + fbHtml + '</div></div>';
   }
 
+  /* ---------- 소나기 퀴즈 (v148): 소리를 듣고 하늘에서 떨어지는 한자를 눌러 잡아요 ---------- */
+  var RN_LIVES = 3, RN_WAVES = 10, RN_DROPS = 6, RN_LANES = [0.2, 0.5, 0.8];
+  function rnKey() { return 'pangpang.rain.' + (state.user ? state.user.id : 'x'); }
+  function rnRecAll() { try { return JSON.parse(localStorage.getItem(rnKey()) || '{}'); } catch (e) { return {}; } }
+  function rnBest(lv) { var r = rnRecAll()[lv]; return r ? (r.best || 0) : 0; }
+  function rnSaveBest(lv, score) {
+    var all = rnRecAll(), r = all[lv] || { best: 0, plays: 0 }, nb = score > r.best;
+    r.best = Math.max(r.best, score); r.plays = (r.plays || 0) + 1; all[lv] = r;
+    try { localStorage.setItem(rnKey(), JSON.stringify(all)); } catch (e) { /* 무시 */ }
+    return nb;
+  }
+  function rnPyOn() { try { return localStorage.getItem('pangpang.rain.py') !== '0'; } catch (e) { return true; } }
+  function rnStop() { var r = state.rn; if (r) { r.tok++; cancelAnimationFrame(r.raf); clearTimeout(r.tm); } stopSpeak(); }
+  function rnAlive(r, tok) { return state.screen === 'rain' && state.rn === r && r.tok === tok; }
+  function startRain(lv) {
+    var list = hskList(lv);
+    if (list.length < RN_DROPS + 2) { toast('단어가 부족해요'); return; }
+    if (hskLocked(lv)) { go('pay', { payWhy: 'HSK ' + lv + '급은 멤버십이 필요해요. 1급은 무료예요.' }); return; }
+    var targets = shuffle(hskPick(lv, RN_WAVES)).map(function (q) { return q.i; });
+    state.rn = { lv: lv, phase: 'ready', py: rnPyOn(), targets: targets, wave: 0, lives: RN_LIVES, score: 0, combo: 0, maxCombo: 0, right: 0,
+      missed: [], drops: [], cur: null, fb: '', tok: 0, raf: 0, tm: 0, H: 0, uid: 0, before: todayAnswers() };
+    go('rain');
+  }
+  function rnBegin() {
+    var r = state.rn; if (!r || r.phase !== 'ready') return;
+    r.phase = 'play'; r.tok++; r.last = performance.now();
+    render();
+    r.raf = requestAnimationFrame(function () { rnLoop(r, r.tok); });
+    rnWave();
+  }
+  function rnWave() {
+    var r = state.rn, tok = r.tok;
+    if (!rnAlive(r, tok)) return;
+    if (r.wave >= r.targets.length) { rnFinish(); return; }
+    var list = hskList(r.lv), ti = r.targets[r.wave], tw = list[ti], tlen = Array.from(tw[0]).length;
+    // 소리가 같은 다른 한자는 구분할 수 없으니 빼고, 글자 수가 비슷한 한자를 헷갈리는 보기로 써요
+    var pool = shuffle(list.map(function (_, i) { return i; })).filter(function (i) { return i !== ti && list[i][0] !== tw[0] && chPy(list[i]) !== chPy(tw); });
+    pool.sort(function (a, b) { return Math.abs(Array.from(list[a][0]).length - tlen) - Math.abs(Array.from(list[b][0]).length - tlen); });
+    var seq = shuffle([ti].concat(pool.slice(0, RN_DROPS - 1)));
+    var dur = Math.max(5.5, 10 - r.wave * 0.45), lane = -1, prev = -1, lanes = [];
+    r.drops = seq.map(function (wi, k) {
+      do { lane = Math.floor(Math.random() * RN_LANES.length); } while (lane === prev);
+      prev = lane;
+      return { id: ++r.uid, i: wi, isT: wi === ti, x: RN_LANES[lane] + (Math.random() - 0.5) * 0.1, delay: 0.25 + k * 0.7 + Math.random() * 0.2, dur: dur, y: 0, live: false, dead: false, el: null };
+    });
+    r.cur = { ti: ti, t: 0, done: false, err: false };
+    r.fb = '';
+    var fbEl = document.querySelector('.rn-fb'); if (fbEl) fbEl.innerHTML = '';
+    var wv = document.querySelector('.rn-wave'); if (wv) wv.textContent = '웨이브 ' + (r.wave + 1) + '/' + r.targets.length;
+    var field = document.querySelector('.rn-field'); if (field) field.innerHTML = '';
+    clearTimeout(r.tm);
+    r.tm = setTimeout(function () { if (rnAlive(r, tok) && r.cur && !r.cur.done) speak(tw[0], 0.85); }, 250);
+  }
+  function rnPosY(r, d) { return -72 + d.y * (r.H + 8); }
+  function rnMakeEl(r, d) {
+    var list = hskList(r.lv), w = list[d.i], n = Array.from(w[0]).length;
+    var b = document.createElement('button');
+    b.className = 'rn-drop'; b.setAttribute('data-rid', d.id); b.type = 'button';
+    b.style.left = (d.x * 100) + '%';
+    b.style.fontSize = (n === 1 ? 34 : n === 2 ? 28 : n === 3 ? 23 : 19) + 'px';
+    b.innerHTML = '<span class="zh">' + esc(w[0]) + '</span>' + (r.py ? '<small>' + esc(w[1]) + '</small>' : '');
+    b.style.transform = 'translate(-50%,' + rnPosY(r, d) + 'px)';
+    d.el = b;
+    return b;
+  }
+  function rnAttach() {
+    var r = state.rn; if (!r || r.phase !== 'play') return;
+    var field = document.querySelector('.rn-field'); if (!field) return;
+    r.H = field.clientHeight;
+    r.drops.forEach(function (d) { if (d.live && !d.dead) field.appendChild(rnMakeEl(r, d)); else d.el = null; });
+    field.addEventListener('pointerdown', function (e) {
+      var b = e.target.closest ? e.target.closest('.rn-drop') : null;
+      if (!b) return;
+      e.preventDefault();
+      rnTap(parseInt(b.getAttribute('data-rid'), 10));
+    });
+  }
+  function rnLoop(r, tok) {
+    if (!rnAlive(r, tok)) return;
+    var now = performance.now(), dt = Math.min((now - r.last) / 1000, 0.1);
+    r.last = now;
+    var field = document.querySelector('.rn-field');
+    if (field && !state.modal && r.cur && !r.cur.done) {
+      if (!r.H) r.H = field.clientHeight;
+      r.cur.t += dt;
+      r.drops.forEach(function (d) {
+        if (d.dead) return;
+        if (!d.live) {
+          if (r.cur.t < d.delay) return;
+          d.live = true; field.appendChild(rnMakeEl(r, d));
+        }
+        d.y += dt / d.dur;
+        if (d.el) d.el.style.transform = 'translate(-50%,' + rnPosY(r, d) + 'px)';
+        if (d.y >= 1) {
+          if (d.isT) rnMiss(r, d);
+          else { d.dead = true; if (d.el) { var le = d.el; le.classList.add('gone'); setTimeout(function () { le.remove(); }, 450); d.el = null; } }
+        }
+      });
+    }
+    r.raf = requestAnimationFrame(function () { rnLoop(r, tok); });
+  }
+  function rnHearts(r) {
+    var h = '';
+    for (var k = 0; k < RN_LIVES; k++) h += '<span class="ch-heart' + (k < r.lives ? ' on' : '') + '">' + icn(k < r.lives ? 'heart' : 'heart-empty') + '</span>';
+    return h;
+  }
+  function rnUpdateHud() {
+    var r = state.rn, h = document.querySelector('.rn-hearts'), s = document.querySelector('.rn-score'), c = document.querySelector('.rn-combo');
+    if (h) h.innerHTML = rnHearts(r);
+    if (s) s.textContent = r.score + '점';
+    if (c) c.innerHTML = r.combo >= 2 ? icn('flame') + ' ' + r.combo + '연속' : '';
+  }
+  function rnShowFb(r, ok, text) {
+    var w = hskList(r.lv)[r.cur.ti];
+    r.fb = '<div class="rn-fbc ' + (ok ? 'ok' : 'no') + '">' + chImg(ok ? (r.combo >= 3 ? 'fire' : 'cheer') : 'sad', 'chr-fb') +
+      '<div><b class="zh">' + esc(w[0]) + '</b> <span>' + esc(w[1]) + '</span><em>' + esc(w[2].split(',')[0].split(';')[0]) + ' · ' + text + '</em></div></div>';
+    var el = document.querySelector('.rn-fb'); if (el) el.innerHTML = r.fb;
+  }
+  function rnEndWave(r, ok) {
+    var tok = r.tok, ti = r.cur.ti;
+    r.cur.done = true;
+    bumpAnswer();
+    setHskKnown(r.lv, ti, ok); srsGrade(r.lv, ti, ok);
+    if (!ok) r.missed.push(hskList(r.lv)[ti][0]);
+    r.wave++;
+    rnUpdateHud();
+    // 남은 한자는 부드럽게 사라져요
+    r.drops.forEach(function (d) { if (d.el && !d.isT) { d.el.classList.add('gone'); } });
+    clearTimeout(r.tm);
+    r.tm = setTimeout(function () {
+      if (!rnAlive(r, tok)) return;
+      if (r.lives <= 0 || r.wave >= r.targets.length) rnFinish(); else rnWave();
+    }, ok ? 1100 : 1500);
+  }
+  function rnTap(id) {
+    var r = state.rn;
+    if (!r || r.phase !== 'play' || !r.cur || r.cur.done || state.modal) return;
+    var d = r.drops.filter(function (x) { return x.id === id; })[0];
+    if (!d || d.dead) return;
+    if (d.isT) {
+      r.combo++; r.maxCombo = Math.max(r.maxCombo, r.combo); r.right++;
+      r.score += 100 + Math.min(r.combo, 5) * 10 + Math.round(Math.max(0, 1 - d.y) * 50);
+      sfx('right', r.combo);
+      if (d.el) d.el.classList.add('ok');
+      d.dead = true;
+      rnShowFb(r, true, r.cur.err ? '잡았어요' : '정답!');
+      rnEndWave(r, !r.cur.err);
+    } else {
+      r.cur.err = true; r.combo = 0; r.lives--;
+      sfx('wrong');
+      d.dead = true;
+      if (d.el) { var el = d.el; el.classList.add('no'); setTimeout(function () { el.remove(); }, 350); d.el = null; }
+      if (r.lives <= 0) { rnShowFb(r, false, '아쉬워요'); rnEndWave(r, false); }
+      else rnUpdateHud();
+    }
+  }
+  function rnMiss(r, d) {
+    if (r.cur.done) return;
+    d.dead = true;
+    r.combo = 0; r.lives--;
+    sfx('wrong');
+    if (d.el) d.el.classList.add('miss');
+    rnShowFb(r, false, '놓쳤어요');
+    rnEndWave(r, false);
+  }
+  function rnFinish() {
+    var r = state.rn; if (!r) return;
+    var lv = r.lv, goal = state.profile.goal, now = todayAnswers(), hit = r.before < goal && now >= goal;
+    var nb = rnSaveBest(lv, r.score), cleared = r.lives > 0;
+    rnStop();
+    var miss = r.missed.length ? ' 놓친 단어: ' + r.missed.slice(0, 3).join(', ') + (r.missed.length > 3 ? ' 외 ' + (r.missed.length - 3) + '개' : '') + '.' : '';
+    sfx(hit ? 'goal' : 'done');
+    go('done', { result: {
+      kind: 'rain', title: cleared ? '소나기가 그쳤어요!' : '소나기 퀴즈 끝!',
+      line: r.targets.length + '개 중 ' + r.right + '개 잡았어요. ' + r.score + '점' + (nb ? ' (최고 기록!)' : '') + '.' + miss,
+      answers: now, goal: goal, goalHit: hit, milestone: 0,
+      again: { act: 'rain-start', id: String(lv), label: '한 번 더 하기' }
+    } });
+  }
+  function viewRain() {
+    var r = state.rn, close = '<button class="icon-btn" data-act="rn-quit" aria-label="그만하기">' + I.close + '</button>';
+    if (r.phase === 'ready') {
+      var best = rnBest(r.lv);
+      return '<div class="screen qz-fit"><div class="topbar">' + close + '<span class="chip y">HSK ' + r.lv + '급</span></div>' +
+        '<div class="qz-wrap qz-ctr rn-ready">' + chImg('cheer', 'chr-rn') +
+        '<h1 class="rn-title">소나기 퀴즈</h1>' +
+        '<ul class="rn-rules"><li>' + icn('flame') + ' 소리를 듣고 떨어지는 한자 중에서 맞는 걸 눌러요</li>' +
+        '<li>' + icn('heart') + ' 틀리게 누르거나 놓치면 목숨이 하나씩 줄어요</li>' +
+        '<li>' + icn('trophy') + ' 빨리 잡을수록, 연속으로 맞출수록 점수가 높아요</li></ul>' +
+        '<button class="rn-pytog' + (r.py ? ' on' : '') + '" data-act="rn-py" aria-pressed="' + (r.py ? 'true' : 'false') + '"><i></i> 병음 힌트 ' + (r.py ? '켜짐' : '꺼짐') + '</button>' +
+        (best ? '<p class="rn-best">내 최고 기록 <b>' + best + '점</b></p>' : '') + '</div>' +
+        '<div class="footer"><button class="btn" data-act="rn-go">시작하기</button></div></div>';
+    }
+    return '<div class="screen qz-fit"><div class="topbar ch-top">' + close + '<div class="ch-hearts rn-hearts">' + rnHearts(r) + '</div><span class="chip y rn-score">' + r.score + '점</span></div>' +
+      '<div class="rn-wrap"><div class="rn-hud"><span class="rn-wave">웨이브 ' + Math.min(r.wave + 1, r.targets.length) + '/' + r.targets.length + '</span><span class="rn-combo">' + (r.combo >= 2 ? icn('flame') + ' ' + r.combo + '연속' : '') + '</span></div>' +
+      '<div class="rn-field" aria-label="떨어지는 한자"></div>' +
+      '<div class="rn-ctl"><button class="listen-btn" data-act="rn-hear" aria-label="다시 듣기">' + I.spk + '</button><div class="rn-fb" role="status">' + r.fb + '</div></div></div></div>';
+  }
+
   function startDialog(id) {
     var d = (window.DIALOGS || []).filter(function (x) { return x.id === id; })[0];
     if (!d) return;
@@ -4555,6 +4758,11 @@
       case 'chat-all': go('aichats'); break;
       case 'chat-del': askConfirm({ title: '이 기록을 지울까요?', body: '지운 대화는 되돌릴 수 없어요.', ok: '지우기', cancel: '취소', danger: true }, function () { chatDel(id); goBack(); toast('기록을 지웠어요'); }); break;
       case 'ch-start': startChain(parseInt(id, 10)); break;
+      case 'rain-start': if (hskGate(id)) break; startRain(parseInt(id, 10)); break;
+      case 'rn-go': rnBegin(); break;
+      case 'rn-quit': rnStop(); go('tab', { tab: 'words' }); break;
+      case 'rn-py': if (state.rn) { state.rn.py = !state.rn.py; try { localStorage.setItem('pangpang.rain.py', state.rn.py ? '1' : '0'); } catch (e) { /* 무시 */ } sfx('tap'); render(); } break;
+      case 'rn-hear': if (state.rn && state.rn.cur && !state.rn.cur.done) speak(hskList(state.rn.lv)[state.rn.cur.ti][0], 0.85); break;
       case 'ch-skip': chSkip(); break;
       case 'ch-pick': chAnswer(+id); break;
       case 'ch-hear': if (state.ch && state.ch.phase === 'ask') speak(hskList(state.ch.lv)[state.ch.qs[state.ch.qi]][0], 0.85); break;
