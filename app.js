@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v140';
+  var APP_VERSION = 'v141';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -991,6 +991,24 @@
       card('quiz-listen', '듣기 연습', listenOk ? QUIZ_SIZE + '문제' : '레슨 후 열려요', !listenOk, false) + '</div>';
   }
   // 하단 'AI 대화' 탭
+  // AI 대화 안내(로그인 전 / 멤버십 전): 이미지 + 좋은 점 + 버튼
+  var AI_CHECK = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+  function aiPromo(member) {
+    var items = member
+      ? [['AI 선생님과 자유롭게 대화해요', '정해진 문장이 아니라, 내가 하고 싶은 말로 연습해요.'],
+         ['말이 막히면 한국어로 물어봐요', '바로 쓸 수 있는 중국어 표현으로 알려줘요.'],
+         ['고친 문장은 복습으로 모여요', '틀린 표현을 모아 두었다가 잊기 전에 다시 보여줘요.'],
+         ['HSK 2~4급과 모든 상황 대화가 열려요', '기억 사슬·카드·퀴즈를 전 급수에서 쓸 수 있어요.']]
+      : [['학습 기록이 계정에 저장돼요', '기기를 바꿔도 그대로 이어서 공부해요.'],
+         ['복습 일정을 챙겨 줘요', '틀린 문장과 단어를 잊기 전에 다시 알려줘요.'],
+         ['HSK 1급 단어와 첫 상황 대화는 무료예요', '가입만 해도 바로 시작할 수 있어요.'],
+         ['멤버십을 시작하면 AI 대화를 바로 써요', '가입한 계정으로 이어서 이용해요.']];
+    return '<div class="ai-promo"><div class="ap-hero"><img src="img/ai-promo.webp" alt="" draggable="false"></div>' +
+      '<h2>' + (member ? 'AI 대화, 멤버십으로 시작해요' : '가입하고 AI 선생님과 말해 봐요') + '</h2>' +
+      '<p class="ap-sub">' + (member ? '멤버십이 되면 이런 점이 좋아요' : '가입하면 이런 점이 좋아요') + '</p>' +
+      '<ul class="ap-list">' + items.map(function (x) { return '<li><i>' + AI_CHECK + '</i><div><b>' + x[0] + '</b><span>' + x[1] + '</span></div></li>'; }).join('') + '</ul>' +
+      '<button class="btn btn-3d" data-act="' + (member ? 'open-pay' : 'ai-login') + '">' + (member ? '멤버십 보기' : '회원가입 · 로그인') + '</button></div>';
+  }
   function viewAi() {
     var head = '<h1 class="big-title">AI 대화</h1><p class="sub-title">틀려도 괜찮아요. 편하게 말해 보세요.</p>';
     var body;
@@ -999,10 +1017,8 @@
       var noExpr = !aiFixes().some(function (f) { return f.kind === 'ask' || f.kind === 'say'; });
       body = aiCreditBar() + aiEntry() + ((state.chats || []).length || !noExpr ? aiHistorySection() + aiFixSection() : '<div class="chat-empty first">대화하면 지난 대화와<br>다시 써 볼 표현이<br>여기에 쌓여요.</div>');
     }
-    else if (sb && isGuest()) body = '<div class="ai-lock"><div class="ai-lock-t">AI 대화는 회원가입이 필요해요</div><p>회원가입하고 로그인하면 AI 선생님과 자유롭게 대화하고, 말이 막히면 한국어로 물어보고, 고쳐 받은 문장과 표현을 모아 복습할 수 있어요.</p>' +
-      '<button class="btn" data-act="ai-login">회원가입 · 로그인</button></div>';
-    else body = '<div class="ai-lock"><div class="ai-lock-t">AI 대화는 멤버십에서 쓸 수 있어요</div><p>AI 선생님과 자유롭게 대화하고, 말이 막히면 한국어로 물어보고, 고쳐 받은 문장과 표현을 모아 복습해요.</p>' +
-      '<button class="btn" data-act="open-pay">멤버십 보기</button></div>';
+    else if (sb && isGuest()) body = aiPromo(false);
+    else body = aiPromo(true);
     return '<div class="screen"><div class="scroll with-nav" style="padding-top:28px">' + head + body + '</div>' + navHtml() + '</div>';
   }
 
