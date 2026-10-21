@@ -2126,3 +2126,35 @@ html, body, * { scrollbar-width: none; -ms-overflow-style: none; }
   .qz-ctr .qv-t span, .qz-ctr .q-kr { display: none; }
   .qz-ctr .qz-prompt .q-zh.big { font-size: min(72px, 9.5dvh) !important; }
 }
+
+/* v139 기억 사슬·성조 연습: 폰 높이에 맞춰 채우기 */
+.ch-ask .ch-grid { flex: 1 1 auto; min-height: 0; grid-template-rows: repeat(4, minmax(0, 1fr)); max-height: 660px; }
+.ch-ask .ch-tile { aspect-ratio: auto; height: 100%; }
+.ch-ask { padding-bottom: calc(var(--sp-4) + var(--safe-b, 0px)); }
+.ch-ask .ch-fb { flex: none; }
+.ch-intro { justify-content: center; }
+.ch-intro .ch-card { min-height: clamp(220px, 38dvh, 380px); align-content: center; }
+.tn-fit .tn-slot { width: clamp(56px, 17vw, 72px); height: clamp(60px, 9dvh, 84px); }
+.tn-fit .tn-pad { gap: var(--sp-2); margin-top: var(--sp-2); }
+.tn-fit .tn-btn { padding: clamp(12px, 2.6dvh, 24px) 0 clamp(10px, 2.2dvh, 20px); }
+@media (max-height: 640px) { .tn-fit .tn-slot { height: 56px; } .tn-fit .tn-btn { padding: 10px 0 8px; } }
+
+/* v140 퀴즈: 버튼 고정(흔들림 없음), 결과는 하단 '다음' 버튼 위에 */
+.qz-ctr .opt.ok, .qz-ctr .opt.no, .tn-fit .tn-slot { animation: none !important; }
+.qz-ctr .qz-prompt .q-peek { min-height: 72px; }
+.tn-fit .qz-prompt .q-peek { min-height: 100px; }
+.qz-reveal-slot { min-height: 92px; display: grid; align-items: center; margin-bottom: var(--sp-2); }
+.qz-foot2 { display: grid; gap: var(--sp-2); }
+.qz-fb { display: flex; align-items: center; justify-content: center; gap: var(--sp-3); min-height: 56px; animation: chin .2s ease-out; }
+.qz-fb.idle { visibility: hidden; animation: none; }
+.qz-fb img { width: 56px; height: 56px; object-fit: contain; flex: none; }
+.qz-fb .qv-t { display: grid; gap: 2px; text-align: left; }
+.qz-fb .qv-t b { font-size: 18px; font-weight: 900; }
+.qz-fb .qv-t span { font-size: 13px; color: var(--ink-2); font-weight: 600; }
+.qz-fb.ok .qv-t b { color: #0e9f63; } .qz-fb.no .qv-t b { color: #e5484d; }
+.qz-foot2.idle .btn { visibility: hidden; }
+@media (max-height: 640px) {
+  .qz-ctr .qz-prompt .q-peek { min-height: 44px; } .tn-fit .qz-prompt .q-peek { min-height: 60px; }
+  .qz-reveal-slot { min-height: 64px; }
+  .qz-fb { min-height: 40px; } .qz-fb img { width: 40px; height: 40px; } .qz-fb .qv-t span { display: none; }
+}

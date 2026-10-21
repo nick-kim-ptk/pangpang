@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v137';
+  var APP_VERSION = 'v140';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -684,6 +684,7 @@
   var LOGIN_MSG = {
     save: '학습한 내용을 저장하려면 로그인이 필요해요.',
     me: '내 기록과 설정을 보려면 로그인이 필요해요.',
+    ai: 'AI 대화는 회원가입 후 로그인해야 쓸 수 있어요.',
     pay: '멤버십을 쓰려면 로그인이 필요해요.'
   };
   function requireLogin(reason, later) {
@@ -998,6 +999,8 @@
       var noExpr = !aiFixes().some(function (f) { return f.kind === 'ask' || f.kind === 'say'; });
       body = aiCreditBar() + aiEntry() + ((state.chats || []).length || !noExpr ? aiHistorySection() + aiFixSection() : '<div class="chat-empty first">대화하면 지난 대화와<br>다시 써 볼 표현이<br>여기에 쌓여요.</div>');
     }
+    else if (sb && isGuest()) body = '<div class="ai-lock"><div class="ai-lock-t">AI 대화는 회원가입이 필요해요</div><p>회원가입하고 로그인하면 AI 선생님과 자유롭게 대화하고, 말이 막히면 한국어로 물어보고, 고쳐 받은 문장과 표현을 모아 복습할 수 있어요.</p>' +
+      '<button class="btn" data-act="ai-login">회원가입 · 로그인</button></div>';
     else body = '<div class="ai-lock"><div class="ai-lock-t">AI 대화는 멤버십에서 쓸 수 있어요</div><p>AI 선생님과 자유롭게 대화하고, 말이 막히면 한국어로 물어보고, 고쳐 받은 문장과 표현을 모아 복습해요.</p>' +
       '<button class="btn" data-act="open-pay">멤버십 보기</button></div>';
     return '<div class="screen"><div class="scroll with-nav" style="padding-top:28px">' + head + body + '</div>' + navHtml() + '</div>';
@@ -3061,17 +3064,11 @@
         '<b>' + (filled ? TN_SYM[tn.cur[k]] : '?') + '</b>' + (res && tn.cur[k] !== it.tones[k] ? '<i>' + TN_SYM[it.tones[k]] + '</i>' : '') + '</button>';
     }
     slots += '</div>';
-    var verdict = '<div class="qz-slot">';
-    if (res) {
-      verdict += '<div class="qz-verdict ' + (res.ok ? 'ok' : 'no') + '" role="status"><img src="img/' + (res.ok ? 'qz-ok' : 'qz-no') + '.webp" alt="" draggable="false">' +
-        '<div class="qv-t"><b>' + (res.ok ? '맞았어요!' : '틀렸어요!') + '</b><span>' + (res.ok ? (tn.combo >= 2 ? '연속 ' + tn.combo + '번 정답' : '귀가 좋아요') : '빨간 칸의 작은 글자가 정답이에요') + '</span></div></div>';
-    }
-    verdict += '</div>';
     var pad = '<div class="tn-pad">' + [1, 2, 3, 4, 0].map(function (v) {
       return '<button class="tn-btn t' + v + '" data-act="tone-pick" data-id="' + v + '"' + (res ? ' disabled' : '') + '><b>' + TN_SYM[v] + '</b><span>' + TN_NAME[v] + '</span></button>';
     }).join('') + '</div>';
-    var foot = res ? '<div class="footer"><button class="btn ' + (res.ok ? 'green' : '') + '" data-act="tone-next">' + (tn.i + 1 >= tn.items.length ? '결과 보기' : '다음') + '</button></div>' : '';
-    return '<div class="screen">' + top + '<div class="qz-wrap">' + prompt + slots + verdict + pad + '</div>' + foot + '</div>';
+    var foot = qzFoot(!!res, res && res.ok, res ? (res.ok ? (tn.combo >= 2 ? '연속 ' + tn.combo + '번 정답' : '귀가 좋아요') : '빨간 칸의 작은 글자가 정답이에요') : '', 'tone-next', tn.i + 1 >= tn.items.length ? '결과 보기' : '다음');
+    return '<div class="screen qz-fit">' + top + '<div class="qz-wrap qz-ctr tn-fit">' + prompt + slots + pad + '</div>' + foot + '</div>';
   }
   // 단어장 탭의 HSK 영역: 급을 고르면 학습 방식 4가지가 바로 보여요
   function hskGate(id) {
@@ -3268,6 +3265,11 @@
       again: z.hsk ? { act: 'hsk-quiz', id: String(z.hsk), label: '한 번 더 풀기' } : { act: z.kind === 'listen' ? 'quiz-listen' : 'quiz-word', label: '한 번 더 풀기' }
     } });
   }
+  // 퀴즈 하단: 결과(캐릭터+문구)와 '다음' 버튼을 한 자리에 두어, 답을 골라도 위쪽 버튼 위치가 움직이지 않아요
+  function qzFoot(ans, ok, sub, act, label) {
+    var t = ans ? '<div class="qz-fb ' + (ok ? 'ok' : 'no') + '" role="status"><img src="img/' + (ok ? 'qz-ok' : 'qz-no') + '.webp" alt="" draggable="false"><div class="qv-t"><b>' + (ok ? '맞았어요!' : '틀렸어요!') + '</b><span>' + esc(sub) + '</span></div></div>' : '<div class="qz-fb idle"></div>';
+    return '<div class="footer qz-foot2' + (ans ? '' : ' idle') + '">' + t + '<button class="btn ' + (ans && ok ? 'green' : '') + '" data-act="' + act + '"' + (ans ? '' : ' disabled tabindex="-1"') + '>' + label + '</button></div>';
+  }
   function viewQuiz() {
     var z = state.z, it = z.items[z.i], answered = z.i + (z.picked !== null ? 1 : 0);
     var pct = Math.round(answered / z.items.length * 100);
@@ -3292,19 +3294,12 @@
       return '<button class="' + cls + '" data-act="quiz-pick" data-id="' + i + '"' + (z.picked !== null ? ' disabled' : '') + '>' + esc(o.ko) + '</button>';
     }).join('') + '</div>';
     var reveal = '';
-    if (z.picked !== null && z.kind === 'listen') {
-      reveal = '<div class="qz-reveal"><div class="zh">' + esc(it.zh) + '</div><div class="py">' + esc(it.py) + '</div><div class="kr">' + esc(kr(it.py)) + '</div></div>';
+    if (z.kind === 'listen') {
+      reveal = '<div class="qz-reveal-slot">' + (z.picked !== null ? '<div class="qz-reveal"><div class="zh">' + esc(it.zh) + '</div><div class="py">' + esc(it.py) + '</div><div class="kr">' + esc(kr(it.py)) + '</div></div>' : '') + '</div>';
     }
-    var verdict = '<div class="qz-slot">';
-    if (z.picked !== null) {
-      var vok = it.options[z.picked].ok;
-      verdict += '<div class="qz-verdict ' + (vok ? 'ok' : 'no') + '" role="status"><img src="img/' + (vok ? 'qz-ok' : 'qz-no') + '.webp" alt="" draggable="false">' +
-        '<div class="qv-t"><b>' + (vok ? '맞았어요!' : '틀렸어요!') + '</b><span>' + (vok ? (z.combo >= 2 ? '연속 ' + z.combo + '번 정답' : '잘했어요') : '괜찮아요, 다시 해봐요') + '</span></div></div>';
-    }
-    verdict += '</div>';
-    var foot = z.picked !== null
-      ? '<div class="footer"><button class="btn ' + (it.options[z.picked].ok ? 'green' : '') + '" data-act="quiz-next">' + (z.i + 1 >= z.items.length ? '결과 보기' : '다음') + '</button></div>' : '';
-    return '<div class="screen qz-fit">' + top + '<div class="qz-wrap qz-ctr' + (z.picked !== null ? ' qz-foot' : '') + '">' + prompt + verdict + opts + reveal + '</div>' + foot + '</div>';
+    var vok = z.picked !== null && it.options[z.picked].ok;
+    var foot = qzFoot(z.picked !== null, vok, vok ? (z.combo >= 2 ? '연속 ' + z.combo + '번 정답' : '잘했어요') : '괜찮아요, 다시 해봐요', 'quiz-next', z.i + 1 >= z.items.length ? '결과 보기' : '다음');
+    return '<div class="screen qz-fit">' + top + '<div class="qz-wrap qz-ctr">' + prompt + reveal + opts + '</div>' + foot + '</div>';
   }
 
   /* ---------- 연습 세션 ---------- */
@@ -3434,6 +3429,7 @@
     var s = state.s;
     if (s.solved > 0 || Object.keys(s.first).length) {
       var body = s.kind === 'dialog' ? '푼 ' + s.solved + '번까지는 학습 기록에 더해져요.'
+        : s.kind === 'review' ? '푼 ' + s.solved + '문제는 이미 복습으로 인정됐어요. 남은 문제는 다음에 이어서 할 수 있어요.'
         : '푼 ' + s.solved + '문제까지는 저장돼요.' + (s.kind === 'lesson' && !s.cleared ? ' ' + CLEAR_COUNT + '문제를 채우면 레슨이 완료돼요.' : '') + ' 다음에 이어서 할 수 있어요.';
       askConfirm({ title: '연습을 그만할까요?', body: body, ok: '저장하고 나가기', cancel: '계속하기', m: 'ask' }, function () { savePartial(); stopRec(); stopSpeak(); go('tab'); });
     } else {
@@ -3776,7 +3772,7 @@
     var it = c.seq[c.si], w = hskList(c.lv)[it.i];
     c.phase = 'intro';
     render();
-    speak(w[0], it.kind === 'new' ? 0.8 : 1.15);
+    speak(w[0], it.kind === 'new' ? 0.8 : 0.9);
     clearTimeout(c.timer);
     c.timer = setTimeout(function () { if (chAlive(c, tok) && c.phase === 'intro') { c.si++; chShowSeq(); } }, it.ms);
   }
@@ -3919,7 +3915,7 @@
       if (!c.seq[c.si]) return '<div class="screen"></div>';
       var it = c.seq[c.si], w = list[it.i], isNew = it.kind === 'new';
       var dots = c.seq.map(function (s, k) { return '<i class="' + (k < c.si ? 'done' : k === c.si ? 'cur' : '') + (s.kind === 'new' ? ' nw' : '') + '"></i>'; }).join('');
-      return '<div class="screen">' + top + '<div class="qz-wrap ch-wrap">' + chStrip(c) +
+      return '<div class="screen qz-fit">' + top + '<div class="qz-wrap ch-wrap ch-intro">' + chStrip(c) +
         '<button class="ch-card ' + (isNew ? 'new' : 'old') + '" data-act="ch-skip" aria-label="다음으로">' +
         '<span class="ch-tag">' + (isNew ? '✨ 새 카드' : '다시 보기') + '</span>' +
         '<span class="ch-zh" style="font-size:' + chFit(w[0], true) + '">' + esc(w[0]) + '</span><span class="ch-py">' + esc(w[1]) + '</span>' +
@@ -3941,7 +3937,7 @@
     var fbHtml = fb ? '<div class="ch-fb ' + (c.ok ? 'ok' : 'no') + '">' + chImg(!c.ok ? 'sad' : c.grad ? 'grad' : c.combo >= 3 ? 'fire' : 'cheer', 'chr-fb') + '<b class="zh">' + esc(t[0]) + '</b><span>' + esc(t[1]) + ' · ' + esc(t[2].split(',')[0]) + '</span>' +
       (c.ok ? '<em>' + (c.grad ? icn('grad-cap') + ' 졸업!' : '+1') + '</em>' : '<em>' + (c.timeout ? '시간 초과' : '아쉬워요') + '</em>') + '</div>' : '<div class="ch-fb ghost"></div>';
     var bar = fb ? '<div class="ch-timer"><i style="width:0"></i></div>' : '<div class="ch-timer run"><i style="animation-duration:' + c.secs + 's"></i></div>';
-    return '<div class="screen">' + top + '<div class="qz-wrap ch-wrap">' + chStrip(c) +
+    return '<div class="screen qz-fit">' + top + '<div class="qz-wrap ch-wrap ch-ask">' + chStrip(c) +
       '<div class="ch-q"><button class="listen-btn' + (fb ? '' : ' ping') + '" data-act="ch-hear" aria-label="다시 듣기">' + I.spk + '</button>' +
       '<div class="qz-cap">소리를 듣고 한자를 찾아요 · ' + (c.qi + 1) + '/' + c.qs.length + '</div></div>' +
       bar + '<div class="ch-grid">' + tiles + '</div>' + fbHtml + '</div></div>';
@@ -4151,7 +4147,7 @@
       return;
     }
     s.cur = s.queue[0];
-    saveResume(s);
+    if (s.kind === 'review') savePartial(); else saveResume(s);   // 복습은 한 문제 풀 때마다 바로 인정돼요
     s.tries = 0; s.revealed = false; s.showKo = false; s.phase = 'ask'; s.heard = ''; s.pass = false; s.msg = ''; s.live = ''; s.guideOn = false; s.wordsOpen = false; s.hint = false;
     render();
     sayCurrentQuestion();
@@ -4322,6 +4318,7 @@
       case 'google': signIn(); break;
       case 'lg-later': loginLater(); break;
       case 'open-pay': go('pay', { payWhy: null }); break;
+      case 'ai-login': requireLogin('ai', null); break;
       case 'buy': buyPlan(id); break;
       case 'coupon-redeem': redeemCoupon(); break;
       case 'test-reset': resetPlan(); break;
