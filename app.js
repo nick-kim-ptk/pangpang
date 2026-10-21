@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v132';
+  var APP_VERSION = 'v133';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -624,9 +624,9 @@
       acStop(); go('tab');
     }
     else if (sc === 'practice') quitPractice();
-    else if (sc === 'quiz') { stopSpeak(); go(state.z && state.z.hsk ? 'hsk' : 'tab'); }
-    else if (sc === 'hskstudy') { stopSpeak(); clearTimeout(hskTimer); store.saveProfile(); go(state.hc && state.hc.mode === 'due' ? 'tab' : 'hsk'); }
-    else if (sc === 'tone') { stopSpeak(); go('hsk'); }
+    else if (sc === 'quiz') { stopSpeak(); go('tab', { tab: 'words' }); }
+    else if (sc === 'hskstudy') { stopSpeak(); clearTimeout(hskTimer); store.saveProfile(); go('tab', { tab: 'words' }); }
+    else if (sc === 'tone') { stopSpeak(); go('tab', { tab: 'words' }); }
     else if (sc === 'aichats') go('tab');
     else if (sc === 'aichatlog') go(state.chatFrom === 'all' ? 'aichats' : 'tab');
     else if (sc === 'hsk') go('tab');
@@ -634,7 +634,7 @@
     else if (sc === 'pay') go('tab');
     else if (sc === 'privacy') go(state.privFrom === 'login' ? 'login' : 'tab');
     else if (sc === 'speed') { stopSpeed(); go('tab'); }
-    else if (sc === 'chain') { chStop(); go('hsk'); }
+    else if (sc === 'chain') { chStop(); go('tab', { tab: 'words' }); }
     else if (sc === 'scene') { stopSpeak(); scStopRec(); state.sc = null; go('tab'); }
     else if (sc === 'done') go('tab', { tab: 'home' });
     else if (sc === 'feedback' || sc === 'account' || sc === 'coupon') go('prefs');
@@ -3073,16 +3073,40 @@
     var foot = res ? '<div class="footer"><button class="btn ' + (res.ok ? 'green' : '') + '" data-act="tone-next">' + (tn.i + 1 >= tn.items.length ? '결과 보기' : '다음') + '</button></div>' : '';
     return '<div class="screen">' + top + '<div class="qz-wrap">' + prompt + slots + verdict + pad + '</div>' + foot + '</div>';
   }
+  // 단어장 탭의 HSK 영역: 급을 고르면 학습 방식 4가지가 바로 보여요
+  function hskGate(id) {
+    var lv = parseInt(id, 10);
+    if (!hskLocked(lv)) return false;
+    go('pay', { payWhy: 'HSK ' + lv + '급은 멤버십이 필요해요. 1급은 무료예요.' });
+    return true;
+  }
+  function hskLvSel() {
+    var v = state.hskLv;
+    if (!v) { try { v = parseInt(localStorage.getItem('pangpang.hsklv'), 10); } catch (e) { /* 무시 */ } }
+    return [1, 2, 3, 4].indexOf(v) >= 0 ? v : 1;
+  }
   function hskSection() {
     if (!Object.keys(HSKW).length) return '';
-    var wd = hskDue(0).length;
+    var lv = hskLvSel(), n = hskList(lv).length, k = hskCount(lv), pct = n ? Math.round(k / n * 100) : 0;
+    var wd = hskDue(0).length, rec = chRec(lv), locked = hskLocked(lv);
     var dueCard = wd ? '<button class="hsk-due" data-act="hsk-due"><span class="hd-t">오늘 복습할 단어 <b>' + wd + '개</b></span><span class="chip y">복습</span></button>' : '';
-    return '<div class="section-title" style="margin-top:24px">HSK 단어</div><p class="hsk-note under-title">' + HSK_NOTE + '</p>' + dueCard + '<ul class="list">' + [1, 2, 3, 4].map(function (lv) {
-      var n = hskList(lv).length, k = hskCount(lv), pct = n ? Math.round(k / n * 100) : 0;
-      return '<li><button class="item" data-act="hsk-open" data-id="' + lv + '"><span class="num">' + lv + '</span><span class="txt"><div class="t">HSK ' + lv + '급</div>' +
-        '<div class="s">단어 ' + n + '개 · 익힌 ' + k + '개</div><div class="meter g" style="margin-top:6px"><i style="width:' + pct + '%"></i></div></span>' +
-        (hskLocked(lv) ? '<span class="chip lockchip">' + I.lock + 'PRO</span>' : '') + '</button></li>';
-    }).join('') + '</ul>';
+    var chips = '<div class="hsk-chips" role="tablist" aria-label="HSK 급 선택">' + [1, 2, 3, 4].map(function (l) {
+      return '<button role="tab" class="hsk-chip' + (l === lv ? ' on' : '') + '" data-act="hsk-lv" data-id="' + l + '" aria-selected="' + (l === lv) + '">' + (hskLocked(l) ? '<i class="hc-lock">' + I.lock + '</i>' : '') + l + '급</button>';
+    }).join('') + '</div>';
+    function mode(act, ico, title, sub, tag) {
+      return '<button class="hsk-mode' + (locked ? ' lk' : '') + '" data-act="' + act + '" data-id="' + lv + '"><span class="hm-ico">' + ico + '</span>' +
+        '<b>' + title + '</b><span class="hm-sub">' + sub + '</span>' + (tag ? '<em class="hm-tag">' + tag + '</em>' : '') + '</button>';
+    }
+    return '<div class="section-title" style="margin-top:28px">HSK 단어</div><p class="hsk-note under-title">' + HSK_NOTE + '</p>' + dueCard + chips +
+      (locked ? '<p class="hsk-lock-note">' + I.lock + ' ' + lv + '급은 멤버십이 필요해요. 1급은 무료예요.</p>' : '') +
+      '<div class="hsk-modes">' +
+      mode('hsk-study', '🃏', '카드 학습', '밀어서 외우기', '') +
+      mode('hsk-quiz', '📝', '퀴즈', '소리·뜻 고르기', '') +
+      mode('ch-start', '🔗', '기억 사슬', rec.best ? '최고 ' + rec.best + '단계' : '몇 단계까지 갈까?', rec.plays ? '' : 'NEW') +
+      mode('tone-start', '🎵', '성조 연습', '소리로 성조 맞히기', '') + '</div>' +
+      '<button class="hsk-list-link" data-act="hsk-open" data-id="' + lv + '"><span class="hl-t">단어 목록 보기</span>' +
+      '<span class="hl-s">' + n + '개 중 ' + k + '개 익혔어요</span><span class="hl-chev"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg></span>' +
+      '<span class="meter g hl-m"><i style="width:' + pct + '%"></i></span></button>';
   }
   function hskRow(lv, w, i) {
     var on = hskKnown(lv, i);
@@ -3098,10 +3122,6 @@
       '<h1 class="big-title" style="margin-top:0">HSK ' + lv + '급 단어</h1>' +
       '<p class="sub-title" id="hsk-prog">' + list.length + '개 중 ' + k + '개 익혔어요</p>' +
       '<div class="hsk-new"><em class="perk-tag" style="margin:0">개정된 신 HSK 3.0</em> 새 시험 기준 단어예요</div>' +
-      '<div class="hsk-btns"><button class="btn" data-act="hsk-study" data-id="' + lv + '">카드 학습</button>' +
-      '<button class="btn gray" data-act="hsk-quiz" data-id="' + lv + '">퀴즈</button></div>' +
-      '<div class="hsk-btns2 ch-entry"><button class="ch-btn" data-act="ch-start" data-id="' + lv + '"><span class="ch-btn-ico">🔗</span><span class="ch-btn-t"><b>기억 사슬</b><em>소리 듣고 한자 찾기 · 몇 단계까지 갈까?</em></span><span class="ch-btn-best">' + (chRec(lv).best ? '최고 ' + chRec(lv).best + '단계' : '도전') + '</span></button></div>' +
-      '<div class="hsk-btns2"><button class="btn soft" data-act="tone-start" data-id="' + lv + '">성조 연습 (소리 듣고 성조 맞히기)</button></div>' +
       '<div class="seg-row"><button class="seg-b' + (!h.unknownOnly ? ' on' : '') + '" data-act="hsk-filter" data-v="all">전체</button>' +
       '<button class="seg-b' + (h.unknownOnly ? ' on' : '') + '" data-act="hsk-filter" data-v="unknown">모르는 단어만</button></div>' +
       '<div class="words">' + (rows || emptyState('search', { title: '모르는 단어가 없어요', desc: '전부 익혔어요. 대단해요!', badge: { text: '0개', dot: '#0e9f63' }, cta: { act: 'hsk-filter', v: 'all', label: '전체 보기' } })) + '</div>' +
@@ -4499,8 +4519,9 @@
       case 'hsk-open':
         if (hskLocked(parseInt(id, 10))) { go('pay', { payWhy: 'HSK ' + id + '급은 멤버십이 필요해요. 1급은 무료예요.' }); break; }
         state.hsk = { lv: parseInt(id, 10), unknownOnly: false }; go('hsk'); break;
-      case 'hsk-study': startHskStudy(parseInt(id, 10)); break;
-      case 'hsk-quiz': startHskQuiz(parseInt(id, 10)); break;
+      case 'hsk-lv': state.hskLv = parseInt(id, 10); try { localStorage.setItem('pangpang.hsklv', String(state.hskLv)); } catch (e) { /* 무시 */ } sfx('tap'); renderKeep(); break;
+      case 'hsk-study': if (hskGate(id)) break; startHskStudy(parseInt(id, 10)); break;
+      case 'hsk-quiz': if (hskGate(id)) break; startHskQuiz(parseInt(id, 10)); break;
       case 'chat-open': state.chatFrom = state.screen === 'aichats' ? 'all' : 'tab'; go('aichatlog', { chatId: id }); break;
       case 'chat-all': go('aichats'); break;
       case 'chat-del': askConfirm({ title: '이 기록을 지울까요?', body: '지운 대화는 되돌릴 수 없어요.', ok: '지우기', cancel: '취소', danger: true }, function () { chatDel(id); goBack(); toast('기록을 지웠어요'); }); break;
@@ -4508,9 +4529,9 @@
       case 'ch-skip': chSkip(); break;
       case 'ch-pick': chAnswer(+id); break;
       case 'ch-hear': if (state.ch && state.ch.phase === 'ask') speak(hskList(state.ch.lv)[state.ch.qs[state.ch.qi]][0], 0.85); break;
-      case 'ch-quit': if (state.ch && state.ch.stage > 1) { chSaveRec(state.ch); } chStop(); go('hsk'); break;
-      case 'ch-back': state.hsk = state.hsk || { lv: parseInt(id, 10) }; go('hsk'); break;
-      case 'tone-start': startTone(parseInt(id, 10)); break;
+      case 'ch-quit': if (state.ch && state.ch.stage > 1) { chSaveRec(state.ch); } chStop(); go('tab', { tab: 'words' }); break;
+      case 'ch-back': go('tab', { tab: 'words' }); break;
+      case 'tone-start': if (hskGate(id)) break; startTone(parseInt(id, 10)); break;
       case 'tone-pick': tonePick(parseInt(id, 10)); break;
       case 'tone-slot': if (state.tn && !state.tn.res) { state.tn.cur = state.tn.cur.slice(0, parseInt(id, 10)); sfx('tap'); render(); } break;
       case 'tone-next': toneNext(); break;
@@ -4526,7 +4547,7 @@
       case 'sc-quit': stopSpeak(); scStopRec(); state.sc = null; go('tab'); break;
       case 'sc-mission': scFinish(true); break;
       case 'sc-finish': scFinish(false); break;
-      case 'tone-quit': stopSpeak(); go('hsk'); break;
+      case 'tone-quit': stopSpeak(); go('tab', { tab: 'words' }); break;
       case 'hsk-flip': if (state.hc) { state.hc.flip = !state.hc.flip; sfx('tap'); render(); } break;
       case 'hsk-mark': window.flyCard(el.getAttribute('data-v') === 'yes'); break;
       case 'hsk-filter': state.hsk.unknownOnly = el.getAttribute('data-v') === 'unknown'; render(); break;
@@ -4544,7 +4565,7 @@
       case 'quiz-pick': quizPick(parseInt(id, 10)); break;
       case 'qz-peek': if (state.z) { state.z.peek = !state.z.peek; render(); } break;
       case 'quiz-next': quizNext(); break;
-      case 'quiz-quit': stopSpeak(); go(state.z && state.z.hsk ? 'hsk' : 'tab'); break;
+      case 'quiz-quit': stopSpeak(); go('tab', { tab: 'words' }); break;
       case 'fav': toggleFav(el.getAttribute('data-text')); break;
       case 'set-kr': setProfile({ kr: el.getAttribute('data-v') === 'on' }); break;
       case 'set-sound': setProfile({ sound: el.getAttribute('data-v') === 'on' }); sfx('pop'); break;

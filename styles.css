@@ -2013,3 +2013,25 @@ html, body, * { scrollbar-width: none; -ms-overflow-style: none; }
   .ch-fb { min-height: 52px; padding-top: var(--sp-2); padding-bottom: var(--sp-2); }
   .ch-grid { gap: var(--sp-2); }
 }
+
+/* v133 단어장 탭 HSK 영역: 급 선택 + 학습 방식 카드 */
+.hsk-chips { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-2); margin: var(--sp-3) 0; }
+.hsk-chip { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 4px; padding: 10px 0; border: 0; border-radius: 999px; background: var(--card); color: var(--ink-2); font: inherit; font-size: 15px; font-weight: 700; box-shadow: inset 0 0 0 1.5px var(--line); cursor: pointer; }
+.hsk-chip.on { background: var(--y); color: #1A2139; box-shadow: none; }
+.hc-lock { display: inline-flex; opacity: .7; }
+.hc-lock svg { width: 12px; height: 12px; }
+.hsk-lock-note { display: flex; align-items: center; gap: 6px; margin: 0 0 var(--sp-3); font-size: 13px; color: var(--ink-3); }
+.hsk-lock-note svg { width: 13px; height: 13px; }
+.hsk-modes { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3); }
+.hsk-mode { position: relative; display: grid; align-content: start; gap: var(--sp-1); min-height: 112px; padding: var(--sp-4); border: 0; border-radius: 20px; text-align: left; font: inherit; color: var(--navy); background: var(--card); box-shadow: inset 0 0 0 1.5px var(--line), 0 4px 0 var(--line); cursor: pointer; }
+.hsk-mode:active { transform: translateY(3px); box-shadow: inset 0 0 0 1.5px var(--line), 0 1px 0 var(--line); }
+.hsk-mode b { font-size: 16px; font-weight: 800; }
+.hsk-mode.lk { opacity: .72; }
+.hm-ico { font-size: 26px; line-height: 1; margin-bottom: var(--sp-2); }
+.hm-sub { font-size: 12.5px; line-height: 1.4; color: var(--ink-3); word-break: keep-all; }
+.hm-tag { position: absolute; top: var(--sp-3); right: var(--sp-3); font-style: normal; font-size: 11px; font-weight: 800; padding: 3px 8px; border-radius: 999px; background: var(--y); color: #1A2139; }
+.hsk-list-link { position: relative; display: grid; grid-template-columns: 1fr auto; align-items: center; row-gap: var(--sp-2); width: 100%; margin-top: var(--sp-3); padding: var(--sp-4); border: 0; border-radius: 20px; text-align: left; font: inherit; color: var(--navy); background: var(--card); box-shadow: inset 0 0 0 1.5px var(--line); cursor: pointer; }
+.hl-t { font-size: 16px; font-weight: 800; grid-column: 1; }
+.hl-s { grid-column: 1; font-size: 12.5px; color: var(--ink-3); margin-top: calc(var(--sp-1) * -1); }
+.hl-chev { grid-column: 2; grid-row: 1 / 3; color: var(--ink-3); display: inline-flex; }
+.hl-m { grid-column: 1 / -1; }
