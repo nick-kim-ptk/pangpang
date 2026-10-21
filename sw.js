@@ -1,6 +1,6 @@
 /* 팽팽이 서비스 워커: 앱 파일을 저장해 두고(오프라인 열기), 복습 알림을 보여 줘요. */
 var CACHE = 'pangpang-v1';
-var SHELL = ['./', 'index.html', 'styles.css', 'config.js', 'lessons.js', 'phrases.js', 'grade.js', 'hangul.js', 'variants.js', 'hsk.js', 'app.js',
+var SHELL = ['./', 'index.html', 'styles.css', 'config.js', 'lessons.js', 'scenes.js', 'phrases.js', 'grade.js', 'hangul.js', 'variants.js', 'hsk.js', 'app.js',
   'manifest.webmanifest', 'img/icon-192.png', 'img/icon-512.png', 'img/icon-maskable-512.png', 'img/snail-cheer.webp', 'img/pp-cheer.webp', 'img/pp-calm.webp', 'img/pp-wink.webp', 'img/snail-reading.webp', 'img/snail-phone-body.webp', 'img/snail-phone-blink.webp', 'img/snail-phone-marks.webp', 'img/pm/hello-body.webp', 'img/pm/hello-blink.webp', 'img/pm/hello-nihao.webp', 'img/pm/hello-annyeong.webp', 'img/pm/book-body.webp', 'img/pm/book-blink.webp', 'img/pm/ai-body.webp', 'img/pm/ai-blink.webp', 'img/pm/ai-marks.webp', 'img/pm/laptop-body.webp', 'img/pm/laptop-blink.webp', 'img/pm/laptop-desk.webp', 'img/qz-ok.webp', 'img/qz-no.webp'];
 
 self.addEventListener('install', function (e) {

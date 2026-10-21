@@ -1854,3 +1854,31 @@ html, body, * { scrollbar-width: none; -ms-overflow-style: none; }
 /* v127c 저장 문장: 스피커 위, 별 아래 */
 .prow-btns { flex: none; display: flex; flex-direction: column; align-items: center; gap: 2px; }
 .prow-btns .row-spk, .prow-btns .star { width: 40px; height: 36px; border-radius: 12px; }
+
+/* v128 상황 레슨 */
+.sc-head { display: flex; align-items: center; gap: 8px; margin-top: 24px; }
+.sc-ico { background: var(--soft) !important; color: inherit !important; font-size: 22px; font-weight: 400 !important; }
+.sc-stage { align-self: flex-start; display: inline-flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; color: var(--ink-2); margin: 4px 0 6px; }
+.sc-stage b { width: 22px; height: 22px; border-radius: 50%; background: var(--y); color: var(--on-yellow, var(--navy)); display: grid; place-items: center; font-size: 13px; }
+.sc-ctx { display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: var(--ink-2); margin: 6px 0 10px; }
+.sc-ctx em { font-style: normal; font-size: 13px; color: var(--ink-3); }
+.sc-card { position: relative; background: var(--card); border-radius: 22px; padding: 22px 18px 20px; box-shadow: inset 0 0 0 1.5px var(--line); text-align: center; }
+.sc-card .sc-spk { position: absolute; top: 10px; right: 10px; width: 40px; height: 40px; }
+.sc-line { padding: 14px 4px 0; display: grid; gap: 6px; }
+.sc-zh { font-family: var(--zh); font-size: min(34px, calc((100vw - 80px) / 8)); line-height: 1.35; font-weight: 800; color: var(--navy); word-break: keep-all; }
+.sc-zh.big { font-size: min(34px, calc((100vw - 80px) / 8)); }
+.sc-py { font-size: 16px; font-weight: 700; color: var(--amber-ink); }
+.sc-kr { font-size: 14px; color: var(--ink-2); }
+.sc-ko { font-size: 15px; color: var(--ink-2); }
+.sc-card.sc-q { padding-top: 28px; display: grid; gap: 10px; }
+.sc-blank { display: inline-block; min-width: 2.2em; margin: 0 2px; border-bottom: 3px solid var(--amber-ink); color: transparent; }
+.sc-key { background: color-mix(in srgb, var(--y) 55%, transparent); color: inherit; border-radius: 6px; padding: 0 3px; }
+.sc-heard { margin-top: 12px; text-align: center; font-size: 14px; color: var(--ink-3); font-family: var(--zh); }
+.zh-opt { font-family: var(--zh); font-size: 22px; text-align: center; }
+.sc-mis { align-items: center; text-align: center; padding-top: 12px; }
+.sc-mis-ico { font-size: 64px; line-height: 1; margin: 10px 0 4px; }
+.sc-mis-card { width: 100%; background: var(--card); border-radius: 20px; padding: 18px; box-shadow: inset 0 0 0 1.5px var(--line); display: grid; gap: 6px; margin-bottom: 14px; }
+.sc-mis-card span { font-size: 13px; font-weight: 700; color: var(--amber-ink); }
+.sc-mis-card b { font-size: 19px; line-height: 1.4; color: var(--navy); word-break: keep-all; }
+.sc-old { margin-top: 28px; margin-bottom: 10px; }
+.sc-head + .hsk-note { margin-top: 6px; }

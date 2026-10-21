@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v127';
+  var APP_VERSION = 'v128';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -600,7 +600,7 @@
 
   /* ---------- 화면 이동 ---------- */
   // 뒤로 가기: 폰의 뒤로 제스처·버튼(기록)과 화면 왼쪽 가장자리에서 오른쪽으로 미는 동작을 같이 처리해요
-  var SUBSCREEN = { pay: 1, privacy: 1, login: 1, intro: 1, practice: 1, quiz: 1, stats: 1, done: 1, hsk: 1, hskstudy: 1, tone: 1, feedback: 1, speed: 1, account: 1, coupon: 1, aicharge: 1, aichat: 1, aiall: 1, aichats: 1, aichatlog: 1, prefs: 1, about: 1, advisor: 1 };
+  var SUBSCREEN = { pay: 1, privacy: 1, login: 1, intro: 1, practice: 1, quiz: 1, stats: 1, done: 1, hsk: 1, hskstudy: 1, tone: 1, feedback: 1, speed: 1, account: 1, coupon: 1, aicharge: 1, aichat: 1, aiall: 1, aichats: 1, aichatlog: 1, scene: 1, prefs: 1, about: 1, advisor: 1 };
   var inSub = false, ignorePop = 0, backAnim = false;
   function syncHistory(screen) {
     try {
@@ -634,6 +634,7 @@
     else if (sc === 'pay') go('tab');
     else if (sc === 'privacy') go(state.privFrom === 'login' ? 'login' : 'tab');
     else if (sc === 'speed') { stopSpeed(); go('tab'); }
+    else if (sc === 'scene') { stopSpeak(); scStopRec(); state.sc = null; go('tab'); }
     else if (sc === 'done') go('tab', { tab: 'home' });
     else if (sc === 'feedback' || sc === 'account' || sc === 'coupon') go('prefs');
     else if (sc === 'intro' || sc === 'stats' || sc === 'aicharge' || sc === 'aiall' || sc === 'prefs' || sc === 'about' || sc === 'advisor') go('tab');
@@ -952,6 +953,8 @@
     return '<div class="screen"><div class="scroll with-nav" style="padding-top:28px">' +
       '<h1 class="big-title">전체 레슨</h1>' +
       '<p class="sub-title">' + '배운 내용을 활용해 보며 자연스럽게 익혀가요.' + '</p>' +
+      scenesSection() +
+      (SCENES.length ? '<div class="section-title sc-old">기존 레슨</div>' : '') +
       '<div class="lesson-progress"><div class="row"><b>' + n + ' / ' + LESSONS.length + '</b><span>레슨 완료</span></div>' +
       '<div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + pct + '"><i style="width:' + pct + '%"></i></div></div>' +
       practiceBlock() +
@@ -2305,6 +2308,7 @@
     else if (state.screen === 'speed') html = viewSpeed();
     else if (state.screen === 'hskstudy') html = viewHskStudy();
     else if (state.screen === 'tone') html = viewTone();
+    else if (state.screen === 'scene') html = viewScene();
     else if (state.screen === 'done') html = viewDone();
     $app.innerHTML = html + modalHtml();
     fitGreet();
@@ -3401,6 +3405,272 @@
     }
   }
 
+  /* ---------- 상황 레슨 (v128): 따라 말하기 → 빈칸 → 듣고 고르기 → AI 미션 ---------- */
+  var SCENES = window.SCENES || [];
+  var SC_STAGE = { speak: '따라 말하기', blank: '빈칸 채우기', listen: '듣고 고르기', mission: 'AI 미션' };
+  function scKey() { return 'pangpang.scenes.' + (state.user ? state.user.id : 'x'); }
+  function scProg() { try { return JSON.parse(localStorage.getItem(scKey()) || '{}'); } catch (e) { return {}; } }
+  function scMark(id, mission) {
+    var m = scProg(), o = m[id] || {};
+    o.done = true; o.at = o.at || new Date().toISOString(); if (mission) o.mission = true;
+    m[id] = o;
+    try { localStorage.setItem(scKey(), JSON.stringify(m)); } catch (e) { /* 무시 */ }
+  }
+  function sceneById(id) { return SCENES.filter(function (s) { return s.id === id; })[0]; }
+  function scenesSection() {
+    if (!SCENES.length) return '';
+    var pg = scProg();
+    return '<div class="sc-head"><div class="section-title" style="margin:0">상황 레슨</div><span class="chip y">NEW</span></div>' +
+      '<p class="hsk-note under-title">하나의 상황을 말해 보고, 풀어 보고, AI와 직접 써 봐요. 한 번에 3분이면 끝나요.</p>' +
+      '<ul class="list" style="margin-top:0">' + SCENES.map(function (s) {
+        var o = pg[s.id];
+        return '<li><button class="item" data-act="sc-open" data-id="' + s.id + '"><span class="num sc-ico">' + s.icon + '</span>' +
+          '<span class="txt"><div class="t">' + esc(s.title) + '</div><div class="s">' + esc(s.sub) + '</div></span>' +
+          (o && o.done ? '<span class="chip green">' + I.check + '완료</span>' : '<span class="chip soft">시작</span>') + '</button></li>';
+      }).join('') + '</ul>';
+  }
+  function scLcs(a, b) {
+    var L = [], i, j;
+    for (i = 0; i <= a.length; i++) { L.push([]); for (j = 0; j <= b.length; j++) L[i].push(0); }
+    for (i = a.length - 1; i >= 0; i--) for (j = b.length - 1; j >= 0; j--) L[i][j] = a[i] === b[j] ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
+    return L[0][0];
+  }
+  function scScore(zh, heard) {
+    var A = Array.from(Grade.normalize(zh)), B = Array.from(Grade.normalize(heard));
+    return A.length ? scLcs(A, B) / A.length : 0;
+  }
+  function scReset(c) { c.tries = 0; c.heard = ''; c.pass = false; c.picked = null; c.msg = ''; c.listening = false; c.noSR = false; }
+  function startScene(id) {
+    var sc = sceneById(id);
+    if (!sc) return;
+    var L = sc.lines, all = L.map(function (_, i) { return i; });
+    var blank = shuffle(all.slice()).slice(0, 4).map(function (i) {
+      var others = shuffle(all.filter(function (j) { return j !== i; })).slice(0, 2).map(function (j) { return L[j][3]; });
+      return { i: i, ans: L[i][3], opts: shuffle([L[i][3]].concat(others)) };
+    });
+    var listen = shuffle(all.slice()).slice(0, 4).map(function (i) {
+      var others = shuffle(all.filter(function (j) { return j !== i; })).slice(0, 2).map(function (j) { return { ko: L[j][2], ok: false }; });
+      return { i: i, opts: shuffle([{ ko: L[i][2], ok: true }].concat(others)) };
+    });
+    state.sc = { id: id, stage: 'speak', i: 0, blank: blank, listen: listen, right: 0, spoke: 0, combo: 0 };
+    scReset(state.sc);
+    go('scene');
+    scAuto();
+  }
+  function scLen(c, st) { var sc = sceneById(c.id); return st === 'speak' ? sc.lines.length : c[st].length; }
+  function scAuto() {
+    var c = state.sc;
+    if (!c) return;
+    setTimeout(function () {
+      if (state.screen !== 'scene' || state.sc !== c) return;
+      var sc = sceneById(c.id);
+      if (c.stage === 'speak' && !c.pass && !c.listening) speak(sc.lines[c.i][0], 0.8);
+      else if (c.stage === 'listen' && c.picked === null) speak(sc.lines[c.listen[c.i].i][0], 0.85);
+    }, 400);
+  }
+  function scAdvance() {
+    var c = state.sc;
+    if (!c) return;
+    stopSpeak(); scStopRec();
+    c.i++;
+    if (c.i >= scLen(c, c.stage)) {
+      c.i = 0;
+      c.stage = c.stage === 'speak' ? 'blank' : c.stage === 'blank' ? 'listen' : 'mission';
+    }
+    scReset(c);
+    render(); window.scrollTo(0, 0);
+    scAuto();
+  }
+  function scPick(idx) {
+    var c = state.sc;
+    if (!c || c.picked !== null) return;
+    var sc = sceneById(c.id);
+    var it = c[c.stage][c.i], ok = c.stage === 'blank' ? it.opts[idx] === it.ans : it.opts[idx].ok;
+    c.picked = idx;
+    if (ok) { c.right++; c.combo++; } else c.combo = 0;
+    sfx(ok ? 'right' : 'wrong', c.combo);
+    render();
+    if (c.stage === 'blank') setTimeout(function () { if (state.sc === c && c.picked === idx) speak(sc.lines[it.i][0], 0.85); }, 250);
+  }
+  function scTop(c) {
+    var total = scLen(c, 'speak') + scLen(c, 'blank') + scLen(c, 'listen');
+    var base = c.stage === 'speak' ? 0 : c.stage === 'blank' ? scLen(c, 'speak') : scLen(c, 'speak') + scLen(c, 'blank');
+    var resolved = c.pass || c.picked !== null;
+    var done = c.stage === 'mission' ? total : base + c.i + (resolved ? 1 : 0), pct = Math.round(done / total * 100);
+    return '<div class="topbar"><button class="icon-btn" data-act="sc-quit" aria-label="그만하기">' + I.close + '</button>' +
+      '<div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + pct + '"><i style="width:' + pct + '%"></i></div>' +
+      '<span class="chip" style="min-width:48px;justify-content:center">' + (c.stage === 'mission' ? total : Math.min(done + (resolved ? 0 : 1), total)) + '/' + total + '</span></div>';
+  }
+  function scStageTag(c) {
+    var n = { speak: 1, blank: 2, listen: 3, mission: 4 }[c.stage];
+    return '<div class="sc-stage"><b>' + n + '</b>' + SC_STAGE[c.stage] + '</div>';
+  }
+  function scVerdict(ok, c) {
+    return '<div class="qz-slot"><div class="qz-verdict ' + (ok ? 'ok' : 'no') + '" role="status"><img src="img/' + (ok ? 'qz-ok' : 'qz-no') + '.webp" alt="" draggable="false">' +
+      '<div class="qv-t"><b>' + (ok ? '맞았어요!' : '틀렸어요!') + '</b><span>' + (ok ? (c.combo >= 2 ? '연속 ' + c.combo + '번 정답' : '잘했어요') : '괜찮아요, 정답을 확인해 봐요') + '</span></div></div></div>';
+  }
+  function scLineBox(l, cls) {
+    return '<div class="sc-line ' + (cls || '') + '"><div class="sc-zh">' + esc(l[0]) + '</div><div class="sc-py">' + esc(l[1]) + '</div>' +
+      (kr(l[1]) ? '<div class="sc-kr">' + esc(kr(l[1])) + '</div>' : '') + '<div class="sc-ko">' + esc(l[2]) + '</div></div>';
+  }
+  function viewScene() {
+    var c = state.sc, sc = sceneById(c.id);
+    if (c.stage === 'mission') return viewSceneMission();
+    var top = scTop(c), last = c.i + 1 >= scLen(c, c.stage) && c.stage === 'listen';
+    if (c.stage === 'speak') {
+      var l = sc.lines[c.i], canSkip = c.pass || c.tries >= 2 || c.noSR;
+      var live = c.pass ? '' : c.msg ? esc(c.msg) : c.tries ? '다시 한번 말해 보세요' : '버튼을 누른 채로 따라 말해요';
+      var body = '<div class="qz-wrap">' + scStageTag(c) + '<div class="sc-ctx"><span>' + sc.icon + ' ' + esc(sc.title) + '</span><em>' + (c.i + 1) + '번째 문장</em></div>' +
+        '<div class="sc-card"><button class="round-btn sc-spk" data-act="say" data-text="' + esc(l[0]) + '" aria-label="듣기">' + I.spk + '</button>' + scLineBox(l, c.pass ? 'ok' : '') + '</div>' +
+        (c.pass ? scVerdict(true, c) : (c.heard ? '<div class="sc-heard">들린 말: ' + esc(c.heard) + '</div>' : '')) + '</div>';
+      var foot;
+      if (c.pass) foot = '<div class="footer"><button class="btn green" data-act="sc-next">다음</button></div>';
+      else foot = '<div class="mic-area"><div id="live" class="live hint">' + live + '</div>' +
+        (c.noSR ? '' : '<button id="scmic" class="mic' + (c.listening ? ' on' : '') + '" data-hold="scmic" aria-label="누른 채로 따라 말하기">' + I.mic + '</button>') +
+        (canSkip ? '<button class="link-btn" data-act="sc-skip">' + (c.noSR ? '따라 말했어요' : '넘어가기') + '</button>' : '<div style="height:20px"></div>') + '</div>';
+      return '<div class="screen">' + top + body + foot + '</div>';
+    }
+    var it = c[c.stage][c.i], l2 = sc.lines[it.i], answered = c.picked !== null, prompt, opts, ok = false;
+    if (c.stage === 'blank') {
+      var parts = l2[0].split(l2[3]).map(esc);
+      var shown = answered ? parts.join('<mark class="sc-key">' + esc(l2[3]) + '</mark>') : parts.join('<span class="sc-blank">＿＿</span>');
+      prompt = '<div class="sc-card sc-q"><div class="sc-zh big">' + shown + '</div><div class="sc-ko">' + esc(l2[2]) + '</div>' +
+        (answered ? '<div class="sc-py">' + esc(l2[1]) + '</div>' : '') + '</div>';
+      ok = answered && it.opts[c.picked] === it.ans;
+      opts = '<div class="qz-opts">' + it.opts.map(function (o, i) {
+        var cls = 'opt zh-opt';
+        if (answered) cls += o === it.ans ? ' ok' : (i === c.picked ? ' no' : ' dim');
+        return '<button class="' + cls + '" data-act="sc-pick" data-id="' + i + '"' + (answered ? ' disabled' : '') + '>' + esc(o) + '</button>';
+      }).join('') + '</div>';
+    } else {
+      prompt = '<div class="qz-prompt"><button class="listen-btn" data-act="say" data-text="' + esc(l2[0]) + '" aria-label="다시 듣기">' + I.spk + '</button><div class="qz-cap">소리를 듣고 알맞은 뜻을 골라요</div></div>';
+      ok = answered && it.opts[c.picked].ok;
+      opts = '<div class="qz-opts">' + it.opts.map(function (o, i) {
+        var cls = 'opt';
+        if (answered) cls += o.ok ? ' ok' : (i === c.picked ? ' no' : ' dim');
+        return '<button class="' + cls + '" data-act="sc-pick" data-id="' + i + '"' + (answered ? ' disabled' : '') + '>' + esc(o.ko) + '</button>';
+      }).join('') + '</div>';
+    }
+    var reveal = answered && c.stage === 'listen' ? '<div class="qz-reveal"><div class="zh">' + esc(l2[0]) + '</div><div class="py">' + esc(l2[1]) + '</div><div class="kr">' + esc(kr(l2[1])) + '</div></div>' : '';
+    var foot2 = answered ? '<div class="footer"><button class="btn ' + (ok ? 'green' : '') + '" data-act="sc-next">' + (last ? 'AI 미션으로' : '다음') + '</button></div>' : '';
+    return '<div class="screen">' + top + '<div class="qz-wrap">' + scStageTag(c) + prompt + (answered ? scVerdict(ok, c) : '') + opts + reveal + '</div>' + foot2 + '</div>';
+  }
+  function viewSceneMission() {
+    var c = state.sc, sc = sceneById(c.id), on = aiOn(), enough = on && aiBal() >= AI_CHAT_COST;
+    var note = !on ? 'AI 대화는 멤버십에서 쓸 수 있어요. 지금은 건너뛰고 마칠 수 있어요.' : (enough ? '대화 한 번에 ' + AI_CHAT_COST + ' 크레딧이 소모돼요.' : '크레딧이 부족해요. 지금은 건너뛰고 마칠 수 있어요.');
+    return '<div class="screen">' + scTop(c) + '<div class="qz-wrap sc-mis">' + scStageTag(c) +
+      '<div class="sc-mis-ico">' + sc.icon + '</div><h1 class="big-title" style="margin:6px 0 4px">배운 말로 직접 해 봐요</h1>' +
+      '<p class="sub-title" style="margin:0 0 16px">방금 익힌 문장을 AI 선생님과 실제처럼 써 보는 미션이에요.</p>' +
+      '<div class="sc-mis-card"><span>오늘의 미션</span><b>' + esc(sc.mission) + '</b></div>' +
+      '<p class="hsk-note" style="text-align:center">' + note + '</p></div>' +
+      '<div class="footer"><button class="btn" data-act="sc-mission"' + (enough ? '' : ' disabled') + '>AI와 해 보기</button>' +
+      '<button class="btn gray" data-act="sc-finish">다음에 할게요</button></div></div>';
+  }
+  function scFinish(withMission) {
+    var c = state.sc;
+    if (!c) return;
+    var sc = sceneById(c.id);
+    stopSpeak(); scStopRec();
+    var day = dayStr(new Date());
+    var d0 = state.daily[day] || { day: day, lessons: 0, answers: 0 };
+    var before = d0.answers, goal = state.profile.goal;
+    var d = { day: day, lessons: d0.lessons, answers: d0.answers + c.spoke + c.right };
+    state.daily[day] = d; store.saveDaily(d);
+    scMark(c.id, withMission);
+    if (withMission) {
+      state.ac = { mode: 'pick', topic: sc.mission, direct: true, busy: false };
+      state.sc = null;
+      go('aichat'); acStart();
+      return;
+    }
+    var stNow = streak();
+    var result = {
+      kind: 'scene', title: sc.title + ' 완료!',
+      line: '따라 말하기 ' + c.spoke + '문장, 퀴즈 ' + c.right + '/' + (c.blank.length + c.listen.length) + '개 정답이에요.',
+      answers: d.answers, goal: goal, goalHit: before < goal && d.answers >= goal,
+      milestone: (before === 0 && d.answers > 0 && MILESTONES.indexOf(stNow) >= 0) ? stNow : 0,
+      again: { act: 'sc-open', id: sc.id, label: '한 번 더 해보기' }
+    };
+    state.sc = null;
+    sfx(result.goalHit || result.milestone ? 'goal' : 'done');
+    go('done', { result: result });
+  }
+  // 따라 말하기: 누르고 있는 동안만 들어요 (연습 화면과 같은 방식)
+  var scRec = null, scHolding = false, scHoldTimer = null;
+  function scStopRec() {
+    scHolding = false; clearTimeout(scHoldTimer);
+    if (scRec) { try { scRec.abort(); } catch (e) { /* 이미 멈춤 */ } scRec = null; }
+  }
+  function scGrade(list) {
+    var c = state.sc, l = sceneById(c.id).lines[c.i], best = 0;
+    list.forEach(function (t) { best = Math.max(best, scScore(l[0], t)); });
+    c.heard = list[0];
+    if (best >= 0.6) { c.pass = true; c.spoke++; c.combo++; c.msg = ''; sfx('right', c.combo); setTimeout(function () { if (state.sc === c && c.pass) speak(l[0], 0.85); }, 250); }
+    else { c.tries++; c.combo = 0; c.msg = ''; sfx('wrong'); }
+    render();
+  }
+  function scListen(prev) {
+    prev = prev || '';
+    var c = state.sc;
+    var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!c) return;
+    if (!SR) { c.noSR = true; render(); toast('이 브라우저는 음성 인식을 지원하지 않아요'); return; }
+    if (scRec) return;
+    stopSpeak();
+    var finals = [], lastInterim = '', err = '', r = new SR();
+    scRec = r;
+    r.lang = 'zh-CN'; r.interimResults = true; r.maxAlternatives = 3; r.continuous = false;
+    r.onstart = function () {
+      if (state.sc !== c) return;
+      c.listening = true;
+      var m = document.getElementById('scmic'), lv = document.getElementById('live');
+      if (m) m.classList.add('on');
+      if (lv) { lv.textContent = '듣고 있어요…'; lv.classList.remove('hint'); lv.classList.add('wait'); }
+      if (!scHolding) { try { r.stop(); } catch (e) { /* noop */ } }
+    };
+    r.onresult = function (e) {
+      var res = e.results[e.results.length - 1];
+      lastInterim = res[0].transcript;
+      if (res.isFinal) { finals = []; for (var i = 0; i < res.length; i++) finals.push(res[i].transcript); }
+    };
+    r.onerror = function (e) { err = e.error || 'error'; };
+    r.onend = function () {
+      if (scRec === r) scRec = null;
+      if (state.sc !== c || state.screen !== 'scene' || c.stage !== 'speak' || c.pass) return;
+      var fatal = err === 'not-allowed' || err === 'service-not-allowed' || err === 'audio-capture' || err === 'network';
+      if (scHolding && !fatal) {
+        var carry = prev + (finals.length ? finals[0] : lastInterim);
+        try { scListen(carry); return; } catch (e) { /* 아래에서 마무리 */ }
+      }
+      c.listening = false;
+      var list = finals.length ? finals : (lastInterim ? [lastInterim] : []);
+      if (prev) list = list.length ? list.map(function (t) { return prev + t; }) : [prev];
+      if (list.length) { scGrade(list); return; }
+      c.tries++;
+      c.msg = err === 'not-allowed' || err === 'service-not-allowed' ? '마이크 권한을 허용해 주세요'
+        : err === 'audio-capture' ? '마이크를 찾지 못했어요'
+        : err === 'network' ? '음성 인식 서버에 연결하지 못했어요' : err === 'aborted' ? '' : '목소리가 잘 안 들렸어요. 버튼을 누른 채로 말해 보세요';
+      render();
+    };
+    try { r.start(); } catch (e) { scRec = null; c.msg = '음성 인식을 시작하지 못했어요. 다시 눌러 주세요'; render(); }
+  }
+  document.addEventListener('pointerdown', function (e) {
+    var t = e.target && e.target.closest && e.target.closest('[data-hold="scmic"]');
+    var c = state.sc;
+    if (!t || state.screen !== 'scene' || !c || c.stage !== 'speak' || c.pass || scRec || state.modal) return;
+    e.preventDefault();
+    scHolding = true; clearTimeout(scHoldTimer);
+    sfx('pop');
+    scListen();
+  });
+  ['pointerup', 'pointercancel'].forEach(function (ev) {
+    document.addEventListener(ev, function () {
+      if (!scHolding) return;
+      scHolding = false; clearTimeout(scHoldTimer);
+      scHoldTimer = setTimeout(function () { if (scRec && !scHolding) { try { scRec.stop(); } catch (e) { /* noop */ } } }, 450);
+    });
+  });
+
   function startDialog(id) {
     var d = (window.DIALOGS || []).filter(function (x) { return x.id === id; })[0];
     if (!d) return;
@@ -3984,6 +4254,13 @@
       case 'tone-pick': tonePick(parseInt(id, 10)); break;
       case 'tone-slot': if (state.tn && !state.tn.res) { state.tn.cur = state.tn.cur.slice(0, parseInt(id, 10)); sfx('tap'); render(); } break;
       case 'tone-next': toneNext(); break;
+      case 'sc-open': startScene(id); break;
+      case 'sc-next': scAdvance(); break;
+      case 'sc-skip': if (state.sc) { state.sc.combo = 0; scAdvance(); } break;
+      case 'sc-pick': scPick(+id); break;
+      case 'sc-quit': stopSpeak(); scStopRec(); state.sc = null; go('tab'); break;
+      case 'sc-mission': scFinish(true); break;
+      case 'sc-finish': scFinish(false); break;
       case 'tone-quit': stopSpeak(); go('hsk'); break;
       case 'hsk-flip': if (state.hc) { state.hc.flip = !state.hc.flip; sfx('tap'); render(); } break;
       case 'hsk-mark': window.flyCard(el.getAttribute('data-v') === 'yes'); break;
