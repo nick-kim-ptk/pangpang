@@ -2328,3 +2328,7 @@ html, body, * { scrollbar-width: none; -ms-overflow-style: none; }
 .upd-bar { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(80px + var(--safe-b)); z-index: 90; display: flex; align-items: center; gap: var(--sp-3); max-width: calc(100vw - 32px); padding: 12px 18px; border: 0; border-radius: 28px; font: inherit; font-size: 14px; background: #1a2139; color: #fff; box-shadow: 0 8px 24px rgba(0,0,0,.28); cursor: pointer; }
 .upd-bar b { font-weight: 800; }
 .upd-bar span { color: #eccd4c; font-weight: 800; }
+
+/* v150 소나기 퀴즈 시작 화면 간격 */
+.rn-rules { margin-bottom: var(--sp-3); }
+.rn-pytog { margin-top: var(--sp-4); }

@@ -546,3 +546,6 @@ select kind, count(*) n, round(avg(in_tokens)) avg_in, round(avg(cache_read)) av
 - 새 버전이 폰에 늦게 반영되던 문제 개선: 서비스워커가 파일을 받을 때 브라우저 저장본(GitHub Pages 10분 캐시)을 거치지 않고 서버에 먼저 확인해요.
 - 앱을 열 때·화면으로 돌아올 때 새 버전을 확인하고, 새 버전을 받으면 화면 아래에 '새 버전이 있어요 · 눌러서 업데이트'가 떠요.
 - 배포 알림: `.github/workflows/notify-deploy.yml` (GitHub Secrets의 NTFY_TOPIC 필요). 테스트가 끝나면 이 파일만 지우면 돼요.
+
+## v150
+- 소나기 퀴즈: 병음 힌트 기본값을 꺼짐으로, 힌트 버튼 위 간격 확대, 결과의 '놓친 단어' 문구 삭제.

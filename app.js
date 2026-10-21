@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v149';
+  var APP_VERSION = 'v150';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -3986,7 +3986,7 @@
     try { localStorage.setItem(rnKey(), JSON.stringify(all)); } catch (e) { /* 무시 */ }
     return nb;
   }
-  function rnPyOn() { try { return localStorage.getItem('pangpang.rain.py') !== '0'; } catch (e) { return true; } }
+  function rnPyOn() { try { return localStorage.getItem('pangpang.rain.py') === '1'; } catch (e) { return false; } }
   function rnStop() { var r = state.rn; if (r) { r.tok++; cancelAnimationFrame(r.raf); clearTimeout(r.tm); } stopSpeak(); }
   function rnAlive(r, tok) { return state.screen === 'rain' && state.rn === r && r.tok === tok; }
   function startRain(lv) {
@@ -4145,11 +4145,10 @@
     var lv = r.lv, goal = state.profile.goal, now = todayAnswers(), hit = r.before < goal && now >= goal;
     var nb = rnSaveBest(lv, r.score), cleared = r.lives > 0;
     rnStop();
-    var miss = r.missed.length ? ' 놓친 단어: ' + r.missed.slice(0, 3).join(', ') + (r.missed.length > 3 ? ' 외 ' + (r.missed.length - 3) + '개' : '') + '.' : '';
     sfx(hit ? 'goal' : 'done');
     go('done', { result: {
       kind: 'rain', title: cleared ? '소나기가 그쳤어요!' : '소나기 퀴즈 끝!',
-      line: r.targets.length + '개 중 ' + r.right + '개 잡았어요. ' + r.score + '점' + (nb ? ' (최고 기록!)' : '') + '.' + miss,
+      line: r.targets.length + '개 중 ' + r.right + '개 잡았어요. ' + r.score + '점' + (nb ? ' (최고 기록!)' : '') + '.',
       answers: now, goal: goal, goalHit: hit, milestone: 0,
       again: { act: 'rain-start', id: String(lv), label: '한 번 더 하기' }
     } });
