@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v154';
+  var APP_VERSION = 'v155';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -2449,10 +2449,13 @@
       var n = hskList(l).length, k = hskCount(l), pct = n ? Math.round(k / n * 100) : 0;
       return '<div class="lm"><div class="lm-top"><span>' + l + '급</span><b>' + k + '/' + n + '</b></div><div class="meter g"><i style="width:' + pct + '%"></i></div></div>';
     }).join('') + '</div>' : '';
-    var lessonHtml = learned.length ? '<div class="section-title" style="margin-top:24px">레슨별 숙련도</div><div class="words">' + learned.map(function (l) {
-      var m = mastered(l), pct = Math.round(m / l.qs.length * 100);
-      return '<div class="lm"><div class="lm-top"><span>' + esc(l.title) + '</span><b>' + pct + '%</b></div><div class="meter g"><i style="width:' + pct + '%"></i></div></div>';
-    }).join('') + '</div>' : '';
+    var weakLessons = learned.map(function (l) { return { l: l, pct: Math.round(mastered(l) / l.qs.length * 100) }; })
+      .filter(function (x) { return x.pct < 100; }).sort(function (x, y) { return x.pct - y.pct; }).slice(0, 5);
+    var lessonHtml = learned.length ? '<div class="section-title" style="margin-top:24px">다시 하면 좋은 레슨</div>' + (weakLessons.length
+      ? '<p class="sub-title" style="margin:0 0 8px">익숙해진 문제가 적은 순서예요. 눌러서 다시 연습해요.</p><div class="words">' + weakLessons.map(function (x) {
+        return '<button class="lm lm-btn" data-act="open-lesson" data-id="' + x.l.id + '"><div class="lm-top"><span>' + esc(x.l.title) + '</span><b>' + x.pct + '%</b></div><div class="meter g"><i style="width:' + Math.max(x.pct, 3) + '%"></i></div></button>';
+      }).join('') + '</div>'
+      : '<div class="chat-empty">끝낸 레슨의 문제를 모두 익혔어요!</div>') : '';
     return '<div class="screen"><div class="topbar"><button class="icon-btn" data-act="back" aria-label="뒤로">' + I.back + '</button></div>' +
       '<div class="scroll" style="padding-top:4px">' +
       '<h1 class="big-title" style="margin-top:0">학습 통계</h1><p class="sub-title">내 공부 흐름과 약한 부분이에요.</p>' +

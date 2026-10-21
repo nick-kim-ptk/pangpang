@@ -2365,3 +2365,7 @@ html, body, * { scrollbar-width: none; -ms-overflow-style: none; }
 .sec-more { display: inline-flex; align-items: center; gap: 2px; padding: 6px 2px 6px 10px; border: 0; background: none; font: inherit; font-size: 14px; font-weight: 700; color: var(--ink-3); cursor: pointer; }
 .week-lab { margin: var(--sp-4) 0 var(--sp-2); font-size: 13px; font-weight: 700; color: var(--ink-3); }
 .stats + .week-lab + .week { margin-top: 0; }
+
+/* v155 다시 하면 좋은 레슨 */
+.lm-btn { display: block; width: 100%; padding: var(--sp-3) 0; border: 0; border-bottom: 1px solid var(--sep); background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.lm-btn:active { background: var(--press); }
