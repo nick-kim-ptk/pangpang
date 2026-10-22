@@ -2606,3 +2606,31 @@ html, body, * { scrollbar-width: none; -ms-overflow-style: none; }
 .gm-od { display: flex; flex-direction: column; gap: clamp(16px, 3.2dvh, 28px); }
 .gm-od .gm-slot, .gm-od .gm-pool { flex-wrap: nowrap; gap: 8px; }
 .gm-od .gm-b.big { font-size: var(--gfs, 26px); padding: .55em .6em; white-space: nowrap; }
+/* v184 소나기 퀴즈 결과 */
+.rd .hero { gap: 0; }
+.rd-ttl { font-size: 16px; font-weight: 700; color: var(--ink-3); margin-top: 8px; }
+.rd-score { display: flex; align-items: baseline; justify-content: center; gap: 4px; margin-top: 6px; }
+.rd-num { font-size: clamp(76px, 12dvh, 110px); line-height: 1; font-weight: 800; color: var(--ink); font-variant-numeric: tabular-nums; letter-spacing: -.02em; animation: rdPop .6s cubic-bezier(.2,1.4,.4,1) both; }
+.rd-score em { font-style: normal; font-size: 24px; font-weight: 700; color: var(--ink-2); }
+.rd-badge { margin-top: 8px; padding: 6px 14px; border-radius: 999px; background: var(--y); color: #1b1b1b; font-size: 13px; font-weight: 800; animation: rdPop .6s .3s cubic-bezier(.2,1.4,.4,1) both; }
+.rd-vs { width: 100%; max-width: 360px; margin-top: 18px; padding: 14px 16px; border-radius: 18px; background: var(--soft); }
+.rd-line { text-align: center; font-size: 16px; color: var(--ink-2); }
+.rd-line b { font-size: 18px; color: var(--ink); }
+.rd-vs.up .rd-line b { color: var(--green); }
+.rd-bars { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.rd-bar { position: relative; display: flex; align-items: center; gap: 8px; height: 26px; }
+.rd-bar span { width: 32px; font-size: 12px; color: var(--ink-3); }
+.rd-bar i { display: block; height: 14px; border-radius: 8px; background: var(--line); transform-origin: left; animation: rdGrow .8s .2s ease-out both; }
+.rd-bar.now i { background: var(--green); }
+.rd-bar b { font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.rd-stats { display: flex; gap: 12px; margin-top: 12px; width: 100%; max-width: 360px; }
+.rd-stats div { flex: 1; padding: 12px; border-radius: 16px; background: var(--soft); text-align: center; display: flex; flex-direction: column; gap: 2px; }
+.rd-stats b { font-size: 22px; color: var(--ink); }
+.rd-stats span { font-size: 12px; color: var(--ink-3); }
+.rd-msg { margin: 14px 0 0; font-size: 16px; font-weight: 600; color: var(--ink); text-align: center; text-wrap: balance; }
+@keyframes rdPop { from { transform: scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes rdGrow { from { transform: scaleX(0); } to { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .rd-num, .rd-badge, .rd-bar i { animation: none; } }
+.rd-bar i { background: color-mix(in srgb, var(--ink-3) 45%, transparent); }
+.rd-bar.now i { background: var(--green); }
+.rd-msg, .rd-line { word-break: keep-all; }

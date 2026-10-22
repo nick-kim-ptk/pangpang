@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v183';
+  var APP_VERSION = 'v184';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -717,6 +717,7 @@
     if (extra) Object.keys(extra).forEach(function (k) { state[k] = extra[k]; });
     render();
     window.scrollTo(0, 0);
+    if (screen === 'done' && state.result && state.result.kind === 'rain') rdCount();
     if (screen === 'done') maybeCelebrate(); else if (celEl) closeCelebration(true);
   }
 
@@ -1843,10 +1844,49 @@
       '<button class="btn" data-act="' + r.again.act + '">' + esc(r.again.label) + '</button>' +
       '<button class="btn gray" data-act="home">홈으로</button></div></div>';
   }
+  // 소나기 퀴즈 결과: 점수를 크게 보여 주고 내 최고 기록과 견줘요
+  function rainDone(r) {
+    var diff = r.score - r.prev, pct = r.total ? r.right / r.total : 0;
+    var vs, cls;
+    if (r.first) { vs = '첫 기록이에요! 다음엔 이 점수를 넘어 볼까요?'; cls = 'first'; }
+    else if (r.newBest) { vs = '최고 기록을 <b>' + diff + '점</b> 올렸어요!'; cls = 'up'; }
+    else if (diff === 0) { vs = '최고 기록과 똑같아요. 한 끗만 더!'; cls = 'same'; }
+    else { vs = '최고 기록까지 <b>' + (-diff) + '점</b> 남았어요'; cls = 'down'; }
+    var msg = pct >= .9 ? '귀가 활짝 열렸어요! 거의 다 잡았어요'
+      : pct >= .7 ? '점점 눈에 익어 가시는군요!'
+      : pct >= .4 ? '조금씩 익숙해지고 있어요. 한 번만 더 해 볼까요?'
+      : '처음엔 다 그래요. 소리에 귀를 기울여 봐요';
+    var top = Math.max(r.score, r.prev, 1);
+    return '<div class="screen done-screen rd">' + ((r.goalHit || r.newBest) ? confetti() : '') + '<div class="hero">' +
+      '<div class="rd-ttl">' + esc(r.title) + '</div>' +
+      '<div class="rd-score"><span class="rd-num" data-to="' + r.score + '">' + r.score + '</span><em>점</em></div>' +
+      (r.newBest ? '<div class="rd-badge">NEW 최고 기록</div>' : '') +
+      '<div class="rd-vs ' + cls + '"><div class="rd-line">' + vs + '</div>' +
+      (r.first ? '' : '<div class="rd-bars"><div class="rd-bar"><span>최고</span><i style="width:' + Math.round(r.prev / top * 100) + '%"></i><b>' + r.prev + '</b></div>' +
+        '<div class="rd-bar now"><span>이번</span><i style="width:' + Math.round(r.score / top * 100) + '%"></i><b>' + r.score + '</b></div></div>') + '</div>' +
+      '<div class="rd-stats"><div><b>' + r.right + '/' + r.total + '</b><span>잡은 한자</span></div><div><b>' + r.lives + '</b><span>남은 목숨</span></div></div>' +
+      '<p class="rd-msg">' + esc(msg) + '</p>' +
+      (r.goalHit ? '<div class="cele"><b>오늘 목표 달성!</b><span>' + r.goal + '문제를 모두 풀었어요</span></div>' : '') +
+      '</div><div class="footer" style="padding-left:0;padding-right:0">' +
+      '<button class="btn" data-act="home">홈으로</button>' +
+      '<button class="btn gray" data-act="rain-start" data-id="' + r.lv + '">한 번 더 하기</button></div></div>';
+  }
+  // 점수 숫자가 0에서 올라가요 (움직임 줄이기면 바로 보여요)
+  function rdCount() {
+    var el = document.querySelector('.rd-num'); if (!el) return;
+    var to = +el.getAttribute('data-to') || 0;
+    if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    var t0 = performance.now(), D = 900;
+    (function step(t) {
+      var k = Math.min(1, (t - t0) / D); el.textContent = Math.round(to * (1 - Math.pow(1 - k, 3)));
+      if (k < 1 && document.body.contains(el)) requestAnimationFrame(step);
+    })(t0);
+  }
   function viewDone() {
     var r = state.result;
     if (r.kind === 'speed') return speedDone(r);
     if (r.kind === 'chain') return chainDone(r);
+    if (r.kind === 'rain') return rainDone(r);
     var st = streak();
     return '<div class="screen done-screen">' + ((r.goalHit || r.milestone) ? confetti() : '') + '<div class="hero">' +
       '<div class="stage">' + mascot(r.kind === 'lesson' ? 'love' : 'cheer') + '</div>' +
@@ -4543,12 +4583,13 @@
     var r = state.rn; if (!r) return;
     tdMark('rain-start');
     var lv = r.lv, goal = state.profile.goal, now = todayAnswers(), hit = r.before < goal && now >= goal;
-    var nb = rnSaveBest(lv, r.score), cleared = r.lives > 0;
+    var prev = rnBest(lv), nb = rnSaveBest(lv, r.score) && prev > 0, first = prev === 0, cleared = r.lives > 0;
     rnStop();
     sfx(hit ? 'goal' : 'done');
     go('done', { result: {
       kind: 'rain', title: cleared ? '소나기가 그쳤어요!' : '소나기 퀴즈 끝!',
       line: r.targets.length + '개 중 ' + r.right + '개 잡았어요. ' + r.score + '점' + (nb ? ' (최고 기록!)' : '') + '.',
+      score: r.score, prev: prev, newBest: nb, first: first, right: r.right, total: r.targets.length, lives: r.lives, cleared: cleared, lv: lv,
       answers: now, goal: goal, goalHit: hit, milestone: 0,
       again: { act: 'rain-start', id: String(lv), label: '한 번 더 하기' }
     } });
