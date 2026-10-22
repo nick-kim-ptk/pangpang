@@ -693,3 +693,6 @@ select kind, count(*) n, round(avg(in_tokens)) avg_in, round(avg(cache_read)) av
 
 ## v194
 - 결과 화면: 주 버튼(다시 하기) 하나 + 아래 가운데 텍스트 링크(홈으로 등).
+
+## v195
+- HSK 게임 결과의 링크는 모두 "홈으로"이고 HSK 탭으로 이동(기억 사슬의 "HSK 1급으로" 문구 통일).

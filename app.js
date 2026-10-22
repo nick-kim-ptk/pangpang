@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v194';
+  var APP_VERSION = 'v195';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -1860,7 +1860,7 @@
   // 정답을 맞힌 연습(퀴즈·성조·듣기·문법)과 카드 학습 결과
   function quizDone(r) {
     var hasT = r.total > 0, pct = hasT ? r.right / r.total : 0;
-    var isCard = r.game === 'card';
+    var isCard = r.game === 'card', hm = (r.game === 'card' || r.game === 'hskquiz' || r.game === 'tone') ? 'hsk-home' : 'home';
     var msg = isCard
       ? (pct >= .9 ? '거의 다 알고 있어요! 눈에 쏙 들어오죠?' : pct >= .6 ? '점점 눈에 익어 가시는군요!' : pct >= .3 ? '조금씩 익숙해지고 있어요. 모르는 건 내일 또 나와요' : '처음엔 다 그래요. 모르는 단어는 내일 다시 나와요')
       : (pct >= .9 ? '거의 완벽해요! 귀와 눈이 활짝 열렸어요' : pct >= .7 ? '점점 눈에 익어 가시는군요!' : pct >= .4 ? '조금씩 익숙해지고 있어요. 한 번만 더 해 볼까요?' : '처음엔 다 그래요. 틀린 건 내일 복습에 나와요');
@@ -1882,8 +1882,8 @@
       card + gdCele(r) +
       '<div class="rd-msgbox"><p class="rd-msg">“' + gdLines(esc(msg)) + '”</p></div>' +
       '</div><div class="footer" style="padding-left:0;padding-right:0">' +
-      (r.again ? '<button class="btn" data-act="' + r.again.act + '"' + (r.again.id ? ' data-id="' + r.again.id + '"' : '') + '>' + esc(r.again.label) + '</button><button class="gd-link" data-act="home">홈으로</button>'
-        : '<button class="btn" data-act="home">홈으로</button>') + '</div></div>';
+      (r.again ? '<button class="btn" data-act="' + r.again.act + '"' + (r.again.id ? ' data-id="' + r.again.id + '"' : '') + '>' + esc(r.again.label) + '</button><button class="gd-link" data-act="' + hm + '">홈으로</button>'
+        : '<button class="btn" data-act="' + hm + '">홈으로</button>') + '</div></div>';
   }
   function gdFx() { return '<div class="gd-rays" aria-hidden="true"></div><div class="gd-glow" aria-hidden="true"></div>'; }
   // 소나기 퀴즈 결과: 점수를 크게 보여 주고 내 최고 기록과 견줘요
@@ -1916,7 +1916,7 @@
       '<div class="rd-msgbox"><p class="rd-msg">“' + gdLines(esc(msg)) + '”</p></div>' +
       '</div><div class="footer" style="padding-left:0;padding-right:0">' +
       '<button class="btn" data-act="rain-start" data-id="' + r.lv + '">한 번 더 하기</button>' +
-      '<button class="gd-link" data-act="home">홈으로</button></div></div>';
+      '<button class="gd-link" data-act="hsk-home">홈으로</button></div></div>';
   }
   // 점수 숫자가 0에서 올라가요 (움직임 줄이기면 바로 보여요)
   function rdCount() {
@@ -4432,7 +4432,7 @@
       '<div class="rd-msgbox"><p class="rd-msg">“' + gdLines(esc(msg)) + '”</p></div>' +
       '</div><div class="footer" style="padding-left:0;padding-right:0">' +
       '<button class="btn" data-act="ch-start" data-id="' + r.lv + '">다시 도전</button>' +
-      '<button class="gd-link" data-act="ch-back" data-id="' + r.lv + '">HSK ' + r.lv + '급으로</button></div></div>';
+      '<button class="gd-link" data-act="hsk-home">홈으로</button></div></div>';
   }
   function chTop(c) {
     var hearts = '';
@@ -5296,6 +5296,7 @@
       case 'tone-pick': tonePick(parseInt(id, 10)); break;
       case 'tone-slot': if (state.tn && !state.tn.res) { state.tn.cur = state.tn.cur.slice(0, parseInt(id, 10)); sfx('tap'); render(); } break;
       case 'tone-next': toneNext(); break;
+      case 'hsk-home': go('tab', { tab: 'words' }); break;
       case 'sc-open': state.scFrom = state.screen === 'scenes' ? 'scenes' : ''; startScene(id); break;
       case 'sc-all': go('scenes'); break;
       case 'sc-cat': state.scCat = id; sfx('tap'); render(); break;
