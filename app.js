@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v182';
+  var APP_VERSION = 'v183';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -1390,11 +1390,13 @@
     var body = '<div class="gm-kind">' + kind + '</div>';
     var correctZh = st.t === 'od' ? d.t.join('') : st.t === 'fl' ? d.zh.replace('___', d.opts[0]).replace(/\s/g, '') : d.right;
     if (st.t === 'od') {
-      body += '<div class="gm-q">' + esc(d.ko) + '</div>' +
+      var chars = d.t.join('').length, nb = d.t.length, W = Math.min(window.innerWidth, 520) - 40 - 32;
+      var fs = Math.max(12, Math.min(34, (W - (nb - 1) * 8) / (chars + 1.1 * nb)));
+      body += '<div class="gm-od" style="--gfs:' + fs.toFixed(1) + 'px">' + '<div class="gm-q">' + esc(d.ko) + '</div>' +
         '<div class="gm-slot' + (done ? (g.ok ? ' ok' : ' no') : '') + '">' + (g.placed.length ? g.placed.map(function (i) {
           return '<button class="gm-b zh big" data-act="gm-take" data-id="' + i + '"' + (done ? ' disabled' : '') + '>' + esc(d.t[i]) + '</button>';
         }).join('') : '<span class="gm-ph">아래 블록을 차례로 눌러요</span>') + '</div>' +
-        '<div class="gm-pool">' + g.pool.map(function (i) { return '<button class="gm-b zh big pool" data-act="gm-put" data-id="' + i + '">' + esc(d.t[i]) + '</button>'; }).join('') + '</div>';
+        '<div class="gm-pool">' + g.pool.map(function (i) { return '<button class="gm-b zh big pool" data-act="gm-put" data-id="' + i + '">' + esc(d.t[i]) + '</button>'; }).join('') + '</div></div>';
     } else if (st.t === 'fl') {
       var parts = d.zh.split('___');
       body += '<div class="gm-q">' + esc(d.ko) + '</div><div class="gm-sent">' + esc(parts[0]) + '<span class="gm-blank' + (done ? (g.ok ? ' ok' : ' no') : '') + '">' + (done ? esc(d.opts[0]) : '&nbsp;') + '</span>' + esc(parts[1]) + '</div>' +

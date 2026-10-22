@@ -656,3 +656,6 @@ select kind, count(*) n, round(avg(in_tokens)) avg_in, round(avg(cache_read)) av
 
 ## v182
 - 문법 연습 화면의 블록·빈칸 문장·보기 카드를 화면 높이에 맞춰 더 크게.
+
+## v183
+- 어순 맞추기 블록이 두 줄로 넘치지 않게, 문장 길이에 맞춰 글자 크기 자동 조절.

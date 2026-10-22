@@ -2602,3 +2602,7 @@ html, body, * { scrollbar-width: none; -ms-overflow-style: none; }
 .gm-rl { font-size: 20px; }
 .gm-rule .gm-b.zh { font-size: 20px; padding: 8px 12px; }
 .gm-notes { font-size: 15px; }
+/* v183 어순 블록은 한 줄에 다 들어가게 (글자 크기를 문장 길이에 맞춰요) */
+.gm-od { display: flex; flex-direction: column; gap: clamp(16px, 3.2dvh, 28px); }
+.gm-od .gm-slot, .gm-od .gm-pool { flex-wrap: nowrap; gap: 8px; }
+.gm-od .gm-b.big { font-size: var(--gfs, 26px); padding: .55em .6em; white-space: nowrap; }
