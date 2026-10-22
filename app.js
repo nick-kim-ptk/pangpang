@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v175';
+  var APP_VERSION = 'v176';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -1055,13 +1055,14 @@
     var body = items.map(function (i) {
       return i.phrase ? '<div class="td-group">' + tdRow(i) + phraseCard + '</div>' : tdRow(i);
     }).join('');
-    var more = !opt.length ? '' : (over ? '<div class="td-extra"><div class="td-more">더 해 볼까요? <em>선택</em></div>' + opt.map(tdRow).join('') + '</div>' : '');
     // 필수를 막 끝낸 날: 18시 전이면 가끔(60%) 전체 화면으로 '하나만 더?'를 물어봐요. 저녁·밤엔 묻지 않아요
     if (over && !o.overSeen) {
-      o.overSeen = 1; tdSave(o);
+      o.overSeen = 1;
       var calm = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
-      if (!calm && hr >= 6 && hr < 18 && Math.random() < 0.6) state.tdBonus = true;
+      if (hr >= 6 && hr < 18 && Math.random() < 0.6) { o.bonus = 1; if (!calm) state.tdBonus = true; }
+      tdSave(o);
     }
+    var more = !opt.length ? '' : (over && o.bonus ? '<div class="td-extra"><div class="td-more">더 해 볼까요? <em>선택</em></div>' + opt.map(tdRow).join('') + '</div>' : '');
     var bits = [[58, 212, 16, 'star', '#FFD45E', .5, 2.4, 12], [316, 196, 9, 'dot', '#7FB3FF', .6, 2, 12], [304, 420, 14, 'ring', '#FFB24A', .7, 2.8, -10], [300, 262, 11, 'star', '#FF9BB0', .8, 2.2, -16], [72, 404, 8, 'dot', '#FFD45E', .9, 2.6, 12], [96, 168, 10, 'ring', '#7FB3FF', 1, 3, 12]].map(function (b) {
       return '<span class="tb-bit ' + b[3] + '" style="left:' + (b[0] / 370 * 100).toFixed(1) + '%;top:' + (b[1] / 824 * 100).toFixed(1) + '%;--s:' + b[2] + 'px;--c:' + b[4] + ';--d:' + b[5] + 's;--t:' + b[6] + 's;--rot:' + b[7] + 'deg"></span>';
     }).join('');
