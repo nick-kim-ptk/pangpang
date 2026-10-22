@@ -2453,3 +2453,7 @@ html, body, * { scrollbar-width: none; -ms-overflow-style: none; }
 .sc-fit .sc-gloss { margin-top: var(--sp-2); }
 .sc-fit .sc-gloss:not(.on) { font-size: clamp(12px, 1.6dvh, 13px); }
 .sc-fit .sc-ko { margin-top: var(--sp-1); }
+
+/* v161 상황 레슨: 상단 카드 박스 해제, 아래 구분선만 */
+.sc-fit .sc-head2 { padding: 0 var(--sp-1) var(--sp-3); margin: 0 0 var(--sp-3); border-radius: 0; background: none; box-shadow: none; border-bottom: 1.5px solid var(--line); }
+.sc-fit .sc-head2 .sc-ctx { margin: 0 0 var(--sp-3); }

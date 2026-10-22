@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v160';
+  var APP_VERSION = 'v161';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -3593,15 +3593,12 @@
     var list = SCENES.filter(function (s) { return cat === '전체' || s.cat === cat; });
     var lvCls = { '쉬움': 'e', '보통': 'm', '어려움': 'h' };
     var grid = '<div class="sc-grid">' + list.map(function (s) {
-      var d = scDone(pg, s);
-      return '<button class="sc-card' + (d ? ' done' : '') + '" data-act="sc-open" data-id="' + s.id + '"><span class="sc-ci">' + s.icon + '</span>' +
-        (d ? '<span class="sc-ck" aria-label="완료">' + I.check + '</span>' : '') +
+      return '<button class="sc-card" data-act="sc-open" data-id="' + s.id + '"><span class="sc-ci">' + s.icon + '</span>' +
         '<b>' + esc(s.title) + '</b><span class="sc-cs">' + esc(s.sub) + '</span>' +
         '<em class="sc-lv ' + (lvCls[s.lv] || 'm') + '">' + esc(s.lv || '보통') + '</em></button>';
     }).join('') + '</div>';
     return '<div class="screen"><div class="topbar"><button class="icon-btn" data-act="back" aria-label="뒤로">' + I.back + '</button></div>' +
       '<div class="scroll" style="padding-top:4px"><h1 class="big-title" style="margin-top:0">상황 레슨</h1>' +
-      '<p class="sub-title">' + SCENES.filter(function (s) { return scDone(pg, s); }).length + '/' + SCENES.length + '개 완료했어요. 상황을 골라 말해 보세요.</p>' +
       chips + grid + '<div style="height:32px"></div></div></div>';
   }
   function scLcs(a, b) {
