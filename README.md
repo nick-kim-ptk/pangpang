@@ -598,3 +598,6 @@ select kind, count(*) n, round(avg(in_tokens)) avg_in, round(avg(cache_read)) av
 
 ## v163
 - 홈 오늘 할 일 마스코트 6종(img/td-*.webp)을 필수 완료 여부×시간대로 전환, 안내 문구도 상황별로 변경(임시 문구). 완료: 18시 전 happy/이후·새벽 rest. 미완료: 06~12 calm, 12~18 care, 18~22 restless, 22~06 beg.
+
+## v164
+- 홈 오늘 할 일: 카드 숫자·막대를 필수만 기준으로(선택 항목 제외). 필수에 'HSK 퀴즈류 1개'(HSK 단어 퀴즈/기억 사슬/성조 연습/소나기 퀴즈 중 하루 1개, 어제 한 것 제외) 추가. 선택 항목 풀에서는 HSK 퀴즈류 제외.

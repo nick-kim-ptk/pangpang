@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v163';
+  var APP_VERSION = 'v164';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -910,7 +910,7 @@
   function tdPlan(o) {
     if (o.plan) return o.plan;
     var last = tdLastAll(), rng = tdRng(o.day + (state.user ? state.user.id : 'x')), pool = [];
-    if (Object.keys(HSKW).length) pool = ['hsk-study', 'hsk-quiz', 'ch-start', 'tone-start', 'rain-start'];
+    if (Object.keys(HSKW).length) pool = ['hsk-study'];
     if (SCENES.length) pool.push('scene');
     if ((window.DIALOGS || []).length) pool.push('dialog');
     if (sb && !isGuest()) pool.push('ai');
@@ -927,6 +927,17 @@
     }
     o.plan = out; tdSave(o);
     return out;
+  }
+  // 오늘의 필수 HSK 퀴즈: 날짜로 정해서 하루 동안 같고, 어제 한 것은 피해서 매번 다르게 나와요
+  var TD_HSK_REQ = ['hsk-quiz', 'ch-start', 'tone-start', 'rain-start'];
+  function tdHskReq(o) {
+    if (!Object.keys(HSKW).length) return '';
+    if (o.hskReq) return o.hskReq;
+    var last = tdLastAll(), rng = tdRng('h' + o.day + (state.user ? state.user.id : 'x'));
+    var c = TD_HSK_REQ.filter(function (k) { return tdSince(last[k], o.day) > 1; });
+    if (!c.length) c = TD_HSK_REQ.slice();
+    o.hskReq = c[Math.floor(rng() * c.length) % c.length]; tdSave(o);
+    return o.hskReq;
   }
   function tdMeta(k) {
     var t = tdTarget(k) || { id: '', name: '' }, rec = chRec(parseInt(t.id, 10) || 1);
@@ -961,6 +972,8 @@
         act: next ? 'open-lesson' : 'review-start', id: next ? next.id : '', btn: q ? '이어서' : '학습하기' });
     }
     if (phraseCard) items.push({ req: 1, done: !!o.done.phrase, title: '오늘의 한 문장 듣기', sub: '카드의 스피커를 눌러 들어 보세요', doneSub: '들어 봤어요', phrase: 1 });
+    var hk = tdHskReq(o), hm = hk ? tdMeta(hk) : null;
+    if (hm) items.push(Object.assign(hm, { req: 1, done: !!o.done[hk], title: 'HSK ' + hm.title.replace(/^HSK /, ''), doneSub: '오늘 해냈어요', btn: '시작' }));
     var last = tdLastAll(), opt = [];
     tdPlan(o).forEach(function (k) {
       var m = tdMeta(k); if (!m) return;
@@ -969,15 +982,15 @@
       opt.push(Object.assign(m, { done: !!o.done[k], why: why, pro: tdPaid(k), free: dlgFree, doneSub: '오늘 해냈어요' }));
     });
     var req = items.filter(function (i) { return i.req; }), all = items.concat(opt);
-    var doneN = all.filter(function (i) { return i.done; }).length, reqLeft = req.filter(function (i) { return !i.done; }).length;
-    var pct = all.length ? Math.round(doneN / all.length * 100) : 0, st = streak(), over = !!req.length && !reqLeft;
+    var doneN = req.filter(function (i) { return i.done; }).length, reqLeft = req.filter(function (i) { return !i.done; }).length;
+    var pct = req.length ? Math.round(doneN / req.length * 100) : 0, st = streak(), over = !!req.length && !reqLeft;
     var hr = new Date().getHours(), night = hr >= 22 || hr < 6, tdMood;
     if (over) tdMood = (hr >= 18 || hr < 6) ? { img: 'rest', msg: '오늘 할 일 끝! 푹 쉬세요' } : { img: 'happy', msg: '필수를 모두 마쳤어요, 최고예요!' };
     else if (night) tdMood = { img: 'beg', msg: '필수 ' + reqLeft + '개만 하고 자요, 제발!' };
     else if (hr >= 18) tdMood = { img: 'restless', msg: '필수 ' + reqLeft + '개, 오늘이 얼마 안 남았어요!' };
     else if (hr >= 12) tdMood = { img: 'care', msg: '필수 ' + reqLeft + '개, 슬슬 해 볼까요?' };
     else tdMood = { img: 'calm', msg: '필수 ' + reqLeft + '개, 여유롭게 시작해요' };
-    var head = '<div class="td-head2"><div class="td-hl"><span class="td-hlab">오늘 할 일</span><b class="td-cnt">' + doneN + '<small>/' + all.length + '</small></b>' +
+    var head = '<div class="td-head2"><div class="td-hl"><span class="td-hlab">오늘 할 일</span><b class="td-cnt">' + doneN + '<small>/' + req.length + '</small></b>' +
       '<span class="td-sub">' + tdMood.msg + '</span></div>' +
       '<img class="mascot td-mascot" src="img/td-' + tdMood.img + '.webp" alt="" draggable="false"></div>' +
       '<div class="td-bar"><i style="width:' + pct + '%"></i></div>';
