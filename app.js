@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v179';
+  var APP_VERSION = 'v180';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -628,9 +628,9 @@
       acStop(); go('tab');
     }
     else if (sc === 'practice') quitPractice();
-    else if (sc === 'quiz') { stopSpeak(); go('tab', { tab: 'words' }); }
-    else if (sc === 'hskstudy') { stopSpeak(); clearTimeout(hskTimer); store.saveProfile(); go('tab', { tab: 'words' }); }
-    else if (sc === 'tone') { stopSpeak(); go('tab', { tab: 'words' }); }
+    else if (sc === 'quiz') { stopSpeak(); go('tab'); }
+    else if (sc === 'hskstudy') { stopSpeak(); clearTimeout(hskTimer); store.saveProfile(); go('tab'); }
+    else if (sc === 'tone') { stopSpeak(); go('tab'); }
     else if (sc === 'aichats') go('tab');
     else if (sc === 'aichatlog') go(state.chatFrom === 'all' ? 'aichats' : 'tab');
     else if (sc === 'hsk') go('tab');
@@ -638,8 +638,8 @@
     else if (sc === 'pay') go('tab');
     else if (sc === 'privacy') go(state.privFrom === 'login' ? 'login' : 'tab');
     else if (sc === 'speed') { stopSpeed(); go('tab'); }
-    else if (sc === 'chain') { chStop(); go('tab', { tab: 'words' }); }
-    else if (sc === 'rain') { rnStop(); go('tab', { tab: 'words' }); }
+    else if (sc === 'chain') { chStop(); go('tab'); }
+    else if (sc === 'rain') { rnStop(); go('tab'); }
     else if (sc === 'scene') { stopSpeak(); scStopRec(); state.sc = null; go(state.scFrom === 'scenes' ? 'scenes' : 'tab'); }
     else if (sc === 'gram') { stopSpeak(); go('intro', { lessonId: state.gm.l.id }); }
     else if (sc === 'scenes' || sc === 'grams' || sc === 'lsall') go('tab', { tab: 'lessons' });
@@ -5169,15 +5169,15 @@
       case 'ch-start': startChain(parseInt(id, 10)); break;
       case 'rain-start': if (hskGate(id)) break; startRain(parseInt(id, 10)); break;
       case 'rn-go': rnBegin(); break;
-      case 'rn-quit': rnStop(); go('tab', { tab: 'words' }); break;
+      case 'rn-quit': rnStop(); go('tab'); break;
       case 'rn-py': if (state.rn) { state.rn.py = !state.rn.py; try { localStorage.setItem('pangpang.rain.py', state.rn.py ? '1' : '0'); } catch (e) { /* 무시 */ } sfx('tap'); render(); } break;
       case 'rn-hear': if (state.rn && state.rn.cur && !state.rn.cur.done) speak(hskList(state.rn.lv)[state.rn.cur.ti][0], 0.85); break;
       case 'ch-skip': chSkip(); break;
       case 'ch-pick': chAnswer(+id); break;
       case 'ch-hear': if (state.ch && state.ch.phase === 'ask') speak(hskList(state.ch.lv)[state.ch.qs[state.ch.qi]][0], 0.85); break;
       case 'td-bonus-go': if (!state.tdMoved) tdBonusGo(); break;
-      case 'ch-quit': if (state.ch && state.ch.stage > 1) { chSaveRec(state.ch); tdMark('ch-start'); } chStop(); go('tab', { tab: 'words' }); break;
-      case 'ch-back': go('tab', { tab: 'words' }); break;
+      case 'ch-quit': if (state.ch && state.ch.stage > 1) { chSaveRec(state.ch); tdMark('ch-start'); } chStop(); go('tab'); break;
+      case 'ch-back': go('tab'); break;
       case 'tone-start': if (hskGate(id)) break; startTone(parseInt(id, 10)); break;
       case 'tone-pick': tonePick(parseInt(id, 10)); break;
       case 'tone-slot': if (state.tn && !state.tn.res) { state.tn.cur = state.tn.cur.slice(0, parseInt(id, 10)); sfx('tap'); render(); } break;
@@ -5196,7 +5196,7 @@
       case 'sc-quit': stopSpeak(); scStopRec(); state.sc = null; go(state.scFrom === 'scenes' ? 'scenes' : 'tab'); break;
       case 'sc-mission': scFinish(true); break;
       case 'sc-finish': scFinish(false); break;
-      case 'tone-quit': stopSpeak(); go('tab', { tab: 'words' }); break;
+      case 'tone-quit': stopSpeak(); go('tab'); break;
       case 'hsk-flip': if (state.hc) { state.hc.flip = !state.hc.flip; sfx('tap'); render(); } break;
       case 'hsk-mark': window.flyCard(el.getAttribute('data-v') === 'yes'); break;
       case 'hsk-filter': state.hsk.unknownOnly = el.getAttribute('data-v') === 'unknown'; render(); break;
@@ -5214,7 +5214,7 @@
       case 'quiz-pick': quizPick(parseInt(id, 10)); break;
       case 'qz-peek': if (state.z) { state.z.peek = !state.z.peek; render(); } break;
       case 'quiz-next': quizNext(); break;
-      case 'quiz-quit': stopSpeak(); go('tab', { tab: 'words' }); break;
+      case 'quiz-quit': stopSpeak(); go('tab'); break;
       case 'fav': toggleFav(el.getAttribute('data-text')); break;
       case 'set-kr': setProfile({ kr: el.getAttribute('data-v') === 'on' }); break;
       case 'set-sound': setProfile({ sound: el.getAttribute('data-v') === 'on' }); sfx('pop'); break;

@@ -647,3 +647,6 @@ select kind, count(*) n, round(avg(in_tokens)) avg_in, round(avg(cache_read)) av
 
 ## v179
 - v178에서 실수로 지워진 HSK 탭·AI 탭 화면 코드를 복구 (HSK 탭이 열리지 않아 성조 연습 닫기가 먹통이던 문제).
+
+## v180
+- 퀴즈·성조·기억 사슬·소나기·카드 학습을 닫으면 누른 탭(홈 등)으로 돌아가요. 예전엔 항상 HSK 탭이었어요.
