@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v185';
+  var APP_VERSION = 'v186';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -1865,7 +1865,6 @@
       '<div class="rd-vs ' + cls + '"><div class="rd-line">' + vs + '</div>' +
       (r.first ? '' : '<div class="rd-bars"><div class="rd-bar"><span>최고</span><i style="width:' + Math.round(r.prev / top * 100) + '%"></i><b>' + r.prev + '</b></div>' +
         '<div class="rd-bar now"><span>이번</span><i style="width:' + Math.round(r.score / top * 100) + '%"></i><b>' + r.score + '</b></div></div>') + '</div>' +
-      '<div class="rd-stats"><div><b>' + r.right + '/' + r.total + '</b><span>잡은 한자</span></div><div><b>' + r.lives + '</b><span>남은 목숨</span></div></div>' +
       '<p class="rd-msg">' + esc(msg) + '</p>' +
       (r.goalHit ? '<div class="cele"><b>오늘 목표 달성!</b><span>' + r.goal + '문제를 모두 풀었어요</span></div>' : '') +
       '</div><div class="footer" style="padding-left:0;padding-right:0">' +

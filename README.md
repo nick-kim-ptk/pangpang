@@ -665,3 +665,6 @@ select kind, count(*) n, round(avg(in_tokens)) avg_in, round(avg(cache_read)) av
 
 ## v185
 - 소나기 퀴즈 결과 화면에 달팽이 캐릭터 복원(작게).
+
+## v186
+- 소나기 결과에서 잡은 한자·남은 목숨 칸 삭제.
