@@ -595,3 +595,6 @@ select kind, count(*) n, round(avg(in_tokens)) avg_in, round(avg(cache_read)) av
 
 ## v162
 - HSK 탭 5개 학습 카드 아이콘을 이모지 → 전달받은 3D 이미지(img/hm-*.webp)로 교체.
+
+## v163
+- 홈 오늘 할 일 마스코트 6종(img/td-*.webp)을 필수 완료 여부×시간대로 전환, 안내 문구도 상황별로 변경(임시 문구). 완료: 18시 전 happy/이후·새벽 rest. 미완료: 06~12 calm, 12~18 care, 18~22 restless, 22~06 beg.

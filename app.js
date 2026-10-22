@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v162';
+  var APP_VERSION = 'v163';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -971,9 +971,15 @@
     var req = items.filter(function (i) { return i.req; }), all = items.concat(opt);
     var doneN = all.filter(function (i) { return i.done; }).length, reqLeft = req.filter(function (i) { return !i.done; }).length;
     var pct = all.length ? Math.round(doneN / all.length * 100) : 0, st = streak(), over = !!req.length && !reqLeft;
+    var hr = new Date().getHours(), night = hr >= 22 || hr < 6, tdMood;
+    if (over) tdMood = (hr >= 18 || hr < 6) ? { img: 'rest', msg: '오늘 할 일 끝! 푹 쉬세요' } : { img: 'happy', msg: '필수를 모두 마쳤어요, 최고예요!' };
+    else if (night) tdMood = { img: 'beg', msg: '필수 ' + reqLeft + '개만 하고 자요, 제발!' };
+    else if (hr >= 18) tdMood = { img: 'restless', msg: '필수 ' + reqLeft + '개, 오늘이 얼마 안 남았어요!' };
+    else if (hr >= 12) tdMood = { img: 'care', msg: '필수 ' + reqLeft + '개, 슬슬 해 볼까요?' };
+    else tdMood = { img: 'calm', msg: '필수 ' + reqLeft + '개, 여유롭게 시작해요' };
     var head = '<div class="td-head2"><div class="td-hl"><span class="td-hlab">오늘 할 일</span><b class="td-cnt">' + doneN + '<small>/' + all.length + '</small></b>' +
-      '<span class="td-sub">' + (over ? '필수를 모두 마쳤어요!' : '필수 ' + reqLeft + '개가 남았어요') + '</span></div>' +
-      mascot(over ? 'thumbs' : 'snail-reading', 'td-mascot') + '</div>' +
+      '<span class="td-sub">' + tdMood.msg + '</span></div>' +
+      '<img class="mascot td-mascot" src="img/td-' + tdMood.img + '.webp" alt="" draggable="false"></div>' +
       '<div class="td-bar"><i style="width:' + pct + '%"></i></div>';
     var warn = (new Date().getHours() >= 20 && st > 0 && todayAnswers() === 0)
       ? '<div class="td-warn">' + icn('flame') + '<span>오늘 한 가지만 해도 <b>연속 ' + st + '일</b>이 이어져요</span></div>' : '';
