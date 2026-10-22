@@ -2408,3 +2408,23 @@ html, body, * { scrollbar-width: none; -ms-overflow-style: none; }
 .td-more em { font-style: normal; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 999px; background: var(--soft); color: var(--ink-3); }
 .td-more + .td-item { margin-top: 0; }
 .td-more ~ .td-item { margin-bottom: var(--sp-2); }
+
+/* v157 오늘 할 일: 캐릭터·그래프·체크리스트를 한 카드로 */
+.td-card { margin-top: var(--sp-3); padding: var(--sp-4) var(--sp-4) var(--sp-2); border-radius: 24px; background: var(--card); box-shadow: inset 0 0 0 1.5px var(--line); }
+.td-head2 { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+.td-hl { display: grid; gap: 2px; min-width: 0; }
+.td-hlab { font-size: 15px; font-weight: 800; color: var(--ink-2); }
+.td-cnt { font-size: 40px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; color: var(--ink); }
+.td-cnt small { font-size: 22px; font-weight: 700; color: var(--ink-3); }
+.td-head2 .td-sub { margin-top: 2px; font-size: 13px; font-weight: 700; color: var(--ink-3); }
+.td-card.over .td-head2 .td-sub { color: var(--green); }
+.td-mascot { flex: none; width: clamp(104px, 32vw, 140px); height: auto; aspect-ratio: 360 / 340; object-fit: contain; margin: -6px -4px -4px 0; }
+.td-card .td-bar { margin: var(--sp-3) 0 var(--sp-2); }
+.td-card.over .td-bar i { background: var(--green); }
+.td-card .td-list { margin-top: 0; display: block; }
+.td-card .td-item { border-radius: 0; background: none; box-shadow: none; padding: var(--sp-3) 0; min-height: 60px; border-top: 1.5px solid var(--line); }
+.td-card .td-item.done { background: none; }
+.td-card .td-group { display: block; border-top: 1.5px solid var(--line); }
+.td-card .td-group .td-item { border-top: 0; padding-bottom: var(--sp-2); }
+.td-card .td-group .phrase-card { margin: 0 0 var(--sp-3); padding: var(--sp-3) var(--sp-4); border-radius: 16px; background: var(--soft); box-shadow: none; }
+.td-card .td-group .phrase-card .round-btn { background: var(--card); }

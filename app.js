@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v156';
+  var APP_VERSION = 'v157';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -970,16 +970,17 @@
     var req = items.filter(function (i) { return i.req; }), all = items.concat(opt);
     var doneN = all.filter(function (i) { return i.done; }).length, reqLeft = req.filter(function (i) { return !i.done; }).length;
     var pct = all.length ? Math.round(doneN / all.length * 100) : 0, st = streak(), over = !!req.length && !reqLeft;
-    var top = '<div class="td-top' + (over ? ' over' : '') + '"><div class="td-head"><span>오늘 할 일</span><b>' + doneN + '/' + all.length + '</b></div>' +
-      '<div class="td-bar"><i style="width:' + pct + '%"></i></div>' +
-      '<div class="td-sub">' + (over ? '필수를 모두 마쳤어요. 오늘도 해냈어요!' : '필수 ' + reqLeft + '개가 남았어요') + '</div></div>';
+    var head = '<div class="td-head2"><div class="td-hl"><span class="td-hlab">오늘 할 일</span><b class="td-cnt">' + doneN + '<small>/' + all.length + '</small></b>' +
+      '<span class="td-sub">' + (over ? '필수를 모두 마쳤어요!' : '필수 ' + reqLeft + '개가 남았어요') + '</span></div>' +
+      mascot(over ? 'thumbs' : 'snail-reading', 'td-mascot') + '</div>' +
+      '<div class="td-bar"><i style="width:' + pct + '%"></i></div>';
     var warn = (new Date().getHours() >= 20 && st > 0 && todayAnswers() === 0)
       ? '<div class="td-warn">' + icn('flame') + '<span>오늘 한 가지만 해도 <b>연속 ' + st + '일</b>이 이어져요</span></div>' : '';
     var body = items.map(function (i) {
       return i.phrase ? '<div class="td-group">' + tdRow(i) + phraseCard + '</div>' : tdRow(i);
     }).join('');
     var more = opt.length ? '<div class="td-more">더 해 볼까요? <em>선택</em></div>' + opt.map(tdRow).join('') : '';
-    return top + warn + '<div class="td-list">' + body + '</div>' + more;
+    return warn + '<div class="td-card' + (over ? ' over' : '') + '">' + head + '<div class="td-list">' + body + '</div></div>' + more;
   }
 
   function viewHome() {
