@@ -2470,3 +2470,6 @@ html, body, * { scrollbar-width: none; -ms-overflow-style: none; }
 .td-extra { animation: tdIn .4s ease both; }
 @keyframes tdIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .td-extra { animation: none; } }
+
+/* v167 로그인 전 PRO 레슨 비활성 */
+.item.locked:disabled { opacity: .5; cursor: not-allowed; pointer-events: none; }

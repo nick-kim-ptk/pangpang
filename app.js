@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v166';
+  var APP_VERSION = 'v167';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -537,6 +537,7 @@
     if (e.plan === 'lifetime') return true;
     return !!e.expires_at && new Date(e.expires_at) > new Date();
   }
+  function loggedOut() { return isGuest() || !state.user || state.user.id === 'local'; }
   function lessonLocked(id) {
     var i = LESSONS.indexOf(lessonById(id));
     return i >= FREE_LESSONS && !isPro();
@@ -1053,7 +1054,7 @@
       var isDone = !!state.done[l.id];
       var pc = isDone ? 0 : lessonPercent(l.id);
       var locked = lessonLocked(l.id);
-      return '<li><button class="item' + (isDone && !locked ? '' : ' off') + (locked ? ' locked' : '') + '" data-act="open-lesson" data-id="' + l.id + '">' +
+      return '<li><button class="item' + (isDone && !locked ? '' : ' off') + (locked ? ' locked' : '') + '" data-act="open-lesson" data-id="' + l.id + '"' + (locked && loggedOut() ? ' disabled aria-disabled="true"' : '') + '>' +
         '<span class="num">' + (i + 1) + '</span><span class="txt"><div class="t">' + esc(l.title) + '</div><div class="s">' + esc(l.sub) + '</div></span>' +
         (locked ? '<span class="chip lockchip">' + I.lock + 'PRO</span>' : isDone ? '<span class="chip green">' + I.check + '완료</span>' : '<span class="chips-end">' +
           (pc > 0 ? '<span class="chip soft pct">' + pc + '%</span>' : '') + '</span>') +
