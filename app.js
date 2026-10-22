@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v165';
+  var APP_VERSION = 'v166';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -908,16 +908,18 @@
   }
   // 오늘의 선택 항목: 날짜로 정해서 같은 날엔 항상 같고, 어제 한 건 빼고, 오래 안 한 것일수록 잘 나와요 (유료는 하루 1개 이하)
   function tdPlan(o) {
-    if (o.plan) return o.plan;
+    if (o.plan && o.plan.length >= 2) return o.plan;
     var last = tdLastAll(), rng = tdRng(o.day + (state.user ? state.user.id : 'x')), pool = [];
     if (Object.keys(HSKW).length) pool = ['hsk-study'];
     if (SCENES.length) pool.push('scene');
     if ((window.DIALOGS || []).length) pool.push('dialog');
     if (sb && !isGuest()) pool.push('ai');
+    var keep = o.plan || [];
+    pool = pool.filter(function (k) { return keep.indexOf(k) < 0; });
     var cand = pool.map(function (k) { var s = tdSince(last[k], o.day); return { k: k, s: s }; });
     var fresh = cand.filter(function (c) { return c.s > 1; });
     if (fresh.length >= 2) cand = fresh;
-    var n = rng() < 0.34 ? 2 : 1, out = [], paid = 0;
+    var n = 2 - keep.length, out = [], paid = 0;
     while (out.length < n && cand.length) {
       var tot = cand.reduce(function (t, c) { return t + (c.s >= 999 ? 8 : Math.min(7, Math.max(1, c.s))); }, 0), r = rng() * tot, pickI = 0;
       for (var i = 0; i < cand.length; i++) { r -= (cand[i].s >= 999 ? 8 : Math.min(7, Math.max(1, cand[i].s))); if (r <= 0) { pickI = i; break; } }
@@ -925,8 +927,8 @@
       if (tdPaid(c.k)) { if (paid) continue; paid++; }
       out.push(c.k);
     }
-    o.plan = out; tdSave(o);
-    return out;
+    o.plan = keep.concat(out); tdSave(o);
+    return o.plan;
   }
   // 오늘의 필수 HSK 퀴즈: 날짜로 정해서 하루 동안 같고, 어제 한 것은 피해서 매번 다르게 나와요
   var TD_HSK_REQ = ['hsk-quiz', 'ch-start', 'tone-start', 'rain-start'];
@@ -999,7 +1001,7 @@
     var body = items.map(function (i) {
       return i.phrase ? '<div class="td-group">' + tdRow(i) + phraseCard + '</div>' : tdRow(i);
     }).join('');
-    var more = opt.length ? '<div class="td-more">더 해 볼까요? <em>선택</em></div>' + opt.map(tdRow).join('') : '';
+    var more = !opt.length ? '' : (over ? '<div class="td-extra"><div class="td-more">더 해 볼까요? <em>선택</em></div>' + opt.map(tdRow).join('') + '</div>' : '<p class="td-lockhint">필수를 다 끝내면 더 해 볼 거리가 열려요</p>');
     return warn + '<div class="td-card' + (over ? ' over' : '') + '">' + head + '<div class="td-list">' + body + '</div></div>' + more;
   }
 

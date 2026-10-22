@@ -2464,3 +2464,9 @@ html, body, * { scrollbar-width: none; -ms-overflow-style: none; }
 
 /* v165 멤버십 급 비활성 */
 .hsk-chip:disabled { opacity: .45; cursor: not-allowed; box-shadow: inset 0 0 0 1.5px var(--line); pointer-events: none; }
+
+/* v166 더 해 볼까요: 필수 완료 후에만 */
+.td-lockhint { margin: var(--sp-3) 0 0; text-align: center; font-size: 13px; font-weight: 700; color: var(--ink-3); }
+.td-extra { animation: tdIn .4s ease both; }
+@keyframes tdIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .td-extra { animation: none; } }
