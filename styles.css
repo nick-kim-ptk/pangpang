@@ -2428,3 +2428,19 @@ html, body, * { scrollbar-width: none; -ms-overflow-style: none; }
 .td-card .td-group .td-item { border-top: 0; padding-bottom: var(--sp-2); }
 .td-card .td-group .phrase-card { margin: 0 0 var(--sp-3); padding: var(--sp-3) var(--sp-4); border-radius: 16px; background: var(--soft); box-shadow: none; }
 .td-card .td-group .phrase-card .round-btn { background: var(--card); }
+
+/* v159 상황 레슨: 이어서 하기 + 전체 보기 */
+.sc-head .sc-all { margin-left: auto; }
+.sc-cats { margin: var(--sp-3) 0; }
+.sc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3); }
+.sc-card { position: relative; display: grid; align-content: start; gap: var(--sp-1); min-height: 148px; padding: var(--sp-4); border: 0; border-radius: 20px; text-align: left; font: inherit; color: var(--ink); background: var(--card); box-shadow: inset 0 0 0 1.5px var(--line), 0 4px 0 var(--line); cursor: pointer; }
+.sc-card:active { transform: translateY(3px); box-shadow: inset 0 0 0 1.5px var(--line), 0 1px 0 var(--line); }
+.sc-card.done { background: var(--soft); }
+.sc-ci { font-size: 34px; line-height: 1.1; }
+.sc-card b { font-size: 16px; font-weight: 800; letter-spacing: -0.01em; }
+.sc-cs { font-size: 12px; color: var(--ink-3); line-height: 1.4; overflow-wrap: anywhere; }
+.sc-ck { position: absolute; top: 12px; right: 12px; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: var(--green); color: #fff; }
+.sc-ck svg { width: 14px; height: 14px; }
+.sc-lv { align-self: end; justify-self: start; margin-top: var(--sp-1); padding: 2px 8px; border-radius: 999px; font-style: normal; font-size: 11px; font-weight: 800; background: var(--soft); color: var(--ink-3); }
+.sc-lv.e { background: var(--green-soft); color: var(--green); }
+.sc-lv.h { background: var(--red-soft); color: var(--red); }

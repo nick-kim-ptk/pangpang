@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v158';
+  var APP_VERSION = 'v159';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -600,7 +600,7 @@
 
   /* ---------- 화면 이동 ---------- */
   // 뒤로 가기: 폰의 뒤로 제스처·버튼(기록)과 화면 왼쪽 가장자리에서 오른쪽으로 미는 동작을 같이 처리해요
-  var SUBSCREEN = { pay: 1, privacy: 1, login: 1, intro: 1, practice: 1, quiz: 1, stats: 1, done: 1, hsk: 1, hskstudy: 1, tone: 1, feedback: 1, speed: 1, account: 1, coupon: 1, aicharge: 1, aichat: 1, aiall: 1, aichats: 1, aichatlog: 1, scene: 1, chain: 1, rain: 1, phrases: 1, prefs: 1, about: 1, advisor: 1 };
+  var SUBSCREEN = { pay: 1, privacy: 1, login: 1, intro: 1, practice: 1, quiz: 1, stats: 1, done: 1, hsk: 1, hskstudy: 1, tone: 1, feedback: 1, speed: 1, account: 1, coupon: 1, aicharge: 1, aichat: 1, aiall: 1, aichats: 1, aichatlog: 1, scene: 1, chain: 1, rain: 1, scenes: 1, phrases: 1, prefs: 1, about: 1, advisor: 1 };
   var inSub = false, ignorePop = 0, backAnim = false;
   function syncHistory(screen) {
     try {
@@ -636,7 +636,8 @@
     else if (sc === 'speed') { stopSpeed(); go('tab'); }
     else if (sc === 'chain') { chStop(); go('tab', { tab: 'words' }); }
     else if (sc === 'rain') { rnStop(); go('tab', { tab: 'words' }); }
-    else if (sc === 'scene') { stopSpeak(); scStopRec(); state.sc = null; go('tab'); }
+    else if (sc === 'scene') { stopSpeak(); scStopRec(); state.sc = null; go(state.scFrom === 'scenes' ? 'scenes' : 'tab'); }
+    else if (sc === 'scenes') go('tab', { tab: 'lessons' });
     else if (sc === 'done') go('tab', { tab: 'home' });
     else if (sc === 'feedback' || sc === 'account' || sc === 'coupon') go('prefs');
     else if (sc === 'intro' || sc === 'stats' || sc === 'aicharge' || sc === 'aiall' || sc === 'phrases' || sc === 'prefs' || sc === 'about' || sc === 'advisor') go('tab');
@@ -2427,6 +2428,7 @@
     else if (state.screen === 'tone') html = viewTone();
     else if (state.screen === 'scene') html = viewScene();
     else if (state.screen === 'chain') html = viewChain();
+    else if (state.screen === 'scenes') html = viewScenes();
     else if (state.screen === 'rain') html = viewRain();
     else if (state.screen === 'done') html = viewDone();
     $app.innerHTML = html + modalHtml();
@@ -3565,17 +3567,42 @@
     try { localStorage.setItem(scKey(), JSON.stringify(m)); } catch (e) { /* 무시 */ }
   }
   function sceneById(id) { return SCENES.filter(function (s) { return s.id === id; })[0]; }
+  function scDone(pg, s) { return !!(pg[s.id] && pg[s.id].done); }
+  function scItemRow(s, pg) {
+    return '<li><button class="item" data-act="sc-open" data-id="' + s.id + '"><span class="num sc-ico">' + s.icon + '</span>' +
+      '<span class="txt"><div class="t">' + esc(s.title) + '</div><div class="s">' + esc(s.sub) + '</div></span>' +
+      (scDone(pg, s) ? '<span class="chip green">' + I.check + '완료</span>' : '<span class="chip soft">시작</span>') + '</button></li>';
+  }
+  // 레슨 탭: 이어서 할 상황 2개만 보여 주고, 전체는 '전체 보기'에서 분류별로 봐요
   function scenesSection() {
     if (!SCENES.length) return '';
-    var pg = scProg();
-    return '<div class="sc-head"><div class="section-title" style="margin:0">상황 레슨</div><span class="chip y">NEW</span></div>' +
+    var pg = scProg(), todo = SCENES.filter(function (s) { return !scDone(pg, s); }), n = SCENES.length - todo.length;
+    var show = (todo.length ? todo : SCENES).slice(0, 2);
+    return '<div class="sc-head"><div class="section-title" style="margin:0">상황 레슨</div><span class="chip y">NEW</span>' +
+      '<button class="sec-more sc-all" data-act="sc-all">전체 보기 ' + n + '/' + SCENES.length + '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg></button></div>' +
       '<p class="hsk-note under-title">하나의 상황을 말해 보고, 풀어 보고, AI와 직접 써 봐요. 한 번에 3분이면 끝나요.</p>' +
-      '<ul class="list" style="margin-top:0">' + SCENES.map(function (s) {
-        var o = pg[s.id];
-        return '<li><button class="item" data-act="sc-open" data-id="' + s.id + '"><span class="num sc-ico">' + s.icon + '</span>' +
-          '<span class="txt"><div class="t">' + esc(s.title) + '</div><div class="s">' + esc(s.sub) + '</div></span>' +
-          (o && o.done ? '<span class="chip green">' + I.check + '완료</span>' : '<span class="chip soft">시작</span>') + '</button></li>';
-      }).join('') + '</ul>';
+      '<ul class="list" style="margin-top:0">' + show.map(function (s) { return scItemRow(s, pg); }).join('') + '</ul>';
+  }
+  var SC_CATS = ['전체', '일상', '여행', '대화'];
+  function viewScenes() {
+    var pg = scProg(), cat = state.scCat || '전체';
+    var chips = '<div class="hsk-chips sc-cats" role="tablist" aria-label="상황 분류">' + SC_CATS.map(function (c) {
+      var cnt = SCENES.filter(function (s) { return c === '전체' || s.cat === c; }).length;
+      return '<button role="tab" class="hsk-chip' + (c === cat ? ' on' : '') + '" data-act="sc-cat" data-id="' + c + '" aria-selected="' + (c === cat) + '">' + c + ' ' + cnt + '</button>';
+    }).join('') + '</div>';
+    var list = SCENES.filter(function (s) { return cat === '전체' || s.cat === cat; });
+    var lvCls = { '쉬움': 'e', '보통': 'm', '어려움': 'h' };
+    var grid = '<div class="sc-grid">' + list.map(function (s) {
+      var d = scDone(pg, s);
+      return '<button class="sc-card' + (d ? ' done' : '') + '" data-act="sc-open" data-id="' + s.id + '"><span class="sc-ci">' + s.icon + '</span>' +
+        (d ? '<span class="sc-ck" aria-label="완료">' + I.check + '</span>' : '') +
+        '<b>' + esc(s.title) + '</b><span class="sc-cs">' + esc(s.sub) + '</span>' +
+        '<em class="sc-lv ' + (lvCls[s.lv] || 'm') + '">' + esc(s.lv || '보통') + '</em></button>';
+    }).join('') + '</div>';
+    return '<div class="screen"><div class="topbar"><button class="icon-btn" data-act="back" aria-label="뒤로">' + I.back + '</button></div>' +
+      '<div class="scroll" style="padding-top:4px"><h1 class="big-title" style="margin-top:0">상황 레슨</h1>' +
+      '<p class="sub-title">' + SCENES.filter(function (s) { return scDone(pg, s); }).length + '/' + SCENES.length + '개 완료했어요. 상황을 골라 말해 보세요.</p>' +
+      chips + grid + '<div style="height:32px"></div></div></div>';
   }
   function scLcs(a, b) {
     var L = [], i, j;
@@ -4867,7 +4894,9 @@
       case 'tone-pick': tonePick(parseInt(id, 10)); break;
       case 'tone-slot': if (state.tn && !state.tn.res) { state.tn.cur = state.tn.cur.slice(0, parseInt(id, 10)); sfx('tap'); render(); } break;
       case 'tone-next': toneNext(); break;
-      case 'sc-open': startScene(id); break;
+      case 'sc-open': state.scFrom = state.screen === 'scenes' ? 'scenes' : ''; startScene(id); break;
+      case 'sc-all': go('scenes'); break;
+      case 'sc-cat': state.scCat = id; sfx('tap'); render(); break;
       case 'sc-next': scAdvance(); break;
       case 'sc-skip': if (state.sc) { state.sc.combo = 0; scAdvance(); } break;
       case 'sc-pick': scPick(+id); break;
@@ -4876,7 +4905,7 @@
         var scl = scCurLine(state.sc), sci = +el.getAttribute('data-i');
         state.sc.gloss = sci; speak(scl[4][sci][0].replace(/[，。？！]/g, ''), 0.75); render();
       } break;
-      case 'sc-quit': stopSpeak(); scStopRec(); state.sc = null; go('tab'); break;
+      case 'sc-quit': stopSpeak(); scStopRec(); state.sc = null; go(state.scFrom === 'scenes' ? 'scenes' : 'tab'); break;
       case 'sc-mission': scFinish(true); break;
       case 'sc-finish': scFinish(false); break;
       case 'tone-quit': stopSpeak(); go('tab', { tab: 'words' }); break;
