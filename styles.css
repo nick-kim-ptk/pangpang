@@ -2582,3 +2582,23 @@ html, body, * { scrollbar-width: none; -ms-overflow-style: none; }
 .gm-spk svg { width: 16px; height: 16px; }
 .gm-say { border: 0; background: none; padding: 0; font: inherit; font-size: 22px; font-weight: 700; color: var(--ink); display: inline-flex; align-items: center; gap: 8px; }
 .gm-say svg { width: 18px; height: 18px; color: var(--ink-3); }
+/* v182 문법 연습: 카드·블록·보기를 화면 크기에 맞춰 더 크게 */
+.gm-wrap { gap: clamp(16px, 3.2dvh, 28px); }
+.gm-kind { font-size: clamp(14px, 2dvh, 16px); }
+.gm-q { font-size: clamp(22px, 3.4dvh, 28px); }
+.gm-slot { min-height: clamp(84px, 12dvh, 120px); padding: 16px; gap: 10px; border-radius: 20px; }
+.gm-pool { gap: 12px; min-height: clamp(64px, 9dvh, 88px); }
+.gm-b.big { font-size: clamp(26px, 4dvh, 34px); padding: clamp(12px, 2dvh, 18px) clamp(18px, 2.6dvh, 24px); border-radius: 14px; }
+.gm-ph { font-size: 15px; }
+.gm-sent { font-size: clamp(34px, 5.4dvh, 46px); }
+.gm-opts { gap: 12px; }
+.qz-ctr .opt.gm-opt { min-height: clamp(58px, 9dvh, 76px); font-size: clamp(18px, 2.8dvh, 22px); border-radius: 20px; }
+.qz-ctr .opt.gm-opt.zh { font-size: clamp(24px, 3.8dvh, 30px); }
+.gm-say { font-size: clamp(26px, 3.8dvh, 32px); }
+.gm-exp .py { font-size: 15px; }
+.gm-exp .why { font-size: 15px; }
+.gm-exp-slot { min-height: clamp(84px, 11dvh, 110px); }
+.gm-rule { padding: 20px; }
+.gm-rl { font-size: 20px; }
+.gm-rule .gm-b.zh { font-size: 20px; padding: 8px 12px; }
+.gm-notes { font-size: 15px; }

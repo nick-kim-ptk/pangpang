@@ -653,3 +653,6 @@ select kind, count(*) n, round(avg(in_tokens)) avg_in, round(avg(cache_read)) av
 
 ## v181
 - 문법 레슨 설명 문구 변경, 상세 페이지의 3개 칩 삭제, 중국어를 누르거나 문장을 완성·정답 확인하면 음성으로 읽어줘요.
+
+## v182
+- 문법 연습 화면의 블록·빈칸 문장·보기 카드를 화면 높이에 맞춰 더 크게.
