@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v177';
+  var APP_VERSION = 'v178';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -604,7 +604,7 @@
 
   /* ---------- 화면 이동 ---------- */
   // 뒤로 가기: 폰의 뒤로 제스처·버튼(기록)과 화면 왼쪽 가장자리에서 오른쪽으로 미는 동작을 같이 처리해요
-  var SUBSCREEN = { pay: 1, privacy: 1, login: 1, intro: 1, practice: 1, quiz: 1, stats: 1, done: 1, hsk: 1, hskstudy: 1, tone: 1, feedback: 1, speed: 1, account: 1, coupon: 1, aicharge: 1, aichat: 1, aiall: 1, aichats: 1, aichatlog: 1, scene: 1, gram: 1, grams: 1, chain: 1, rain: 1, scenes: 1, phrases: 1, prefs: 1, about: 1, advisor: 1 };
+  var SUBSCREEN = { pay: 1, privacy: 1, login: 1, intro: 1, practice: 1, quiz: 1, stats: 1, done: 1, hsk: 1, hskstudy: 1, tone: 1, feedback: 1, speed: 1, account: 1, coupon: 1, aicharge: 1, aichat: 1, aiall: 1, aichats: 1, aichatlog: 1, scene: 1, gram: 1, grams: 1, lsall: 1, chain: 1, rain: 1, scenes: 1, phrases: 1, prefs: 1, about: 1, advisor: 1 };
   var inSub = false, ignorePop = 0, backAnim = false;
   function syncHistory(screen) {
     try {
@@ -642,10 +642,10 @@
     else if (sc === 'rain') { rnStop(); go('tab', { tab: 'words' }); }
     else if (sc === 'scene') { stopSpeak(); scStopRec(); state.sc = null; go(state.scFrom === 'scenes' ? 'scenes' : 'tab'); }
     else if (sc === 'gram') { stopSpeak(); go('intro', { lessonId: state.gm.l.id }); }
-    else if (sc === 'scenes' || sc === 'grams') go('tab', { tab: 'lessons' });
+    else if (sc === 'scenes' || sc === 'grams' || sc === 'lsall') go('tab', { tab: 'lessons' });
     else if (sc === 'done') go('tab', { tab: 'home' });
     else if (sc === 'feedback' || sc === 'account' || sc === 'coupon') go('prefs');
-    else if (sc === 'intro' && state.lsFrom === 'grams') go('grams');
+    else if (sc === 'intro' && (state.lsFrom === 'grams' || state.lsFrom === 'lsall')) go(state.lsFrom);
     else if (sc === 'intro' || sc === 'stats' || sc === 'aicharge' || sc === 'aiall' || sc === 'phrases' || sc === 'prefs' || sc === 'about' || sc === 'advisor') go('tab');
   }
   window.addEventListener('popstate', function () {
@@ -1156,129 +1156,35 @@
       '<div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + pct + '"><i style="width:' + pct + '%"></i></div></div>' +
       body + '<div style="height:32px"></div></div></div>';
   }
+  function lessonRow(l, i) {
+    var isDone = !!state.done[l.id], pc = isDone ? 0 : lessonPercent(l.id), locked = lessonLocked(l.id);
+    return '<li><button class="item' + (isDone && !locked ? '' : ' off') + (locked ? ' locked' : '') + '" data-act="open-lesson" data-id="' + l.id + '"' + (locked && loggedOut() ? ' disabled aria-disabled="true"' : '') + '>' +
+      '<span class="num">' + (i + 1) + '</span><span class="txt"><div class="t">' + esc(l.title) + '</div><div class="s">' + esc(l.sub) + '</div></span>' +
+      (locked ? '<span class="chip lockchip">' + I.lock + 'PRO</span>' : isDone ? '<span class="chip green">' + I.check + '완료</span>' : '<span class="chips-end">' +
+        (pc > 0 ? '<span class="chip soft pct">' + pc + '%</span>' : '') + '</span>') + '</button></li>';
+  }
   function viewLessons() {
-    var next = nextLesson();
-    var n = learnedLessons().length;
-    var pct = Math.round(n / LESSONS.length * 100);
-    var take = Math.min(LESSONS.length, lessonUi.n || lessonInitN());
-    var list = LESSONS.slice(0, take).map(function (l, i) {
-      var isDone = !!state.done[l.id];
-      var pc = isDone ? 0 : lessonPercent(l.id);
-      var locked = lessonLocked(l.id);
-      return '<li><button class="item' + (isDone && !locked ? '' : ' off') + (locked ? ' locked' : '') + '" data-act="open-lesson" data-id="' + l.id + '"' + (locked && loggedOut() ? ' disabled aria-disabled="true"' : '') + '>' +
-        '<span class="num">' + (i + 1) + '</span><span class="txt"><div class="t">' + esc(l.title) + '</div><div class="s">' + esc(l.sub) + '</div></span>' +
-        (locked ? '<span class="chip lockchip">' + I.lock + 'PRO</span>' : isDone ? '<span class="chip green">' + I.check + '완료</span>' : '<span class="chips-end">' +
-          (pc > 0 ? '<span class="chip soft pct">' + pc + '%</span>' : '') + '</span>') +
-        '</button></li>';
-    }).join('');
+    // 안 한 레슨 2개(잠기지 않은 것 우선)만 보여 주고, 전체 보기에서 모두 봐요
+    var open = LESSONS.map(function (l, i) { return { l: l, i: i }; }).filter(function (x) { return !state.done[x.l.id] && !lessonLocked(x.l.id); });
+    var show = (open.length ? open : LESSONS.map(function (l, i) { return { l: l, i: i }; })).slice(0, 2);
     return '<div class="screen"><div class="scroll with-nav" style="padding-top:28px">' +
       '<h1 class="big-title">전체 레슨</h1>' +
       '<p class="sub-title">' + '배운 내용을 활용해 보며 자연스럽게 익혀가요.' + '</p>' +
       scenesSection() +
       grammarSection() +
-      '<div class="section-title" style="margin-top:24px">말하기 레슨</div>' +
+      '<div class="sc-head" style="margin-top:24px"><div class="section-title" style="margin:0">말하기 레슨</div>' +
+      '<button class="sec-more sc-all" data-act="ls-all">전체 보기<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg></button></div>' +
+      '<p class="hsk-note under-title">배운 문장으로 직접 말하며 연습해요.</p>' +
+      '<ul class="list" style="margin-top:0">' + show.map(function (x) { return lessonRow(x.l, x.i); }).join('') + '</ul>' +
+      '</div>' + navHtml() + '</div>';
+  }
+  function viewLessonsAll() {
+    var n = learnedLessons().length, pct = Math.round(n / LESSONS.length * 100);
+    return '<div class="screen"><div class="topbar"><button class="icon-btn" data-act="back" aria-label="뒤로">' + I.back + '</button></div>' +
+      '<div class="scroll" style="padding-top:4px"><h1 class="big-title" style="margin-top:0">말하기 레슨</h1>' +
       '<div class="lesson-progress"><div class="row"><b>' + n + ' / ' + LESSONS.length + '</b><span>레슨 완료</span></div>' +
       '<div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + pct + '"><i style="width:' + pct + '%"></i></div></div>' +
-      '<ul class="list" style="margin-top:0">' + list + '</ul>' +
-      (take < LESSONS.length ? '<button class="more-btn" data-act="lessons-more">레슨 더보기 (' + Math.min(7, LESSONS.length - take) + '개 더 · 전체 ' + LESSONS.length + '개)</button>' : '') +
-      '</div>' + navHtml() + '</div>';
-  }
-
-  function dialogSection() {
-    var ds = window.DIALOGS || [];
-    if (!ds.length) return '';
-    return '<div class="section-title" style="margin-top:28px">상황 대화 연습</div>' +
-      (isPro() ? '' : '<p class="hsk-note under-title">첫 번째 대화는 무료로 계속 연습할 수 있어요. 나머지는 멤버십이 필요해요.</p>') + '<ul class="list">' + ds.map(function (d) {
-      var done = state.profile.dlg.indexOf(d.id) >= 0;
-      return '<li><button class="item" data-act="dialog-start" data-id="' + d.id + '"><span class="txt"><div class="t">' + esc(d.title) + '</div>' +
-        '<div class="s">' + esc(d.intro) + ' · ' + d.turns.length + '번 주고받기</div></span>' +
-        (dialogLocked(d.id) ? '<span class="chip lockchip">' + I.lock + 'PRO</span>' : '<span class="chip ' + (done ? 'green' : 'soft') + '">' + (done ? '완료' : '시작') + '</span>') + '</button></li>';
-    }).join('') + '</ul>';
-  }
-  // 레슨 탭 위쪽 '연습하기': 약한 문제 · 스피드 퀴즈 · 듣기 연습 (복습은 홈의 '오늘의 복습'이 맡아요)
-  // 하단 'AI 대화' 탭
-  // AI 대화 안내(로그인 전 / 멤버십 전): 이미지 + 좋은 점 + 버튼
-  var AI_CHECK = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
-  function aiPromo(member) {
-    var items = member
-      ? [['AI 선생님과 자유롭게 대화해요', '정해진 문장이 아니라, 내가 하고 싶은 말로 연습해요.'],
-         ['말이 막히면 한국어로 물어봐요', '바로 쓸 수 있는 중국어 표현으로 알려줘요.'],
-         ['고친 문장은 복습으로 모여요', '틀린 표현을 모아 두었다가 잊기 전에 다시 보여줘요.'],
-         ['HSK 2~4급과 모든 상황 대화가 열려요', '기억 사슬·카드·퀴즈를 전 급수에서 쓸 수 있어요.']]
-      : [['학습 기록이 계정에 저장돼요', '기기를 바꿔도 그대로 이어서 공부해요.'],
-         ['복습 일정을 챙겨 줘요', '틀린 문장과 단어를 잊기 전에 다시 알려줘요.'],
-         ['HSK 1급 단어와 첫 상황 대화는 무료예요', '가입만 해도 바로 시작할 수 있어요.'],
-         ['멤버십을 시작하면 AI 대화를 바로 써요', '가입한 계정으로 이어서 이용해요.']];
-    return '<div class="ai-promo"><div class="ap-hero"><img src="img/ai-promo.webp" alt="" draggable="false"></div>' +
-      '<h2>' + (member ? 'AI 대화, 멤버십으로 시작해요' : '가입하고 AI 선생님과 말해 봐요') + '</h2>' +
-      '<p class="ap-sub">' + (member ? '멤버십이 되면 이런 점이 좋아요' : '가입하면 이런 점이 좋아요') + '</p>' +
-      '<ul class="ap-list">' + items.map(function (x) { return '<li><i>' + AI_CHECK + '</i><div><b>' + x[0] + '</b><span>' + x[1] + '</span></div></li>'; }).join('') + '</ul>' +
-      '<button class="btn btn-3d" data-act="' + (member ? 'open-pay' : 'ai-login') + '">' + (member ? '멤버십 보기' : '회원가입 · 로그인') + '</button></div>';
-  }
-  function viewAi() {
-    var head = '<h1 class="big-title">AI 대화</h1>' + (aiOn() ? '<p class="sub-title">틀려도 괜찮아요. 편하게 말해 보세요.</p>' : '');
-    var body;
-    if (aiOn()) {
-      if ((!state.chats || state.chatsUid !== (state.user && state.user.id)) && !state.chatsBusy) { state.chatsBusy = true; chatsInit().then(function () { state.chatsBusy = false; if (state.screen === 'tab' && state.tab === 'review') renderKeep(); }); }
-      var noExpr = !aiFixes().some(function (f) { return f.kind === 'ask' || f.kind === 'say'; });
-      body = aiCreditBar() + aiEntry() + ((state.chats || []).length || !noExpr ? aiHistorySection() + aiFixSection() : '<div class="chat-empty first">대화하면 지난 대화와<br>다시 써 볼 표현이<br>여기에 쌓여요.</div>');
-    }
-    else if (sb && isGuest()) body = aiPromo(false);
-    else body = aiPromo(true);
-    return '<div class="screen"><div class="scroll with-nav" style="padding-top:28px">' + head + body + '</div>' + navHtml() + '</div>';
-  }
-
-  function phraseSections() {
-    var favs = state.profile.favs.map(function (zh) { return PHRASES.filter(function (p) { return p[0] === zh; })[0]; }).filter(Boolean);
-    var h = '';
-    if (favs.length) h += '<div class="section-title" style="margin-top:28px">저장한 문장 ' + favs.length + '</div><div class="words">' + favs.map(phraseRow).join('') + '</div>';
-    return h;
-  }
-  // 지난 오늘의 한 문장: 홈의 '지난 문장 보기'에서 열려요 (어제부터 최대 30개)
-  function viewPhrases() {
-    var past = [];
-    for (var i = 1; i <= 30; i++) { var p = phraseAt(i); if (p && past.indexOf(p) < 0) past.push(p); }
-    return '<div class="screen"><div class="topbar"><button class="icon-btn" data-act="back" aria-label="뒤로">' + I.back + '</button></div>' +
-      '<div class="scroll" style="padding-top:4px"><h1 class="big-title" style="margin-top:0">지난 오늘의 한 문장</h1>' +
-      '<p class="sub-title">어제부터 최근 ' + past.length + '개예요. 듣고, 별을 눌러 저장해요.</p>' +
-      (past.length ? '<div class="words">' + past.map(phraseRow).join('') + '</div>' : '<div class="chat-empty">아직 지난 문장이 없어요.</div>') +
-      '<div style="height:60px"></div></div></div>';
-  }
-  // 단어장: 레슨이 많아져도 보기 편하도록 레슨별로 접고 펼치고, 검색할 수 있어요
-  var wordsUi = { open: null, q: '' };
-  var CHEV = '<svg class="w-chev" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>';
-  function wordsOrdered() { return learnedLessons().slice().sort(function (a, b) { return LESSONS.indexOf(b) - LESSONS.indexOf(a); }); }
-  function wordsOpenMap() {
-    if (!wordsUi.open) { wordsUi.open = {}; var f = wordsOrdered()[0]; if (f) wordsUi.open[f.id] = true; }
-    return wordsUi.open;
-  }
-  function wordMatch(w, q) {
-    return (w[0] + ' ' + w[1] + ' ' + w[2] + ' ' + kr(w[1])).toLowerCase().indexOf(q) >= 0;
-  }
-  function wordsListHtml() {
-    var q = wordsUi.q.trim().toLowerCase(), open = wordsOpenMap(), out = '', hit = 0;
-    wordsOrdered().forEach(function (l) {
-      var ws = q ? l.words.filter(function (w) { return wordMatch(w, q); }) : l.words;
-      if (!ws.length) return;
-      hit++;
-      var isOpen = q ? true : !!open[l.id];
-      out += '<div class="wl' + (isOpen ? ' open' : '') + '"><button class="wl-head" data-act="w-toggle" data-id="' + l.id + '" aria-expanded="' + (isOpen ? 'true' : 'false') + '">' +
-        '<span class="num">' + (LESSONS.indexOf(l) + 1) + '</span><span class="wl-t">' + esc(l.title) + '</span><span class="wl-n">' + ws.length + '단어</span>' + CHEV + '</button>' +
-        (isOpen ? '<div class="words">' + ws.map(function (w) { return wordRow(w); }).join('') + '</div>' : '') + '</div>';
-    });
-    return hit ? out : '<p class="w-none">' + (q ? '“' + esc(wordsUi.q.trim()) + '”에 맞는 단어가 없어요' : '') + '</p>';
-  }
-  function refreshWordsList() {
-    var el = document.getElementById('w-list');
-    if (el) el.innerHTML = wordsListHtml();
-  }
-  function viewWords() {
-    return '<div class="screen"><div class="scroll with-nav">' +
-      '<div class="tab-head"><div><h1 class="big-title">HSK</h1>' +
-      '<p class="sub-title" style="margin-bottom:0">급을 고르고<br>단어를 익혀 보세요.</p></div>' + ppm('book', 92) + '</div>' +
-      hskSection() +
-      phraseSections() +
-      '</div>' + navHtml() + '</div>';
+      '<ul class="list" style="margin-top:0">' + LESSONS.map(lessonRow).join('') + '</ul><div style="height:32px"></div></div></div>';
   }
 
   function wordRow(w) {
@@ -2679,6 +2585,7 @@
     else if (state.screen === 'quiz') html = viewQuiz();
     else if (state.screen === 'gram') html = viewGram();
     else if (state.screen === 'grams') html = viewGrams();
+    else if (state.screen === 'lsall') html = viewLessonsAll();
     else if (state.screen === 'stats') html = viewStats();
     else if (state.screen === 'hsk') html = viewHsk();
     else if (state.screen === 'feedback') html = viewFeedback();
@@ -5081,8 +4988,9 @@
           go('tab', { tab: 'home' });
         });
         break;
-      case 'open-lesson': state.lsFrom = state.screen === 'grams' ? 'grams' : ''; go('intro', { lessonId: id }); break;
+      case 'open-lesson': state.lsFrom = state.screen === 'grams' || state.screen === 'lsall' ? state.screen : ''; go('intro', { lessonId: id }); break;
       case 'gm-all': go('grams'); break;
+      case 'ls-all': go('lsall'); break;
       case 'back': goBack(); break;
       case 'home': go('tab', { tab: 'home' }); break;
       case 'say':

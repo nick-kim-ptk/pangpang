@@ -641,3 +641,6 @@ select kind, count(*) n, round(avg(in_tokens)) avg_in, round(avg(cache_read)) av
 
 ## v177
 - 레슨 탭 문법은 안 한 것 2개만 보이고, 전체 보기에서 3묶음으로 모두 봐요 (상황 레슨과 같은 방식).
+
+## v178
+- 말하기 레슨도 레슨 탭에는 안 한 2개만, 전체 보기에서 50개 전체 목록.
