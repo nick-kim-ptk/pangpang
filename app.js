@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v184';
+  var APP_VERSION = 'v185';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -1858,6 +1858,7 @@
       : '처음엔 다 그래요. 소리에 귀를 기울여 봐요';
     var top = Math.max(r.score, r.prev, 1);
     return '<div class="screen done-screen rd">' + ((r.goalHit || r.newBest) ? confetti() : '') + '<div class="hero">' +
+      '<div class="stage rd-stage">' + mascot(r.newBest || pct >= .7 ? 'cheer' : 'thumbs') + '</div>' +
       '<div class="rd-ttl">' + esc(r.title) + '</div>' +
       '<div class="rd-score"><span class="rd-num" data-to="' + r.score + '">' + r.score + '</span><em>점</em></div>' +
       (r.newBest ? '<div class="rd-badge">NEW 최고 기록</div>' : '') +

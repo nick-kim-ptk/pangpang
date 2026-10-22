@@ -2634,3 +2634,8 @@ html, body, * { scrollbar-width: none; -ms-overflow-style: none; }
 .rd-bar i { background: color-mix(in srgb, var(--ink-3) 45%, transparent); }
 .rd-bar.now i { background: var(--green); }
 .rd-msg, .rd-line { word-break: keep-all; }
+.rd .hero { padding-top: 4dvh; }
+.rd .stage.rd-stage { width: 168px; height: 146px; }
+.rd .stage.rd-stage .mascot { width: 156px; }
+.rd-ttl { margin-top: 2px; }
+.rd-num { font-size: clamp(64px, 10dvh, 96px); }
