@@ -2481,3 +2481,12 @@ html, body, * { scrollbar-width: none; -ms-overflow-style: none; }
 .td-bonus h2 { margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.02em; color: var(--ink); }
 .td-bonus p { margin: 0 0 var(--sp-3); font-size: 16px; line-height: 1.5; color: var(--ink-2); }
 .td-bonus .btn { width: 100%; }
+
+/* v170 버튼 없는 애교 안내: 스르륵 걷힘, 아래 구역은 올라옴 */
+.td-bonus { cursor: pointer; }
+.td-bonus.out { animation: tbOut .42s ease forwards; }
+@keyframes tbOut { to { opacity: 0; transform: translateY(-28px); } }
+.td-extra { animation: tdUp .65s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes tdUp { from { opacity: 0; transform: translateY(28px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .td-bonus.out { animation: none; } .td-extra { animation: none; } }
+.td-bonus p { margin: 0; }

@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v169';
+  var APP_VERSION = 'v170';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -944,6 +944,19 @@
     o.hskReq = c[Math.floor(rng() * c.length) % c.length]; tdSave(o);
     return o.hskReq;
   }
+  // 전체 화면 안내를 걷고(스르륵), 아래 '더 해 볼까요?'가 올라오게 해요. 탭하거나 2.5초 뒤 자동으로
+  function tdBonusClose() {
+    if (!state.tdBonus) return;
+    var el = document.querySelector('.td-bonus'), calm = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    function fin() {
+      state.tdBonus = false;
+      if (state.screen === 'tab' && state.tab === 'home') {
+        renderKeep();
+        var ex = document.querySelector('.td-extra'); if (ex && ex.scrollIntoView) setTimeout(function () { ex.scrollIntoView({ block: 'center', behavior: calm ? 'auto' : 'smooth' }); }, 250);
+      }
+    }
+    if (el && !calm) { el.classList.add('out'); setTimeout(fin, 420); } else fin();
+  }
   function tdMeta(k) {
     var t = tdTarget(k) || { id: '', name: '' }, rec = chRec(parseInt(t.id, 10) || 1);
     var tbl = {
@@ -1008,12 +1021,11 @@
     // 필수를 막 끝낸 날: 18시 전이면 가끔(60%) 전체 화면으로 '하나만 더?'를 물어봐요. 저녁·밤엔 묻지 않아요
     if (over && !o.overSeen) {
       o.overSeen = 1; tdSave(o);
-      if (hr >= 6 && hr < 18 && Math.random() < 0.6) state.tdBonus = true;
+      if (hr >= 6 && hr < 18 && Math.random() < 0.6) { state.tdBonus = true; setTimeout(tdBonusClose, 2500); }
     }
-    var bonus = (over && state.tdBonus) ? '<div class="td-bonus" role="dialog" aria-label="하나만 더 해 볼까요?"><div class="tb-in">' +
+    var bonus = (over && state.tdBonus) ? '<div class="td-bonus" data-act="td-bonus-close" role="dialog" aria-label="조금만 더 해 보시라고 준비했어요"><div class="tb-in">' +
       '<img class="tb-m" src="img/td-more.webp" alt="" draggable="false">' +
-      '<h2>벌써 다 끝내셨네요!</h2><p>이렇게 빨리 끝내실 줄 몰랐어요.<br>딱 하나만 더 해 볼까요?</p>' +
-      '<button class="btn" data-act="td-bonus-more">좋아요, 하나 더</button><button class="btn soft" data-act="td-bonus-close">오늘은 여기까지</button></div></div>' : '';
+      '<h2>벌써 다 끝내셨네요!</h2><p>조금만 더 해 보시라고<br>준비했어요 🐌</p></div></div>' : '';
     return bonus + warn + '<div class="td-card' + (over ? ' over' : '') + '">' + head + '<div class="td-list">' + body + '</div></div>' + more;
   }
 
@@ -4923,7 +4935,7 @@
       case 'ch-skip': chSkip(); break;
       case 'ch-pick': chAnswer(+id); break;
       case 'ch-hear': if (state.ch && state.ch.phase === 'ask') speak(hskList(state.ch.lv)[state.ch.qs[state.ch.qi]][0], 0.85); break;
-      case 'td-bonus-more': case 'td-bonus-close': state.tdBonus = false; renderKeep(); if (act === 'td-bonus-more') { var ex = document.querySelector('.td-extra'); if (ex && ex.scrollIntoView) ex.scrollIntoView({ block: 'center', behavior: 'smooth' }); } break;
+      case 'td-bonus-close': tdBonusClose(); break;
       case 'ch-quit': if (state.ch && state.ch.stage > 1) { chSaveRec(state.ch); tdMark('ch-start'); } chStop(); go('tab', { tab: 'words' }); break;
       case 'ch-back': go('tab', { tab: 'words' }); break;
       case 'tone-start': if (hskGate(id)) break; startTone(parseInt(id, 10)); break;
