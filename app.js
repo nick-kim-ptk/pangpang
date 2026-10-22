@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v170';
+  var APP_VERSION = 'v171';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -944,19 +944,55 @@
     o.hskReq = c[Math.floor(rng() * c.length) % c.length]; tdSave(o);
     return o.hskReq;
   }
-  // 전체 화면 안내를 걷고(스르륵), 아래 '더 해 볼까요?'가 올라오게 해요. 탭하거나 2.5초 뒤 자동으로
-  function tdBonusClose() {
-    if (!state.tdBonus) return;
-    var el = document.querySelector('.td-bonus'), calm = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
-    function fin() {
-      state.tdBonus = false;
+  // 보너스 안내: 화면을 위로 올리면(또는 버튼) 뾰로롱 소리와 함께 걷히고, 아래 '더 해 볼까요?'가 스르륵 나타나요
+  function tdBonusGo() {
+    if (!state.tdBonus || state.tdBonusBusy) return;
+    state.tdBonusBusy = true;
+    sfx('chime');
+    var st = document.getElementById('tbStage');
+    if (st) { st.classList.remove('snap'); st.classList.add('leave'); }
+    setTimeout(function () {
+      state.tdBonus = false; state.tdBonusBusy = false;
       if (state.screen === 'tab' && state.tab === 'home') {
         renderKeep();
-        var ex = document.querySelector('.td-extra'); if (ex && ex.scrollIntoView) setTimeout(function () { ex.scrollIntoView({ block: 'center', behavior: calm ? 'auto' : 'smooth' }); }, 250);
+        var ex = document.querySelector('.td-extra'); if (ex && ex.scrollIntoView) setTimeout(function () { ex.scrollIntoView({ block: 'center', behavior: 'smooth' }); }, 300);
       }
-    }
-    if (el && !calm) { el.classList.add('out'); setTimeout(fin, 420); } else fin();
+    }, 460);
   }
+  (function tdBonusGestures() {
+    var y0 = null, dy = 0, st = null;
+    document.addEventListener('pointerdown', function (e) {
+      var o = e.target.closest && e.target.closest('.td-bonus');
+      if (!o || state.tdBonusBusy) return;
+      y0 = e.clientY; dy = 0; state.tdMoved = false; st = document.getElementById('tbStage'); if (st) st.classList.remove('snap');
+    });
+    document.addEventListener('pointermove', function (e) {
+      if (y0 === null || !st) return;
+      dy = Math.min(0, e.clientY - y0);
+      if (dy < -6) state.tdMoved = true;
+      st.style.transform = 'translateY(' + (dy * 0.6) + 'px)';
+    });
+    function end() {
+      if (y0 === null) return; y0 = null;
+      if (dy < -90) tdBonusGo(); else if (st) { st.classList.add('snap'); st.style.transform = ''; }
+      setTimeout(function () { state.tdMoved = false; }, 60);
+    }
+    document.addEventListener('pointerup', end); document.addEventListener('pointercancel', end);
+    document.addEventListener('wheel', function (e) { if (e.deltaY > 30 && document.querySelector('.td-bonus')) tdBonusGo(); }, { passive: true });
+    // 달팽이를 톡 누르면 통! 하고 쿠키 소리말이 떠올라요
+    var words = ['냠!', '쿠키!', '팽!', '하나 더!'], wi = 0;
+    document.addEventListener('click', function (e) {
+      var h = e.target.closest && e.target.closest('#tbHero');
+      if (!h || state.tdMoved) return;
+      var im = h.querySelector('img'); im.classList.remove('boing'); void im.offsetWidth; im.classList.add('boing');
+      try { if (navigator.vibrate) navigator.vibrate(8); } catch (e2) { /* 무시 */ }
+      var r = h.getBoundingClientRect(), p = document.createElement('span');
+      p.className = 'tb-pop'; p.textContent = words[wi++ % words.length];
+      p.style.left = (e.clientX - r.left + (Math.random() * 40 - 20)) + 'px'; p.style.top = (e.clientY - r.top - 30) + 'px';
+      p.style.setProperty('--r', (Math.random() * 24 - 12) + 'deg');
+      h.appendChild(p); setTimeout(function () { p.remove(); }, 900);
+    });
+  })();
   function tdMeta(k) {
     var t = tdTarget(k) || { id: '', name: '' }, rec = chRec(parseInt(t.id, 10) || 1);
     var tbl = {
@@ -1021,11 +1057,19 @@
     // 필수를 막 끝낸 날: 18시 전이면 가끔(60%) 전체 화면으로 '하나만 더?'를 물어봐요. 저녁·밤엔 묻지 않아요
     if (over && !o.overSeen) {
       o.overSeen = 1; tdSave(o);
-      if (hr >= 6 && hr < 18 && Math.random() < 0.6) { state.tdBonus = true; setTimeout(tdBonusClose, 2500); }
+      var calm = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (!calm && hr >= 6 && hr < 18 && Math.random() < 0.6) state.tdBonus = true;
     }
-    var bonus = (over && state.tdBonus) ? '<div class="td-bonus" data-act="td-bonus-close" role="dialog" aria-label="조금만 더 해 보시라고 준비했어요"><div class="tb-in">' +
-      '<img class="tb-m" src="img/td-more.webp" alt="" draggable="false">' +
-      '<h2>벌써 다 끝내셨네요!</h2><p>조금만 더 해 보시라고<br>준비했어요 🐌</p></div></div>' : '';
+    var bits = [[58, 212, 16, 'star', '#FFD45E', .5, 2.4, 12], [316, 196, 9, 'dot', '#7FB3FF', .6, 2, 12], [304, 420, 14, 'ring', '#FFB24A', .7, 2.8, -10], [300, 262, 11, 'star', '#FF9BB0', .8, 2.2, -16], [72, 404, 8, 'dot', '#FFD45E', .9, 2.6, 12], [96, 168, 10, 'ring', '#7FB3FF', 1, 3, 12]].map(function (b) {
+      return '<span class="tb-bit ' + b[3] + '" style="left:' + (b[0] / 370 * 100).toFixed(1) + '%;top:' + (b[1] / 824 * 100).toFixed(1) + '%;--s:' + b[2] + 'px;--c:' + b[4] + ';--d:' + b[5] + 's;--t:' + b[6] + 's;--rot:' + b[7] + 'deg"></span>';
+    }).join('');
+    var bonus = (over && state.tdBonus) ? '<div class="td-bonus" role="dialog" aria-label="보너스 학습 안내"><div class="tb-stage" id="tbStage">' +
+      '<div class="tb-bits">' + bits + '</div>' +
+      '<div class="tb-mid"><div class="tb-hero" id="tbHero"><img src="img/td-cookie.webp" alt="" draggable="false"></div>' +
+      '<div class="tb-copy"><h2 class="tb-title"><span style="--d:.35s">헉</span><span class="bang" style="--d:.42s">!</span> <span style="--d:.55s">벌써</span> <span style="--d:.65s">다</span> <span style="--d:.75s">끝내셨나요</span><span class="bang" style="--d:.88s">!</span></h2>' +
+      '<p class="tb-sub"><mark><b>조금만 더</b></mark> 해 보시라고<br>준비했어요</p></div></div>' +
+      '<div class="tb-swipe"><div class="tb-chev"><i></i><i></i><i></i></div><button class="tb-pill" data-act="td-bonus-go" aria-label="보너스 학습 열기">화면을 올려보세요!</button></div>' +
+      '</div></div>' : '';
     return bonus + warn + '<div class="td-card' + (over ? ' over' : '') + '">' + head + '<div class="td-list">' + body + '</div></div>' + more;
   }
 
@@ -2374,7 +2418,7 @@
     try { if (navigator.vibrate) navigator.vibrate(pattern); } catch (e) { /* 무시 */ }
   }
   var NOTE = function (n) { return 440 * Math.pow(2, (n - 9) / 12); }; // n: C4=0
-  // kind: tap | pop | right | wrong | done | goal
+  // kind: tap | pop | right | wrong | done | goal | chime
   function sfx(kind, combo) {
     if (!state.profile || state.profile.sound === false) return;
     try {
@@ -2392,6 +2436,7 @@
         tone(NOTE(0), 0.13, 0.26, 'sawtooth', 0.09);
         buzz([40, 50, 40]); return;
       }
+      if (kind === 'chime') { [0, 4, 7, 12, 16, 19, 24].forEach(function (n, i) { tone(NOTE(12 + n), i * 0.055, 0.22, 'sine', 0.14); }); tone(NOTE(43), 0.4, 0.35, 'triangle', 0.08); buzz([10, 30, 14]); return; }
       if (kind === 'done') { [0, 4, 7, 12].forEach(function (n, i) { tone(NOTE(12 + n), i * 0.11, 0.3, 'triangle', 0.2); }); buzz([30, 40, 30]); return; }
       if (kind === 'goal') { [0, 4, 7, 12, 16, 19].forEach(function (n, i) { tone(NOTE(12 + n), i * 0.09, 0.34, 'triangle', 0.2); }); buzz([40, 40, 40, 40, 80]); }
     } catch (e) { /* 소리가 안 나도 앱은 계속 */ }
@@ -4935,7 +4980,7 @@
       case 'ch-skip': chSkip(); break;
       case 'ch-pick': chAnswer(+id); break;
       case 'ch-hear': if (state.ch && state.ch.phase === 'ask') speak(hskList(state.ch.lv)[state.ch.qs[state.ch.qi]][0], 0.85); break;
-      case 'td-bonus-close': tdBonusClose(); break;
+      case 'td-bonus-go': if (!state.tdMoved) tdBonusGo(); break;
       case 'ch-quit': if (state.ch && state.ch.stage > 1) { chSaveRec(state.ch); tdMark('ch-start'); } chStop(); go('tab', { tab: 'words' }); break;
       case 'ch-back': go('tab', { tab: 'words' }); break;
       case 'tone-start': if (hskGate(id)) break; startTone(parseInt(id, 10)); break;
