@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v171';
+  var APP_VERSION = 'v172';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -2489,6 +2489,26 @@
   }
   window.addEventListener('resize', fitGreet);
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitGreet);
+  // 탭 화면(홈·HSK 등)에서 아래에 가려진 게 없으면 위아래 스크롤을 막아요. 더 있으면 그대로 스크롤돼요
+  var lockRaf = 0;
+  function lockIfFits() {
+    lockRaf = 0;
+    var root = document.documentElement, s = document.querySelector('.scroll.with-nav'), nav = document.querySelector('.nav');
+    var fit = false;
+    if (s && nav && !document.querySelector('.td-bonus')) {
+      var bottom = 0, i, r, ky = window.scrollY || 0;
+      for (i = 0; i < s.children.length; i++) { r = s.children[i].getBoundingClientRect(); if (r.height) bottom = Math.max(bottom, r.bottom + ky); }
+      fit = bottom + nav.offsetHeight + 12 <= window.innerHeight;
+    }
+    root.style.overflowY = fit ? 'hidden' : ''; document.body.style.overflowY = fit ? 'hidden' : '';
+    if (fit && window.scrollY) window.scrollTo(0, 0);
+  }
+  function lockSoon() { if (!lockRaf) lockRaf = requestAnimationFrame(lockIfFits); }
+  try {
+    new MutationObserver(lockSoon).observe($app, { childList: true, subtree: true });
+    window.addEventListener('resize', lockSoon);
+    document.addEventListener('load', lockSoon, true);
+  } catch (e) { /* 무시 */ }
   function render() {
     var html = '';
     if (state.screen === 'loading') html = viewLoading();
