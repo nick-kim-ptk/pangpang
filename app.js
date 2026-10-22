@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v192';
+  var APP_VERSION = 'v193';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -1847,6 +1847,8 @@
       '<button class="btn gray" data-act="home">홈으로</button></div></div>';
   }
   // 게임 결과 화면(카드 학습·퀴즈·성조·기억 사슬·소나기) 공통: 어두운 배경 + 같은 구성
+  // 문장이 마침표(.!?)로 끝나면 다음 문장은 다음 줄에서 시작해요
+  function gdLines(h) { return String(h).replace(/([.!?])\s+(?=\S)/g, '$1<br>'); }
   function gdKind(r) { return r && (r.kind === 'quiz' || r.kind === 'rain' || r.kind === 'chain'); }
   function gdCele(r) {
     return (r.milestone ? '<div class="gd-cele"><b>' + r.milestone + '일 연속 학습!</b><span>꾸준함이 실력이 돼요</span></div>' : '') +
@@ -1876,9 +1878,9 @@
       '<div class="stage rd-stage">' + mascot(pct >= .7 ? 'cheer' : pct >= .4 ? 'love' : 'thumbs') + '</div>' +
       '<div class="rd-ttl">' + esc(r.title) + '</div>' +
       (hasT ? '<div class="rd-score"><span class="rd-num" data-to="' + r.right + '">' + r.right + '</span><em>/ ' + r.total + '</em></div><div class="rd-rank">' + gdStars(stars) + '<b>' + rank + '</b></div>'
-        : '<p class="rd-msg">' + esc(r.line || '') + '</p>') +
+        : '<p class="rd-msg">' + gdLines(esc(r.line || '')) + '</p>') +
       card + gdCele(r) +
-      '<div class="rd-msgbox"><p class="rd-msg">“' + esc(msg) + '”</p></div>' +
+      '<div class="rd-msgbox"><p class="rd-msg">“' + gdLines(esc(msg)) + '”</p></div>' +
       '</div><div class="footer" style="padding-left:0;padding-right:0">' +
       '<button class="btn" data-act="home">홈으로</button>' +
       (r.again ? '<button class="btn gray" data-act="' + r.again.act + '"' + (r.again.id ? ' data-id="' + r.again.id + '"' : '') + '>' + esc(r.again.label) + '</button>' : '') + '</div></div>';
@@ -1916,11 +1918,11 @@
       (r.newBest ? '<div class="rd-badge">NEW 최고 기록</div>' : '') +
       '<div class="rd-rank"><div class="rd-stars">' + starHtml + '</div><b>' + rank + '</b>' +
       '<span>웨이브 ' + w + (r.combo >= 2 ? ' · 최고 ' + r.combo + '연속' : '') + '</span></div>' +
-      '<div class="rd-vs ' + cls + '"><div class="rd-line">' + vs + '</div>' +
+      '<div class="rd-vs ' + cls + '"><div class="rd-line">' + gdLines(vs) + '</div>' +
       (r.first ? '' : '<div class="rd-bars"><div class="rd-bar"><span>최고</span><em class="trk"><i style="width:' + Math.round(r.prev / top * 100) + '%"></i></em><b>' + r.prev + '</b></div>' +
         '<div class="rd-bar now"><span>이번</span><em class="trk"><i style="width:' + Math.round(r.score / top * 100) + '%"></i></em><b>' + r.score + '</b></div></div>') + '</div>' +
       gdCele(r) +
-      '<div class="rd-msgbox"><p class="rd-msg">“' + esc(msg) + '”</p></div>' +
+      '<div class="rd-msgbox"><p class="rd-msg">“' + gdLines(esc(msg)) + '”</p></div>' +
       '</div><div class="footer" style="padding-left:0;padding-right:0">' +
       '<button class="btn" data-act="home">홈으로</button>' +
       '<button class="btn gray" data-act="rain-start" data-id="' + r.lv + '">한 번 더 하기</button></div></div>';
@@ -4432,11 +4434,11 @@
       (r.isBest && prev ? '<div class="rd-badge">NEW 최고 기록</div>' : '') +
       '<div class="rd-rank"><div class="rd-stars">' + starHtml + '</div><b>' + rank + '</b>' +
       '<span>졸업 ' + r.grads + '장' + (r.maxCombo >= 2 ? ' · 최고 ' + r.maxCombo + '연속' : '') + '</span></div>' +
-      '<div class="rd-vs ' + cls + '"><div class="rd-line">' + vs + '</div>' +
+      '<div class="rd-vs ' + cls + '"><div class="rd-line">' + gdLines(vs) + '</div>' +
       (prev ? '<div class="rd-bars"><div class="rd-bar"><span>최고</span><em class="trk"><i style="width:' + Math.round(prev / top * 100) + '%"></i></em><b>' + prev + '</b></div>' +
         '<div class="rd-bar now"><span>이번</span><em class="trk"><i style="width:' + Math.round(st / top * 100) + '%"></i></em><b>' + st + '</b></div></div>' : '') + '</div>' +
       gdCele(r) +
-      '<div class="rd-msgbox"><p class="rd-msg">“' + esc(msg) + '”</p></div>' +
+      '<div class="rd-msgbox"><p class="rd-msg">“' + gdLines(esc(msg)) + '”</p></div>' +
       '</div><div class="footer" style="padding-left:0;padding-right:0">' +
       '<button class="btn" data-act="ch-start" data-id="' + r.lv + '">다시 도전</button>' +
       '<button class="btn gray" data-act="ch-back" data-id="' + r.lv + '">HSK ' + r.lv + '급으로</button></div></div>';
