@@ -644,3 +644,6 @@ select kind, count(*) n, round(avg(in_tokens)) avg_in, round(avg(cache_read)) av
 
 ## v178
 - 말하기 레슨도 레슨 탭에는 안 한 2개만, 전체 보기에서 50개 전체 목록.
+
+## v179
+- v178에서 실수로 지워진 HSK 탭·AI 탭 화면 코드를 복구 (HSK 탭이 열리지 않아 성조 연습 닫기가 먹통이던 문제).
