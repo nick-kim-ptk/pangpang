@@ -3,6 +3,7 @@
   'use strict';
 
   var LESSONS = window.LESSONS;
+  var GRAMMAR = window.GRAMMAR || [];
   var Grade = window.Grade;
   var Hangul = window.Hangul;
   var PHRASES = window.PHRASES || [];
@@ -35,10 +36,10 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v173';
+  var APP_VERSION = 'v174';
 
   var QMAP = {};
-  LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
+  LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
 
   var INTERVALS = [0, 1, 3, 7, 14, 30]; // 박스별 복습 간격(일)
   var REVIEW_SIZE = 8;
@@ -111,7 +112,7 @@
   }
   function pad(n) { return n < 10 ? '0' + n : '' + n; }
   function dayStr(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
-  function lessonById(id) { return LESSONS.filter(function (l) { return l.id === id; })[0]; }
+  function lessonById(id) { return LESSONS.concat(GRAMMAR).filter(function (l) { return l.id === id; })[0]; }
   function shuffle(a) {
     a = a.slice();
     for (var i = a.length - 1; i > 0; i--) {
@@ -1100,7 +1101,7 @@
     var n = snap && snap.solved ? snap.solved : 0;
     return Math.max(0, Math.min(100, Math.round(n / CLEAR_COUNT * 100)));
   }
-  var lessonUi = { n: null, rn: null };
+  var lessonUi = { n: null, rn: null, g: null };
   // 처음엔 7개, 다음 레슨(NEW)이 아래에 있으면 그 줄까지 보여 줘요
   function lessonInitN() {
     var nx = nextLesson(), idx = nx ? LESSONS.indexOf(nx) : 0;
@@ -1111,6 +1112,25 @@
     render();
     var s2 = document.querySelector('.scroll'); if (s2) s2.scrollTop = top;
     try { window.scrollTo(0, wy); } catch (e) { /* 무시 */ }
+  }
+  // 문법 레슨(HSK 1급): 처음엔 5개, 더 보기로 나머지를 펼쳐요
+  function grammarSection() {
+    if (!GRAMMAR.length) return '';
+    var n = GRAMMAR.filter(function (g) { return state.done[g.id]; }).length, pct = Math.round(n / GRAMMAR.length * 100);
+    var firstUndone = GRAMMAR.findIndex(function (g) { return !state.done[g.id]; });
+    var take = Math.min(GRAMMAR.length, lessonUi.g || Math.max(5, Math.ceil((firstUndone + 1) / 5) * 5));
+    var list = GRAMMAR.slice(0, take).map(function (l, i) {
+      var isDone = !!state.done[l.id], pc = isDone ? 0 : lessonPercent(l.id);
+      return '<li><button class="item' + (isDone ? '' : ' off') + '" data-act="open-lesson" data-id="' + l.id + '">' +
+        '<span class="num">' + (i + 1) + '</span><span class="txt"><div class="t">' + esc(l.title) + '</div><div class="s">' + esc(l.sub) + '</div></span>' +
+        (isDone ? '<span class="chip green">' + I.check + '완료</span>' : '<span class="chips-end">' + (pc > 0 ? '<span class="chip soft pct">' + pc + '%</span>' : '') + '</span>') + '</button></li>';
+    }).join('');
+    return '<div class="sc-head" style="margin-top:24px"><div class="section-title" style="margin:0">문법 레슨</div><span class="chip y">NEW</span></div>' +
+      '<p class="hsk-note under-title">HSK 1급 문법을 말하면서 익혀요. 한 번에 3분이면 돼요.</p>' +
+      '<div class="lesson-progress"><div class="row"><b>' + n + ' / ' + GRAMMAR.length + '</b><span>문법 완료</span></div>' +
+      '<div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + pct + '"><i style="width:' + pct + '%"></i></div></div>' +
+      '<ul class="list" style="margin-top:0">' + list + '</ul>' +
+      (take < GRAMMAR.length ? '<button class="more-btn" data-act="grammar-more">문법 더보기 (' + (GRAMMAR.length - take) + '개 더 · 전체 ' + GRAMMAR.length + '개)</button>' : '');
   }
   function viewLessons() {
     var next = nextLesson();
@@ -1131,6 +1151,7 @@
       '<h1 class="big-title">전체 레슨</h1>' +
       '<p class="sub-title">' + '배운 내용을 활용해 보며 자연스럽게 익혀가요.' + '</p>' +
       scenesSection() +
+      grammarSection() +
       '<div class="section-title" style="margin-top:24px">말하기 레슨</div>' +
       '<div class="lesson-progress"><div class="row"><b>' + n + ' / ' + LESSONS.length + '</b><span>레슨 완료</span></div>' +
       '<div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + pct + '"><i style="width:' + pct + '%"></i></div></div>' +
@@ -1262,7 +1283,7 @@
     return '<div class="screen">' +
       '<div class="topbar"><button class="icon-btn" data-act="back" aria-label="뒤로">' + I.back + '</button></div>' +
       '<div class="scroll" style="padding-bottom:8px">' +
-        '<div class="intro-head"><div><span class="chip y lesson-no">' + (LESSONS.indexOf(l) + 1) + '번째 레슨</span><h1 class="big-title" style="margin-top:8px">' + esc(l.title) + '</h1>' +
+        '<div class="intro-head"><div><span class="chip y lesson-no">' + (l.kind === 'grammar' ? '문법 ' + (GRAMMAR.indexOf(l) + 1) + ' · HSK 1급' : (LESSONS.indexOf(l) + 1) + '번째 레슨') + '</span><h1 class="big-title" style="margin-top:8px">' + esc(l.title) + '</h1>' +
         '<p class="sub-title" style="margin-bottom:0">' + esc(l.intro) + '</p></div></div>' +
         '<div class="pattern" style="margin-top:16px"><div class="zh">' + esc(l.pattern.zh) + '</div><div class="py" style="margin-top:2px">' + esc(l.pattern.py) + '</div><div class="kr">' + esc(kr(l.pattern.py)) + '</div><div class="ko" style="margin-top:2px">' + esc(l.pattern.ko) + '</div></div>' +
         introPractice(l, learned) +
@@ -4835,6 +4856,7 @@
       case 'ai-fix-del': aiFixDel(el.getAttribute('data-t')); render(); break;
       case 'ai-fix-more': var fk = el.getAttribute('data-k') || 'expr'; fixUi.n[fk] = (fixUi.n[fk] || 7) + 7; renderKeep(); break;
       case 'ai-seg': fixUi.seg = el.getAttribute('data-k') === 'fix' ? 'fix' : 'expr'; render(); break;
+      case 'grammar-more': lessonUi.g = GRAMMAR.length; renderKeep(); break;
       case 'lessons-more': lessonUi.n = (lessonUi.n || lessonInitN()) + 7; renderKeep(); break;
       case 'ac-showko': if (state.ac) { var sk = state.ac.msgs[+el.getAttribute('data-i')]; if (sk) { sk.showKo = !sk.showKo; render(); } } break;
       case 'ac-ko': if (state.ac && state.ac.mode === 'chat' && !state.ac.busy && !state.ac.ended) { state.ac.ko = { opts: null, heard: '', busy: false }; render(); acScroll(); } break;
