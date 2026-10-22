@@ -2639,3 +2639,21 @@ html, body, * { scrollbar-width: none; -ms-overflow-style: none; }
 .rd .stage.rd-stage .mascot { width: 156px; }
 .rd-ttl { margin-top: 2px; }
 .rd-num { font-size: clamp(64px, 10dvh, 96px); }
+/* v187 소나기 결과: 등급·별 */
+.rd-rank { margin-top: 12px; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.rd-stars { display: flex; gap: 6px; }
+.rd-star { font-style: normal; font-size: 30px; line-height: 1; color: var(--line); animation: rdPop .5s cubic-bezier(.2,1.5,.4,1) both; }
+.rd-star.on { color: #f5b82e; text-shadow: 0 2px 8px rgba(245,184,46,.5); }
+.rd-rank b { font-size: 18px; color: var(--ink); }
+.rd-rank span { font-size: 13px; color: var(--ink-3); }
+.rd-vs { margin-top: 14px; }
+@media (prefers-reduced-motion: reduce) { .rd-star { animation: none; } }
+/* v187 소나기 결과: 등급·별 */
+.rd-rank { margin-top: 12px; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.rd-stars { display: flex; gap: 6px; }
+.rd-star { font-style: normal; font-size: 30px; line-height: 1; color: var(--line); animation: rdPop .5s cubic-bezier(.2,1.5,.4,1) both; }
+.rd-star.on { color: #f5b82e; text-shadow: 0 2px 8px rgba(245,184,46,.5); }
+.rd-rank b { font-size: 18px; color: var(--ink); }
+.rd-rank span { font-size: 13px; color: var(--ink-3); }
+.rd-vs { margin-top: 14px; }
+@media (prefers-reduced-motion: reduce) { .rd-star { animation: none; } }

@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v186';
+  var APP_VERSION = 'v187';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -1846,7 +1846,7 @@
   }
   // 소나기 퀴즈 결과: 점수를 크게 보여 주고 내 최고 기록과 견줘요
   function rainDone(r) {
-    var diff = r.score - r.prev, pct = r.total ? r.right / r.total : 0;
+    var diff = r.score - r.prev, pct = r.right / Math.max(1, r.waves);
     var vs, cls;
     if (r.first) { vs = '첫 기록이에요! 다음엔 이 점수를 넘어 볼까요?'; cls = 'first'; }
     else if (r.newBest) { vs = '최고 기록을 <b>' + diff + '점</b> 올렸어요!'; cls = 'up'; }
@@ -1856,12 +1856,17 @@
       : pct >= .7 ? '점점 눈에 익어 가시는군요!'
       : pct >= .4 ? '조금씩 익숙해지고 있어요. 한 번만 더 해 볼까요?'
       : '처음엔 다 그래요. 소리에 귀를 기울여 봐요';
+    var w = r.waves, rank = w >= 20 ? '하늘의 지배자' : w >= 10 ? '소나기 마스터' : w >= 5 ? '우산 든 달팽이' : '빗방울 새싹';
+    var stars = w >= 20 ? 3 : w >= 10 ? 2 : w >= 5 ? 1 : 0;
+    var starHtml = [0, 1, 2].map(function (i) { return '<i class="rd-star' + (i < stars ? ' on' : '') + '" style="animation-delay:' + (0.5 + i * 0.25).toFixed(2) + 's">★</i>'; }).join('');
     var top = Math.max(r.score, r.prev, 1);
-    return '<div class="screen done-screen rd">' + ((r.goalHit || r.newBest) ? confetti() : '') + '<div class="hero">' +
+    return '<div class="screen done-screen rd">' + (r.score > 0 ? confetti() + (r.newBest ? confetti() : '') : '') + '<div class="hero">' +
       '<div class="stage rd-stage">' + mascot(r.newBest || pct >= .7 ? 'cheer' : 'thumbs') + '</div>' +
       '<div class="rd-ttl">' + esc(r.title) + '</div>' +
       '<div class="rd-score"><span class="rd-num" data-to="' + r.score + '">' + r.score + '</span><em>점</em></div>' +
       (r.newBest ? '<div class="rd-badge">NEW 최고 기록</div>' : '') +
+      '<div class="rd-rank"><div class="rd-stars">' + starHtml + '</div><b>' + rank + '</b>' +
+      '<span>웨이브 ' + w + (r.combo >= 2 ? ' · 최고 ' + r.combo + '연속' : '') + '</span></div>' +
       '<div class="rd-vs ' + cls + '"><div class="rd-line">' + vs + '</div>' +
       (r.first ? '' : '<div class="rd-bars"><div class="rd-bar"><span>최고</span><i style="width:' + Math.round(r.prev / top * 100) + '%"></i><b>' + r.prev + '</b></div>' +
         '<div class="rd-bar now"><span>이번</span><i style="width:' + Math.round(r.score / top * 100) + '%"></i><b>' + r.score + '</b></div></div>') + '</div>' +
@@ -4432,7 +4437,7 @@
     var list = hskList(lv);
     if (list.length < RN_DROPS + 2) { toast('단어가 부족해요'); return; }
     if (hskLocked(lv)) { go('pay', { payWhy: 'HSK ' + lv + '급은 멤버십이 필요해요. 1급은 무료예요.' }); return; }
-    var targets = shuffle(hskPick(lv, RN_WAVES)).map(function (q) { return q.i; });
+    var targets = hskPick(lv, list.length).map(function (q) { return q.i; });
     state.rn = { lv: lv, phase: 'ready', py: rnPyOn(), targets: targets, wave: 0, lives: RN_LIVES, score: 0, combo: 0, maxCombo: 0, right: 0,
       missed: [], drops: [], cur: null, fb: '', tok: 0, raf: 0, tm: 0, H: 0, uid: 0, before: todayAnswers() };
     go('rain');
@@ -4453,7 +4458,7 @@
     var pool = shuffle(list.map(function (_, i) { return i; })).filter(function (i) { return i !== ti && list[i][0] !== tw[0] && chPy(list[i]) !== chPy(tw); });
     pool.sort(function (a, b) { return Math.abs(Array.from(list[a][0]).length - tlen) - Math.abs(Array.from(list[b][0]).length - tlen); });
     var seq = shuffle([ti].concat(pool.slice(0, RN_DROPS - 1)));
-    var dur = Math.max(5.5, 10 - r.wave * 0.45), lane = -1, prev = -1, lanes = [];
+    var dur = Math.max(2.8, 10 - r.wave * 0.35), lane = -1, prev = -1, lanes = [];
     r.drops = seq.map(function (wi, k) {
       do { lane = Math.floor(Math.random() * RN_LANES.length); } while (lane === prev);
       prev = lane;
@@ -4462,7 +4467,7 @@
     r.cur = { ti: ti, t: 0, done: false, err: false };
     r.fb = '';
     var fbEl = document.querySelector('.rn-fb'); if (fbEl) fbEl.innerHTML = '';
-    var wv = document.querySelector('.rn-wave'); if (wv) wv.textContent = '웨이브 ' + (r.wave + 1) + '/' + r.targets.length;
+    var wv = document.querySelector('.rn-wave'); if (wv) wv.textContent = '웨이브 ' + (r.wave + 1);
     var field = document.querySelector('.rn-field'); if (field) field.innerHTML = '';
     clearTimeout(r.tm);
     r.tm = setTimeout(function () { if (rnAlive(r, tok) && r.cur && !r.cur.done) speak(tw[0], 0.85); }, 250);
@@ -4588,8 +4593,8 @@
     sfx(hit ? 'goal' : 'done');
     go('done', { result: {
       kind: 'rain', title: cleared ? '소나기가 그쳤어요!' : '소나기 퀴즈 끝!',
-      line: r.targets.length + '개 중 ' + r.right + '개 잡았어요. ' + r.score + '점' + (nb ? ' (최고 기록!)' : '') + '.',
-      score: r.score, prev: prev, newBest: nb, first: first, right: r.right, total: r.targets.length, lives: r.lives, cleared: cleared, lv: lv,
+      line: r.wave + '웨이브까지 갔어요. ' + r.score + '점' + (nb ? ' (최고 기록!)' : '') + '.',
+      score: r.score, prev: prev, newBest: nb, first: first, right: r.right, total: Math.max(1, r.wave), waves: r.wave, combo: r.maxCombo, lives: r.lives, cleared: cleared, lv: lv,
       answers: now, goal: goal, goalHit: hit, milestone: 0,
       again: { act: 'rain-start', id: String(lv), label: '한 번 더 하기' }
     } });
@@ -4609,7 +4614,7 @@
         '<div class="footer"><button class="btn" data-act="rn-go">시작하기</button></div></div>';
     }
     return '<div class="screen qz-fit"><div class="topbar ch-top">' + close + '<div class="ch-hearts rn-hearts">' + rnHearts(r) + '</div><span class="chip y rn-score">' + r.score + '점</span></div>' +
-      '<div class="rn-wrap"><div class="rn-hud"><span class="rn-wave">웨이브 ' + Math.min(r.wave + 1, r.targets.length) + '/' + r.targets.length + '</span><span class="rn-combo">' + (r.combo >= 2 ? icn('flame') + ' ' + r.combo + '연속' : '') + '</span></div>' +
+      '<div class="rn-wrap"><div class="rn-hud"><span class="rn-wave">웨이브 ' + Math.min(r.wave + 1, r.targets.length) + '</span><span class="rn-combo">' + (r.combo >= 2 ? icn('flame') + ' ' + r.combo + '연속' : '') + '</span></div>' +
       '<div class="rn-field" aria-label="떨어지는 한자"></div>' +
       '<div class="rn-ctl"><button class="listen-btn" data-act="rn-hear" aria-label="다시 듣기">' + I.spk + '</button><div class="rn-fb" role="status">' + r.fb + '</div></div></div></div>';
   }

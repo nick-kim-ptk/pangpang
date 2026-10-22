@@ -668,3 +668,6 @@ select kind, count(*) n, round(avg(in_tokens)) avg_in, round(avg(cache_read)) av
 
 ## v186
 - 소나기 결과에서 잡은 한자·남은 목숨 칸 삭제.
+
+## v187
+- 소나기 퀴즈: 10웨이브 제한을 없애고 목숨이 남는 동안 계속(점점 빨라짐). 결과 화면에 등급·별·꽃가루 추가.
