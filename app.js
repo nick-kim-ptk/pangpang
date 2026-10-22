@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v155';
+  var APP_VERSION = 'v156';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -860,6 +860,128 @@
   function greetFor(d) { var h = 0, k = dayStr(d); for (var i = 0; i < k.length; i++) h = (h * 31 + k.charCodeAt(i)) >>> 0; return h % GREETS.length; }
   var greetIdx = greetFor(new Date());
   function refreshGreet() { greetIdx = greetFor(new Date()); }
+  /* ---------- 오늘 할 일 (v156): 홈을 체크리스트로. 필수는 무료로 끝낼 수 있고, 선택 항목은 날마다 달라져요 ---------- */
+  var TD_LESSON_Q = 10;
+  function tdKey(s) { return 'pangpang.todo' + (s || '') + '.' + (state.user ? state.user.id : 'x'); }
+  function tdLoad() {
+    var day = dayStr(new Date()), o = null;
+    try { o = JSON.parse(localStorage.getItem(tdKey()) || 'null'); } catch (e) { o = null; }
+    if (!o || o.day !== day) o = { day: day, lessonQ: 0, done: {}, rev0: -1, plan: null };
+    return o;
+  }
+  function tdSave(o) { try { localStorage.setItem(tdKey(), JSON.stringify(o)); } catch (e) { /* 무시 */ } }
+  function tdLastAll() { try { return JSON.parse(localStorage.getItem(tdKey('.last')) || '{}'); } catch (e) { return {}; } }
+  function tdMark(key) {
+    var o = tdLoad(); o.done[key] = 1; tdSave(o);
+    var l = tdLastAll(); l[key] = o.day;
+    try { localStorage.setItem(tdKey('.last'), JSON.stringify(l)); } catch (e) { /* 무시 */ }
+  }
+  function tdLessonQ(n) { var o = tdLoad(); o.lessonQ = (o.lessonQ || 0) + n; tdSave(o); }
+  function tdRng(seed) {
+    var h = 1779033703 ^ seed.length, i;
+    for (i = 0; i < seed.length; i++) { h = Math.imul(h ^ seed.charCodeAt(i), 3432918353); h = (h << 13) | (h >>> 19); }
+    return function () {
+      h = Math.imul(h ^ (h >>> 16), 2246822507); h = Math.imul(h ^ (h >>> 13), 3266489909); h ^= h >>> 16;
+      return (h >>> 0) / 4294967296;
+    };
+  }
+  function tdSince(last, day) { return last ? Math.round((new Date(day) - new Date(last)) / 86400000) : 999; }
+  function tdLv() { var lv = hskLvSel(); return hskLocked(lv) ? 1 : lv; }
+  function tdTarget(k) {
+    var lv = tdLv(), pg, ds, o;
+    if (k === 'scene') {
+      pg = scProg(); o = SCENES.filter(function (s) { return !(pg[s.id] && pg[s.id].done); })[0] || SCENES[0];
+      return o ? { id: o.id, name: o.title } : null;
+    }
+    if (k === 'dialog') {
+      ds = window.DIALOGS || [];
+      o = ds.filter(function (d) { return state.profile.dlg.indexOf(d.id) < 0 && !dialogLocked(d.id); })[0] || ds.filter(function (d) { return state.profile.dlg.indexOf(d.id) < 0; })[0] || ds[0];
+      return o ? { id: o.id, name: o.title } : null;
+    }
+    return { id: String(lv), name: '' };
+  }
+  function tdPaid(k) {
+    if (k === 'ai') return !aiOn();
+    if (k === 'dialog') { var t = tdTarget('dialog'); return !!t && dialogLocked(t.id); }
+    return false;
+  }
+  // 오늘의 선택 항목: 날짜로 정해서 같은 날엔 항상 같고, 어제 한 건 빼고, 오래 안 한 것일수록 잘 나와요 (유료는 하루 1개 이하)
+  function tdPlan(o) {
+    if (o.plan) return o.plan;
+    var last = tdLastAll(), rng = tdRng(o.day + (state.user ? state.user.id : 'x')), pool = [];
+    if (Object.keys(HSKW).length) pool = ['hsk-study', 'hsk-quiz', 'ch-start', 'tone-start', 'rain-start'];
+    if (SCENES.length) pool.push('scene');
+    if ((window.DIALOGS || []).length) pool.push('dialog');
+    if (sb && !isGuest()) pool.push('ai');
+    var cand = pool.map(function (k) { var s = tdSince(last[k], o.day); return { k: k, s: s }; });
+    var fresh = cand.filter(function (c) { return c.s > 1; });
+    if (fresh.length >= 2) cand = fresh;
+    var n = rng() < 0.34 ? 2 : 1, out = [], paid = 0;
+    while (out.length < n && cand.length) {
+      var tot = cand.reduce(function (t, c) { return t + (c.s >= 999 ? 8 : Math.min(7, Math.max(1, c.s))); }, 0), r = rng() * tot, pickI = 0;
+      for (var i = 0; i < cand.length; i++) { r -= (cand[i].s >= 999 ? 8 : Math.min(7, Math.max(1, cand[i].s))); if (r <= 0) { pickI = i; break; } }
+      var c = cand.splice(pickI, 1)[0];
+      if (tdPaid(c.k)) { if (paid) continue; paid++; }
+      out.push(c.k);
+    }
+    o.plan = out; tdSave(o);
+    return out;
+  }
+  function tdMeta(k) {
+    var t = tdTarget(k) || { id: '', name: '' }, rec = chRec(parseInt(t.id, 10) || 1);
+    var tbl = {
+      'hsk-study': { title: 'HSK 카드 학습', sub: '밀어서 외우기', act: 'hsk-study', id: t.id },
+      'hsk-quiz': { title: 'HSK 단어 퀴즈', sub: '소리·뜻 고르기', act: 'hsk-quiz', id: t.id },
+      'ch-start': { title: '기억 사슬', sub: rec.best ? '최고 ' + rec.best + '단계에 도전' : '몇 단계까지 갈까요?', act: 'ch-start', id: t.id },
+      'tone-start': { title: '성조 연습', sub: '소리로 성조 맞히기', act: 'tone-start', id: t.id },
+      'rain-start': { title: '소나기 퀴즈', sub: '떨어지는 한자를 잡아요', act: 'rain-start', id: t.id },
+      'scene': { title: '상황 레슨 · ' + t.name, sub: '말하고, 풀고, 듣기까지 3분', act: 'sc-open', id: t.id },
+      'dialog': { title: '상황 대화 · ' + t.name, sub: '대화로 주고받아 보기', act: 'dialog-start', id: t.id },
+      'ai': { title: 'AI 선생님과 대화', sub: '자유롭게 중국어로 이야기해요', act: 'tab', id: 'review' }
+    };
+    var m = tbl[k];
+    if (m) m.btn = k === 'ai' ? '대화' : '시작';
+    return m || null;
+  }
+  function tdRow(it) {
+    var chip = it.pro ? '<em class="td-pro">' + I.lock + 'PRO</em>' : (it.free ? '<em class="td-free">무료 체험</em>' : '');
+    return '<div class="td-item' + (it.done ? ' done' : '') + '"><span class="td-chk" aria-hidden="true">' + (it.done ? I.check : '') + '</span>' +
+      '<div class="td-txt"><div class="td-t">' + esc(it.title) + chip + '</div><div class="td-s">' + esc(it.done && it.doneSub ? it.doneSub : it.sub) + '</div>' +
+      (it.why && !it.done ? '<div class="td-why">' + esc(it.why) + '</div>' : '') + '</div>' +
+      (it.done || it.phrase ? '' : '<button class="btn sm' + (it.req ? '' : ' soft') + '" data-act="' + it.act + '" data-id="' + esc(it.id || '') + '">' + esc(it.btn) + '</button>') + '</div>';
+  }
+  function tdBuild(rtot, due, wdue, phraseCard) {
+    var o = tdLoad(), next = nextLesson(), items = [], day = o.day;
+    if (o.rev0 < 0) { o.rev0 = rtot; tdSave(o); }
+    if (o.rev0 > 0) items.push({ req: 1, done: rtot === 0, title: '오늘의 복습', sub: (due ? '문장 ' + due + '개' : '') + (due && wdue ? ' · ' : '') + (wdue ? '단어 ' + wdue + '개' : ''), doneSub: '복습을 모두 마쳤어요', act: 'today-review', btn: '복습 시작' });
+    if (next || o.lessonQ > 0) {
+      var q = Math.min(o.lessonQ, TD_LESSON_Q);
+      items.push({ req: 1, done: o.lessonQ >= TD_LESSON_Q, title: '레슨 ' + TD_LESSON_Q + '문제 대답하기', sub: q + '/' + TD_LESSON_Q + (next ? ' · ' + next.title : ''), doneSub: TD_LESSON_Q + '문제를 말했어요',
+        act: next ? 'open-lesson' : 'review-start', id: next ? next.id : '', btn: q ? '이어서' : '학습하기' });
+    }
+    if (phraseCard) items.push({ req: 1, done: !!o.done.phrase, title: '오늘의 한 문장 듣기', sub: '카드의 스피커를 눌러 들어 보세요', doneSub: '들어 봤어요', phrase: 1 });
+    var last = tdLastAll(), opt = [];
+    tdPlan(o).forEach(function (k) {
+      var m = tdMeta(k); if (!m) return;
+      var s = tdSince(last[k], day), why = s >= 999 ? '아직 안 해 봤어요' : (s >= 3 ? s + '일 만에 해 봐요' : '');
+      var dlgFree = k === 'dialog' && !isPro() && !tdPaid('dialog');
+      opt.push(Object.assign(m, { done: !!o.done[k], why: why, pro: tdPaid(k), free: dlgFree, doneSub: '오늘 해냈어요' }));
+    });
+    var req = items.filter(function (i) { return i.req; }), all = items.concat(opt);
+    var doneN = all.filter(function (i) { return i.done; }).length, reqLeft = req.filter(function (i) { return !i.done; }).length;
+    var pct = all.length ? Math.round(doneN / all.length * 100) : 0, st = streak(), over = !!req.length && !reqLeft;
+    var top = '<div class="td-top' + (over ? ' over' : '') + '"><div class="td-head"><span>오늘 할 일</span><b>' + doneN + '/' + all.length + '</b></div>' +
+      '<div class="td-bar"><i style="width:' + pct + '%"></i></div>' +
+      '<div class="td-sub">' + (over ? '필수를 모두 마쳤어요. 오늘도 해냈어요!' : '필수 ' + reqLeft + '개가 남았어요') + '</div></div>';
+    var warn = (new Date().getHours() >= 20 && st > 0 && todayAnswers() === 0)
+      ? '<div class="td-warn">' + icn('flame') + '<span>오늘 한 가지만 해도 <b>연속 ' + st + '일</b>이 이어져요</span></div>' : '';
+    var body = items.map(function (i) {
+      return i.phrase ? '<div class="td-group">' + tdRow(i) + phraseCard + '</div>' : tdRow(i);
+    }).join('');
+    var more = opt.length ? '<div class="td-more">더 해 볼까요? <em>선택</em></div>' + opt.map(tdRow).join('') : '';
+    return top + warn + '<div class="td-list">' + body + '</div>' + more;
+  }
+
   function viewHome() {
     var next = nextLesson();
     var due = dueRows().length;
@@ -870,47 +992,7 @@
     // 다른 페이지 제목과 같은 크기(32px)로 두고, 화면이 좁아 한 줄에 안 들어갈 때만 실제 글자 폭을 재서 줄여요 (fitGreet)
     var head = '<div class="home-greet"><h1><span class="gl">' + esc(GREETS[greetIdx][0]) + '</span><br><span class="gl">' + esc(GREETS[greetIdx][1]) + '</span></h1></div>';
 
-    var ans = todayAnswers(), goal = state.profile.goal;
-    // 목표를 넘기면 150%처럼 그대로 보여 주고, 막대도 목표선(100%)을 넘어 계속 길어져요 (최대 300%까지)
-    var goalPct = Math.round(ans / goal * 100), hit = ans >= goal;
-    var scale = Math.max(100, Math.min(goalPct, 300));
-    var basePct = Math.min(goalPct, 100) / scale * 100, tickPct = 100 / scale * 100, fillPct = Math.min(goalPct, 300) / scale * 100;
-    var capTxt = goalPct > 100 ? '목표보다 ' + (ans - goal) + '문제 더 했어요' : '오늘 목표를 채웠어요';
-    var goalCard = '<div class="goal-card' + (hit ? ' hit' : '') + (goalPct > 100 ? ' over' : '') + '"><div class="goal-top"><span>오늘 목표</span>' +
-      (hit ? '<em class="goal-pct">달성!</em>' : '<b>' + Math.min(Math.round(ans / goal * 100), 999) + '%</b>') + '</div>' +
-      '<div class="goal-bar"><i class="gb-base" style="width:' + basePct + '%"></i>' +
-      (goalPct > 100 ? '<i class="gb-over" style="left:' + tickPct + '%;width:' + (fillPct - tickPct) + '%"></i><span class="gb-tick" style="left:' + tickPct + '%"></span>' : '') + '</div>' +
-      (hit ? '<div class="goal-sub"><span>' + capTxt + '</span><span>' + Math.min(ans, 9999) + ' / ' + goal + '문제</span></div>' : '') + '</div>';
-
-    var todayCard;
-    if (!next) {
-      todayCard = '<div class="today hero done">' + mascot('love', 'hero-m') + '<span class="chip green">모든 레슨 완료</span>' +
-        '<h2>전부 배웠어요!</h2><p class="explain">' + LESSONS.length + '개 레슨을 모두 마쳤어요. 이제 복습으로 입에 붙여 볼까요?</p>' +
-        '<button class="btn soft" data-act="review-start">복습하기</button></div>';
-    } else if (done) {
-      todayCard = '<div class="today hero done">' + mascot('thumbs', 'hero-m') + '<span class="chip green">오늘 레슨 완료</span>' +
-        '<h2>오늘 분량 끝!</h2><p class="explain">배운 걸 스피드 퀴즈로 점검해 볼까요?</p>' +
-        '<button class="btn soft" data-act="speed-start">스피드 퀴즈</button></div>';
-    } else {
-      todayCard = '<div class="today hero">' + mascot('snail-reading', 'hero-m reading') + '<span class="chip y">오늘의 중국어</span>' +
-        '<h2>' + esc(next.title) + '</h2><p class="explain">' + esc(firstSentence(next.intro)) + '</p>' +
-        '<button class="btn btn-3d" data-act="open-lesson" data-id="' + next.id + '">학습하기</button></div>';
-    }
-
-    var nextTarget = done ? next : null;   // 오늘 레슨을 끝낸 뒤에만 '다음 레슨'을 보여줘요
-    var nextCard = nextTarget ? '<div class="next-card"><span class="nc-num">' + (LESSONS.indexOf(nextTarget) + 1) + '</span>' +
-      '<div class="nc-txt"><div class="nc-lab">' + '다음 레슨' + '</div><b>' + esc(nextTarget.title) + '</b><div class="s">' + esc(nextTarget.sub) + '</div></div>' +
-      '<button class="btn sm" data-act="open-lesson" data-id="' + nextTarget.id + '">' + (done ? '배우기' : '미리 보기') + '</button></div>' : '';
-
     var wdue = hskDue(0).length, rtot = due + wdue;
-    var reviewCard = rtot > 0 ? '<div class="review-card big"><div class="lead">' + ppm('laptop', 92, 'rv-m') +
-      '<div>' + '<b>오늘의 복습 ' + rtot + '개</b><div class="s">' + (due ? '문장 ' + due + '개' : '') + (due && wdue ? ' · ' : '') + (wdue ? '단어 ' + wdue + '개' : '') + '<br>잊기 전에 한 번 더 해요</div></div></div>' +
-      '<button class="btn btn-3d" data-act="today-review">복습 시작</button></div>' : '';
-    // 오늘 레슨을 끝낸 날: 가볍게 더 해 볼 연습을 앞쪽에 보여줘요
-    var lightCard = done && Object.keys(HSKW).length ? '<div class="light-card"><div class="lc-t">가볍게 더 연습해 볼까요?</div><div class="lc-b">' +
-      '<button class="btn soft sm" data-act="tone-start" data-id="1">성조 연습</button>' +
-      '<button class="btn soft sm" data-act="hsk-quiz" data-id="1">HSK 단어 퀴즈</button></div></div>' : '';
-
     var ph = todayPhrase();
     var phraseCard = ph ? '<div class="phrase-card"><div class="lab">오늘의 한 문장</div>' +
       '<div class="row"><div class="txt"><div class="zh p-zh">' + esc(ph[0]) + '</div><div class="py p-py">' + esc(ph[1]) + '</div>' +
@@ -918,7 +1000,7 @@
       '<div class="p-btns"><button class="round-btn" data-act="say" data-text="' + esc(ph[0]) + '" aria-label="오늘의 한 문장 듣기">' + I.spk + '</button>' +
       '<button class="star' + (isFav(ph[0]) ? ' on' : '') + '" data-act="fav" data-text="' + esc(ph[0]) + '" aria-pressed="' + (isFav(ph[0]) ? 'true' : 'false') + '" aria-label="문장 저장">' + I.star + '</button></div></div>' +
       '<button class="phrase-past" data-act="open-phrases">지난 문장 보기<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg></button></div>' : '';
-    return '<div class="screen"><div class="scroll with-nav home-scroll' + (rtot > 0 ? ' has-review' : '') + '">' + head + goalCard + reviewCard + todayCard + lightCard + phraseCard + nextCard + '</div>' + navHtml() + '</div>';
+    return '<div class="screen"><div class="scroll with-nav home-scroll">' + head + tdBuild(rtot, due, wdue, phraseCard) + '</div>' + navHtml() + '</div>';
   }
 
   // 레슨 진행률: 이어서 하기로 저장된 푼 문제 수를 완료 기준(20문제)으로 나눠요
@@ -1874,6 +1956,7 @@
       a.busy = false;
       if (!d.ok) { toast(AI_ERR[d.error] || '대화를 시작하지 못했어요. 잠시 후 다시 해 주세요'); acFailRender(a); return; }
       try { localStorage.setItem(aiUsedKey(), '1'); } catch (e) { /* 무시 */ }
+      tdMark('ai');
       state.ac = { mode: 'chat', startAt: new Date().toISOString(), scenario: { id: 'free', title: topic }, sid: d.sid, msgs: [Object.assign({ who: 'them' }, d.turn.reply)], sug: d.turn.suggestions || [], turns: 0, input: '', busy: false, ended: false, fixes: [], wait: true };
       render(); acScroll();
       acReveal(state.ac, d.turn.reply.zh);
@@ -3061,6 +3144,7 @@
     render(); speakTone();
   }
   function finishTone() {
+    tdMark('tone-start');
     var tn = state.tn, goal = state.profile.goal, now = todayAnswers();
     var hit = tn.before < goal && now >= goal;
     stopSpeak(); sfx(hit ? 'goal' : 'done');
@@ -3192,6 +3276,7 @@
     render(); speakCard();
   }
   function finishHskStudy() {
+    tdMark('hsk-study');
     var c = state.hc, goal = state.profile.goal, now = todayAnswers();
     var hit = c.before < goal && now >= goal;
     clearTimeout(hskTimer); store.saveProfile();
@@ -3281,6 +3366,7 @@
     render(); speakQuiz();
   }
   function finishQuiz() {
+    if (state.z && state.z.hsk) tdMark('hsk-quiz');
     var z = state.z, goal = state.profile.goal, now = todayAnswers();
     var hit = z.before < goal && now >= goal;
     var label = z.kind === 'listen' ? '듣기 연습' : (z.hsk ? 'HSK ' + z.hsk + '급 퀴즈' : '단어 퀴즈');
@@ -3655,6 +3741,7 @@
   function scFinish(withMission) {
     var c = state.sc;
     if (!c) return;
+    tdMark('scene');
     var sc = sceneById(c.id);
     stopSpeak(); scStopRec();
     var day = dayStr(new Date());
@@ -3909,6 +3996,7 @@
   }
   function chOver(all) {
     var c = state.ch;
+    tdMark('ch-start');
     chStop();
     var best0 = chRec(c.lv).best, isBest = chSaveRec(c);
     var result = { kind: 'chain', lv: c.lv, stage: c.stage, grads: c.grads.length, right: c.right, maxCombo: c.maxCombo, isBest: isBest && c.stage > 1, best: Math.max(best0, c.stage), all: !!all };
@@ -4143,6 +4231,7 @@
   }
   function rnFinish() {
     var r = state.rn; if (!r) return;
+    tdMark('rain-start');
     var lv = r.lv, goal = state.profile.goal, now = todayAnswers(), hit = r.before < goal && now >= goal;
     var nb = rnSaveBest(lv, r.score), cleared = r.lives > 0;
     rnStop();
@@ -4185,6 +4274,7 @@
   }
   function finishDialog() {
     var s = state.s, day = dayStr(new Date());
+    tdMark('dialog');
     var d0 = state.daily[day] || { day: day, lessons: 0, answers: 0 };
     var before = d0.answers, goal = state.profile.goal;
     var d = { day: day, lessons: d0.lessons, answers: d0.answers + Math.max(s.solved - s.solvedCommitted, 0) };
@@ -4242,6 +4332,7 @@
       if (s.first[q.id] === undefined) s.first[q.id] = (s.tries === 0 && !s.revealed);
       s.queue.shift();
       s.solved++;
+      if (s.kind === 'lesson') tdLessonQ(1);
       s.pass = true;
       if (s.log) s.log.push({ npc: q.zh, me: r.heard });
       s.mood = pick(['love', 'thumbs', 'wink']);
@@ -4684,7 +4775,10 @@
       case 'open-lesson': go('intro', { lessonId: id }); break;
       case 'back': goBack(); break;
       case 'home': go('tab', { tab: 'home' }); break;
-      case 'say': speak(el.getAttribute('data-text'), 0.8); break;
+      case 'say':
+        speak(el.getAttribute('data-text'), 0.8);
+        if (state.screen === 'tab' && state.tab === 'home' && todayPhrase() && el.getAttribute('data-text') === todayPhrase()[0] && !tdLoad().done.phrase) { tdMark('phrase'); sfx('pop'); renderKeep(); }
+        break;
       case 'words-open': if (state.s) { state.s.wordsOpen = true; render(); } break;
       case 'words-close': if (state.s) { state.s.wordsOpen = false; render(); } break;
       case 'practice-lesson': startLessonSession('lesson', id); break;
@@ -4766,7 +4860,7 @@
       case 'ch-skip': chSkip(); break;
       case 'ch-pick': chAnswer(+id); break;
       case 'ch-hear': if (state.ch && state.ch.phase === 'ask') speak(hskList(state.ch.lv)[state.ch.qs[state.ch.qi]][0], 0.85); break;
-      case 'ch-quit': if (state.ch && state.ch.stage > 1) { chSaveRec(state.ch); } chStop(); go('tab', { tab: 'words' }); break;
+      case 'ch-quit': if (state.ch && state.ch.stage > 1) { chSaveRec(state.ch); tdMark('ch-start'); } chStop(); go('tab', { tab: 'words' }); break;
       case 'ch-back': go('tab', { tab: 'words' }); break;
       case 'tone-start': if (hskGate(id)) break; startTone(parseInt(id, 10)); break;
       case 'tone-pick': tonePick(parseInt(id, 10)); break;
