@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v195';
+  var APP_VERSION = 'v196';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -1885,6 +1885,15 @@
       (r.again ? '<button class="btn" data-act="' + r.again.act + '"' + (r.again.id ? ' data-id="' + r.again.id + '"' : '') + '>' + esc(r.again.label) + '</button><button class="gd-link" data-act="' + hm + '">홈으로</button>'
         : '<button class="btn" data-act="' + hm + '">홈으로</button>') + '</div></div>';
   }
+  // 빛줄기와 후광의 시작점을 달팽이 몸통에 맞춰요 (화면 크기·스크롤이 달라도 같은 자리)
+  function gdAim() {
+    var g = document.querySelector('.gd'), st = g && g.querySelector('.rd-stage'); if (!st) return;
+    var gr = g.getBoundingClientRect(), im = st.querySelector('img'), r = (im || st).getBoundingClientRect();
+    g.style.setProperty('--cx', (r.left - gr.left + r.width * 0.5).toFixed(1) + 'px');
+    g.style.setProperty('--cy', (r.top - gr.top + r.height * 0.58).toFixed(1) + 'px');
+    var h = g.querySelector('.hero'); if (h && !h.__gdAim) { h.__gdAim = 1; h.addEventListener('scroll', gdAim, { passive: true }); }
+  }
+  window.addEventListener('resize', function () { if (state.screen === 'done') gdAim(); });
   function gdFx() { return '<div class="gd-rays" aria-hidden="true"></div><div class="gd-glow" aria-hidden="true"></div>'; }
   // 소나기 퀴즈 결과: 점수를 크게 보여 주고 내 최고 기록과 견줘요
   function rainDone(r) {
@@ -1902,9 +1911,8 @@
     var stars = w >= 20 ? 3 : w >= 10 ? 2 : w >= 5 ? 1 : 0;
     var starHtml = [0, 1, 2].map(function (i) { return '<i class="rd-star' + (i < stars ? ' on' : '') + '" style="animation-delay:' + (0.5 + i * 0.25).toFixed(2) + 's">★</i>'; }).join('');
     var top = Math.max(r.score, r.prev, 1);
-    return '<div class="screen done-screen rd gd">' + gdFx() + (r.score > 0 ? confetti() + (r.newBest ? confetti() : '') : '') + '<div class="hero">' +
+    return '<div class="screen done-screen rd gd rd-big">' + gdFx() + (r.score > 0 ? confetti() + (r.newBest ? confetti() : '') : '') + '<div class="hero">' +
       '<div class="stage rd-stage">' + mascot(r.newBest || pct >= .7 ? 'cheer' : 'thumbs') + '</div>' +
-      '<div class="rd-ttl">' + esc(r.title) + '</div>' +
       '<div class="rd-score"><span class="rd-num" data-to="' + r.score + '">' + r.score + '</span><em>점</em></div>' +
       (r.newBest ? '<div class="rd-badge">NEW 최고 기록</div>' : '') +
       '<div class="rd-rank"><div class="rd-stars">' + starHtml + '</div><b>' + rank + '</b>' +

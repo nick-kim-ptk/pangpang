@@ -2752,3 +2752,14 @@ html, body, * { scrollbar-width: none; -ms-overflow-style: none; }
 .gd .footer { gap: 0; }
 .gd-link { margin: clamp(10px, 2dvh, 18px) auto 0; padding: 10px 16px; border: 0; background: none; color: var(--ink-3); font: 600 15px "Pretendard Variable", Pretendard, sans-serif; text-decoration: underline; text-underline-offset: 4px; text-decoration-color: rgba(255,255,255,.3); cursor: pointer; }
 .gd-link:active { color: var(--ink); }
+/* v196 점수 숫자: 두껍고 자간이 붙는 모양(숫자 폭 고정 해제) */
+.gd .rd-num { font-weight: 900; letter-spacing: -.045em; font-variant-numeric: proportional-nums; font-feature-settings: "tnum" 0; }
+.gd .rd-score em { margin-left: 2px; }
+/* 소나기 결과: 달팽이 1.5배 */
+.gd.rd-big .stage.rd-stage { width: clamp(180px, 28dvh, 252px); }
+.gd.rd-big .rd-stage .mascot { width: clamp(168px, 26dvh, 234px); }
+.gd.rd-big > .hero { padding-top: clamp(16px, 3.5dvh, 36px); }
+@media (max-height: 680px) {
+  .gd.rd-big .stage.rd-stage { width: 150px; }
+  .gd.rd-big .rd-stage .mascot { width: 138px; }
+}
