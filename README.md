@@ -674,3 +674,6 @@ select kind, count(*) n, round(avg(in_tokens)) avg_in, round(avg(cache_read)) av
 
 ## v188
 - 소나기 결과 화면 간격 정리(위 여백, 요소 간 같은 리듬). 아주 짧은 화면에선 내용이 스크롤돼요.
+
+## v189
+- 기억 사슬 결과를 소나기 결과와 같은 구성으로(단계 카운트업, 등급·별, 최고 기록 비교, 꽃가루).

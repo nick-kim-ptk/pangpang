@@ -2679,3 +2679,4 @@ html, body, * { scrollbar-width: none; -ms-overflow-style: none; }
 .rd-bars { gap: 6px; margin-top: 10px; }
 .rd-bar { height: 22px; }
 .rd .footer { flex: none; }
+.rd .stage .chr-done { position: relative; width: clamp(96px, 14dvh, 128px); height: clamp(96px, 14dvh, 128px); max-width: none; object-fit: contain; margin: 0 auto; }

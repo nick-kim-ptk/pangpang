@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v188';
+  var APP_VERSION = 'v189';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -717,7 +717,7 @@
     if (extra) Object.keys(extra).forEach(function (k) { state[k] = extra[k]; });
     render();
     window.scrollTo(0, 0);
-    if (screen === 'done' && state.result && state.result.kind === 'rain') rdCount();
+    if (screen === 'done' && state.result && (state.result.kind === 'rain' || state.result.kind === 'chain')) rdCount();
     if (screen === 'done') maybeCelebrate(); else if (celEl) closeCelebration(true);
   }
 
@@ -4354,18 +4354,37 @@
     tdMark('ch-start');
     chStop();
     var best0 = chRec(c.lv).best, isBest = chSaveRec(c);
-    var result = { kind: 'chain', lv: c.lv, stage: c.stage, grads: c.grads.length, right: c.right, maxCombo: c.maxCombo, isBest: isBest && c.stage > 1, best: Math.max(best0, c.stage), all: !!all };
+    var result = { kind: 'chain', lv: c.lv, stage: c.stage, grads: c.grads.length, right: c.right, maxCombo: c.maxCombo, isBest: isBest && c.stage > 1, best: Math.max(best0, c.stage), prevBest: best0 || 0, all: !!all };
     sfx(isBest ? 'goal' : 'done');
     go('done', { result: result });
   }
   function chainDone(r) {
-    return '<div class="screen done-screen">' + (r.isBest ? confetti() : '') + '<div class="hero ch-done">' +
-      '<div class="stage">' + chImg(r.isBest || r.all ? 'trophy' : r.stage >= 5 ? 'love' : r.stage >= 3 ? 'cheer' : 'focus', 'chr-done') + '</div>' +
-      '<div class="ch-big"><span>' + icn('stage-flag') + (r.all ? 'ALL CLEAR' : 'STAGE') + '</span><b>' + r.stage + '</b></div>' +
-      '<h1>' + (r.all ? '이 급의 단어를 모두 만났어요!' : r.stage + '단계까지 기억했어요') + '</h1>' +
-      '<p>' + (r.isBest ? icn('trophy') + ' 최고 기록을 새로 세웠어요!' : 'HSK ' + r.lv + '급 최고 기록은 ' + r.best + '단계예요') + '</p>' +
-      '<div class="ch-stats"><div>' + icn('grad-cap') + '<b>' + r.grads + '</b><span>졸업한 카드</span></div><div>' + icn('medal') + '<b>' + r.right + '</b><span>맞힌 문제</span></div><div>' + icn('flame') + '<b>' + r.maxCombo + '</b><span>최고 연속</span></div></div>' +
-      '<p class="hsk-note" style="text-align:center;margin:12px 0 0">틀린 단어는 내일 복습에 나와요</p>' +
+    var st = r.stage, prev = r.prevBest || 0, diff = st - prev;
+    var vs, cls;
+    if (!prev) { vs = '첫 기록이에요! 다음엔 이 단계를 넘어 볼까요?'; cls = 'first'; }
+    else if (r.isBest) { vs = '최고 기록을 <b>' + diff + '단계</b> 올렸어요!'; cls = 'up'; }
+    else if (diff === 0) { vs = '최고 기록과 똑같아요. 한 단계만 더!'; cls = 'same'; }
+    else { vs = '최고 기록까지 <b>' + (-diff) + '단계</b> 남았어요'; cls = 'down'; }
+    var msg = r.all ? '이 급의 단어를 모두 만났어요!'
+      : st >= 10 ? '기억력이 대단해요! 사슬이 끝없이 이어졌어요'
+      : st >= 7 ? '점점 눈에 익어 가시는군요!'
+      : st >= 4 ? '사슬이 튼튼해지고 있어요. 한 번만 더 해 볼까요?'
+      : '처음엔 다 그래요. 천천히 이어 봐요';
+    var rank = r.all ? '기억의 신' : st >= 10 ? '기억의 달인' : st >= 7 ? '사슬 장인' : st >= 4 ? '사슬 견습생' : '기억 새싹';
+    var stars = r.all ? 3 : st >= 10 ? 3 : st >= 7 ? 2 : st >= 4 ? 1 : 0;
+    var starHtml = [0, 1, 2].map(function (i) { return '<i class="rd-star' + (i < stars ? ' on' : '') + '" style="animation-delay:' + (0.5 + i * 0.25).toFixed(2) + 's">★</i>'; }).join('');
+    var top = Math.max(st, prev, 1);
+    return '<div class="screen done-screen rd">' + (st > 1 || r.all ? confetti() + (r.isBest || r.all ? confetti() : '') : '') + '<div class="hero">' +
+      '<div class="stage rd-stage">' + chImg(r.isBest || r.all ? 'trophy' : st >= 5 ? 'love' : st >= 3 ? 'cheer' : 'focus', 'chr-done') + '</div>' +
+      '<div class="rd-ttl">' + (r.all ? 'ALL CLEAR!' : '기억 사슬 끝!') + '</div>' +
+      '<div class="rd-score"><span class="rd-num" data-to="' + st + '">' + st + '</span><em>단계</em></div>' +
+      (r.isBest && prev ? '<div class="rd-badge">NEW 최고 기록</div>' : '') +
+      '<div class="rd-rank"><div class="rd-stars">' + starHtml + '</div><b>' + rank + '</b>' +
+      '<span>졸업 ' + r.grads + '장' + (r.maxCombo >= 2 ? ' · 최고 ' + r.maxCombo + '연속' : '') + '</span></div>' +
+      '<div class="rd-vs ' + cls + '"><div class="rd-line">' + vs + '</div>' +
+      (prev ? '<div class="rd-bars"><div class="rd-bar"><span>최고</span><i style="width:' + Math.round(prev / top * 100) + '%"></i><b>' + prev + '</b></div>' +
+        '<div class="rd-bar now"><span>이번</span><i style="width:' + Math.round(st / top * 100) + '%"></i><b>' + st + '</b></div></div>' : '') + '</div>' +
+      '<p class="rd-msg">' + esc(msg) + '</p>' +
       '</div><div class="footer" style="padding-left:0;padding-right:0">' +
       '<button class="btn" data-act="ch-start" data-id="' + r.lv + '">다시 도전</button>' +
       '<button class="btn gray" data-act="ch-back" data-id="' + r.lv + '">HSK ' + r.lv + '급으로</button></div></div>';
