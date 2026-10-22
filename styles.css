@@ -2657,3 +2657,25 @@ html, body, * { scrollbar-width: none; -ms-overflow-style: none; }
 .rd-rank span { font-size: 13px; color: var(--ink-3); }
 .rd-vs { margin-top: 14px; }
 @media (prefers-reduced-motion: reduce) { .rd-star { animation: none; } }
+/* v188 소나기 결과 간격 정리: 위 여백 확보, 요소 사이를 같은 리듬으로 */
+.rd .hero { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: clamp(10px, 2dvh, 18px); padding-top: clamp(28px, 6dvh, 56px); padding-bottom: 8px; }
+.rd .hero > * { margin-top: 0; margin-bottom: 0; }
+.rd .stage.rd-stage { width: clamp(120px, 18dvh, 160px); height: clamp(104px, 15.5dvh, 138px); }
+.rd .stage.rd-stage .mascot { width: clamp(112px, 17dvh, 150px); }
+.rd-ttl { margin: 0; }
+.rd-score { margin: 0; }
+.rd-rank { margin: 0; gap: 4px; }
+.rd-vs { margin: 0; padding: 14px 16px; }
+.rd-msg { margin: 0; line-height: 1.45; }
+.rd-bars { gap: 10px; margin-top: 14px; }
+.rd-line { line-height: 1.4; }
+.rd .footer { padding-top: 12px; }
+.rd .hero { min-height: 0; overflow-y: auto; justify-content: safe center; padding-bottom: 16px; gap: clamp(8px, 1.7dvh, 16px); }
+.rd .stage.rd-stage { width: clamp(100px, 15dvh, 140px); height: clamp(88px, 13dvh, 122px); }
+.rd .stage.rd-stage .mascot { width: clamp(94px, 14dvh, 132px); }
+.rd-num { font-size: clamp(56px, 9dvh, 88px); }
+.rd-star { font-size: clamp(24px, 3.6dvh, 30px); }
+.rd-vs { padding: 12px 16px; }
+.rd-bars { gap: 6px; margin-top: 10px; }
+.rd-bar { height: 22px; }
+.rd .footer { flex: none; }
