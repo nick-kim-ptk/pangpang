@@ -19,7 +19,18 @@ self.addEventListener('activate', function (e) {
 // 같은 출처 파일: 네트워크 먼저, 실패하면 저장본 (업데이트가 바로 반영돼요)
 self.addEventListener('fetch', function (e) {
   var req = e.request;
-  if (req.method !== 'GET' || new URL(req.url).origin !== location.origin) return;
+  var url = new URL(req.url);
+  if (req.method !== 'GET' || url.origin !== location.origin) return;
+  // 이미지: 저장본을 바로 보여 주고(빠르게), 뒤에서 조용히 새로 받아 둬요
+  if (/\/img\//.test(url.pathname)) {
+    e.respondWith(caches.open(CACHE).then(function (c) {
+      return c.match(req).then(function (hit) {
+        var net = fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' }).then(function (res) { if (res.ok) c.put(req, res.clone()); return res; }).catch(function () { return hit; });
+        return hit || net;
+      });
+    }));
+    return;
+  }
   e.respondWith(
     fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' }).then(function (res) {
       var copy = res.clone();
