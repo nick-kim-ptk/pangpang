@@ -2525,3 +2525,6 @@ html, body, * { scrollbar-width: none; -ms-overflow-style: none; }
 @keyframes tbBitIn { from { opacity: 0; transform: scale(0); } to { opacity: 1; transform: scale(1); } }
 @keyframes tbFloat { 0%, 100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(-8px) rotate(var(--rot, 12deg)); } }
 @keyframes tbPop { 0% { opacity: 0; transform: translate(-50%, -50%) scale(.3) rotate(var(--r)); } 25% { opacity: 1; transform: translate(-50%, -50%) scale(1.15) rotate(var(--r)); } 100% { opacity: 0; transform: translate(-50%, -170%) scale(.9) rotate(var(--r)); } }
+
+/* v173 레슨 상세 연습 카드 */
+.pr-row.pr-two { grid-template-columns: repeat(2, 1fr); margin-top: var(--sp-4); }
