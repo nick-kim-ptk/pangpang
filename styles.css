@@ -2680,3 +2680,17 @@ html, body, * { scrollbar-width: none; -ms-overflow-style: none; }
 .rd-bar { height: 22px; }
 .rd .footer { flex: none; }
 .rd .stage .chr-done { position: relative; width: clamp(96px, 14dvh, 128px); height: clamp(96px, 14dvh, 128px); max-width: none; object-fit: contain; margin: 0 auto; }
+/* v190 결과 화면: 캐릭터 확대, 막대 줄 맞춤, 대화체 메시지는 남는 공간 가운데 */
+.rd .hero { justify-content: flex-start; }
+.rd .stage.rd-stage { width: clamp(124px, 19dvh, 176px); height: clamp(108px, 16.5dvh, 154px); }
+.rd .stage.rd-stage .mascot, .rd .stage .chr-done { width: clamp(116px, 18dvh, 166px); height: auto; }
+.rd .stage .chr-done { height: clamp(116px, 18dvh, 166px); }
+.rd-bar { display: grid; grid-template-columns: 32px 1fr 40px; align-items: center; gap: 8px; height: 22px; }
+.rd-bar span { width: auto; text-align: left; }
+.rd-bar .trk { display: block; height: 14px; border-radius: 8px; background: color-mix(in srgb, var(--ink-3) 14%, transparent); overflow: hidden; }
+.rd-bar i { height: 100%; border-radius: 8px; }
+.rd-bar b { text-align: right; }
+.rd-msgbox { flex: 1; min-height: 56px; width: 100%; display: flex; align-items: center; justify-content: center; }
+.rd-msg { text-align: center; }
+.rd .stage.rd-stage { height: auto; min-height: 0; padding-bottom: 6px; }
+.rd .stage.rd-stage::before { inset: 10px 8px 0; }

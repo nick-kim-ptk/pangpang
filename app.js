@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v189';
+  var APP_VERSION = 'v190';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -1868,9 +1868,9 @@
       '<div class="rd-rank"><div class="rd-stars">' + starHtml + '</div><b>' + rank + '</b>' +
       '<span>웨이브 ' + w + (r.combo >= 2 ? ' · 최고 ' + r.combo + '연속' : '') + '</span></div>' +
       '<div class="rd-vs ' + cls + '"><div class="rd-line">' + vs + '</div>' +
-      (r.first ? '' : '<div class="rd-bars"><div class="rd-bar"><span>최고</span><i style="width:' + Math.round(r.prev / top * 100) + '%"></i><b>' + r.prev + '</b></div>' +
-        '<div class="rd-bar now"><span>이번</span><i style="width:' + Math.round(r.score / top * 100) + '%"></i><b>' + r.score + '</b></div></div>') + '</div>' +
-      '<p class="rd-msg">' + esc(msg) + '</p>' +
+      (r.first ? '' : '<div class="rd-bars"><div class="rd-bar"><span>최고</span><em class="trk"><i style="width:' + Math.round(r.prev / top * 100) + '%"></i></em><b>' + r.prev + '</b></div>' +
+        '<div class="rd-bar now"><span>이번</span><em class="trk"><i style="width:' + Math.round(r.score / top * 100) + '%"></i></em><b>' + r.score + '</b></div></div>') + '</div>' +
+      '<div class="rd-msgbox"><p class="rd-msg">“' + esc(msg) + '”</p></div>' +
       (r.goalHit ? '<div class="cele"><b>오늘 목표 달성!</b><span>' + r.goal + '문제를 모두 풀었어요</span></div>' : '') +
       '</div><div class="footer" style="padding-left:0;padding-right:0">' +
       '<button class="btn" data-act="home">홈으로</button>' +
@@ -4382,9 +4382,9 @@
       '<div class="rd-rank"><div class="rd-stars">' + starHtml + '</div><b>' + rank + '</b>' +
       '<span>졸업 ' + r.grads + '장' + (r.maxCombo >= 2 ? ' · 최고 ' + r.maxCombo + '연속' : '') + '</span></div>' +
       '<div class="rd-vs ' + cls + '"><div class="rd-line">' + vs + '</div>' +
-      (prev ? '<div class="rd-bars"><div class="rd-bar"><span>최고</span><i style="width:' + Math.round(prev / top * 100) + '%"></i><b>' + prev + '</b></div>' +
-        '<div class="rd-bar now"><span>이번</span><i style="width:' + Math.round(st / top * 100) + '%"></i><b>' + st + '</b></div></div>' : '') + '</div>' +
-      '<p class="rd-msg">' + esc(msg) + '</p>' +
+      (prev ? '<div class="rd-bars"><div class="rd-bar"><span>최고</span><em class="trk"><i style="width:' + Math.round(prev / top * 100) + '%"></i></em><b>' + prev + '</b></div>' +
+        '<div class="rd-bar now"><span>이번</span><em class="trk"><i style="width:' + Math.round(st / top * 100) + '%"></i></em><b>' + st + '</b></div></div>' : '') + '</div>' +
+      '<div class="rd-msgbox"><p class="rd-msg">“' + esc(msg) + '”</p></div>' +
       '</div><div class="footer" style="padding-left:0;padding-right:0">' +
       '<button class="btn" data-act="ch-start" data-id="' + r.lv + '">다시 도전</button>' +
       '<button class="btn gray" data-act="ch-back" data-id="' + r.lv + '">HSK ' + r.lv + '급으로</button></div></div>';
