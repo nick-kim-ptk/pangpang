@@ -690,3 +690,6 @@ select kind, count(*) n, round(avg(in_tokens)) avg_in, round(avg(cache_read)) av
 
 ## v193
 - 결과 화면 설명 문구: 마침표·느낌표·물음표로 문장이 끝나면 다음 문장은 다음 줄에서.
+
+## v194
+- 결과 화면: 주 버튼(다시 하기) 하나 + 아래 가운데 텍스트 링크(홈으로 등).

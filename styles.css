@@ -2748,3 +2748,7 @@ html, body, * { scrollbar-width: none; -ms-overflow-style: none; }
   .gd .btn { height: 48px; }
   .gd .rd-msg { font-size: 14px; }
 }
+/* v194 결과 화면: 주 버튼 하나 + 아래 가운데 텍스트 링크 */
+.gd .footer { gap: 0; }
+.gd-link { margin: clamp(10px, 2dvh, 18px) auto 0; padding: 10px 16px; border: 0; background: none; color: var(--ink-3); font: 600 15px "Pretendard Variable", Pretendard, sans-serif; text-decoration: underline; text-underline-offset: 4px; text-decoration-color: rgba(255,255,255,.3); cursor: pointer; }
+.gd-link:active { color: var(--ink); }

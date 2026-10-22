@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v193';
+  var APP_VERSION = 'v194';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -1882,18 +1882,9 @@
       card + gdCele(r) +
       '<div class="rd-msgbox"><p class="rd-msg">“' + gdLines(esc(msg)) + '”</p></div>' +
       '</div><div class="footer" style="padding-left:0;padding-right:0">' +
-      '<button class="btn" data-act="home">홈으로</button>' +
-      (r.again ? '<button class="btn gray" data-act="' + r.again.act + '"' + (r.again.id ? ' data-id="' + r.again.id + '"' : '') + '>' + esc(r.again.label) + '</button>' : '') + '</div></div>';
+      (r.again ? '<button class="btn" data-act="' + r.again.act + '"' + (r.again.id ? ' data-id="' + r.again.id + '"' : '') + '>' + esc(r.again.label) + '</button><button class="gd-link" data-act="home">홈으로</button>'
+        : '<button class="btn" data-act="home">홈으로</button>') + '</div></div>';
   }
-  // 빛줄기와 후광의 중심을 달팽이 한가운데에 맞춰요 (화면 크기·스크롤이 달라도 같은 자리)
-  function gdAim() {
-    var g = document.querySelector('.gd'), st = g && g.querySelector('.rd-stage'); if (!st) return;
-    var gr = g.getBoundingClientRect(), r = st.getBoundingClientRect();
-    g.style.setProperty('--cx', (r.left - gr.left + r.width / 2).toFixed(1) + 'px');
-    g.style.setProperty('--cy', (r.top - gr.top + r.height / 2 - 3).toFixed(1) + 'px');
-    var h = g.querySelector('.hero'); if (h && !h.__gdAim) { h.__gdAim = 1; h.addEventListener('scroll', gdAim, { passive: true }); }
-  }
-  window.addEventListener('resize', function () { if (state.screen === 'done') gdAim(); });
   function gdFx() { return '<div class="gd-rays" aria-hidden="true"></div><div class="gd-glow" aria-hidden="true"></div>'; }
   // 소나기 퀴즈 결과: 점수를 크게 보여 주고 내 최고 기록과 견줘요
   function rainDone(r) {
@@ -1924,8 +1915,8 @@
       gdCele(r) +
       '<div class="rd-msgbox"><p class="rd-msg">“' + gdLines(esc(msg)) + '”</p></div>' +
       '</div><div class="footer" style="padding-left:0;padding-right:0">' +
-      '<button class="btn" data-act="home">홈으로</button>' +
-      '<button class="btn gray" data-act="rain-start" data-id="' + r.lv + '">한 번 더 하기</button></div></div>';
+      '<button class="btn" data-act="rain-start" data-id="' + r.lv + '">한 번 더 하기</button>' +
+      '<button class="gd-link" data-act="home">홈으로</button></div></div>';
   }
   // 점수 숫자가 0에서 올라가요 (움직임 줄이기면 바로 보여요)
   function rdCount() {
@@ -4441,7 +4432,7 @@
       '<div class="rd-msgbox"><p class="rd-msg">“' + gdLines(esc(msg)) + '”</p></div>' +
       '</div><div class="footer" style="padding-left:0;padding-right:0">' +
       '<button class="btn" data-act="ch-start" data-id="' + r.lv + '">다시 도전</button>' +
-      '<button class="btn gray" data-act="ch-back" data-id="' + r.lv + '">HSK ' + r.lv + '급으로</button></div></div>';
+      '<button class="gd-link" data-act="ch-back" data-id="' + r.lv + '">HSK ' + r.lv + '급으로</button></div></div>';
   }
   function chTop(c) {
     var hearts = '';
