@@ -2694,3 +2694,39 @@ html, body, * { scrollbar-width: none; -ms-overflow-style: none; }
 .rd-msg { text-align: center; }
 .rd .stage.rd-stage { height: auto; min-height: 0; padding-bottom: 6px; }
 .rd .stage.rd-stage::before { inset: 10px 8px 0; }
+
+/* v191 게임 결과 화면 공통 배경: 어두운 하늘 + 빛줄기 (5개 게임 + 문법·듣기 연습) */
+.gd { --ink: #fff6e4; --ink-2: #c9d0e8; --ink-3: #98a1c2; --soft: rgba(255,255,255,.09); --line: rgba(255,255,255,.2); --card: rgba(255,255,255,.1);
+  position: relative; overflow: hidden; isolation: isolate; color: var(--ink);
+  font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
+  background: radial-gradient(120% 80% at 50% 36%, #2a3558 0%, #151b36 62%, #0b0f22 100%); }
+.gd > .hero, .gd > .footer { position: relative; z-index: 2; }
+.gd .gd-rays { position: absolute; z-index: 0; left: 50%; top: 24%; width: 190vmax; height: 190vmax; margin: -95vmax 0 0 -95vmax; pointer-events: none;
+  background: repeating-conic-gradient(from 0deg, rgba(255,226,150,.13) 0deg 7deg, rgba(255,226,150,0) 7deg 30deg);
+  -webkit-mask-image: radial-gradient(circle, #000 0, rgba(0,0,0,.55) 8%, transparent 20%); mask-image: radial-gradient(circle, #000 0, rgba(0,0,0,.55) 8%, transparent 20%);
+  animation: gdSpin 90s linear infinite; }
+.gd .gd-glow { position: absolute; z-index: 0; left: 50%; top: 24%; width: min(120vw, 560px); aspect-ratio: 1; transform: translate(-50%, -50%); pointer-events: none;
+  background: radial-gradient(circle, rgba(255,214,120,.28), rgba(255,214,120,0) 62%); }
+@keyframes gdSpin { to { transform: rotate(360deg); } }
+.gd .confetti { z-index: 3; }
+.gd .stage::before { background: radial-gradient(circle, rgba(255,230,160,.25), rgba(255,230,160,0) 70%); }
+.gd .rd-ttl { color: var(--ink-3); }
+.gd .rd-badge { background: #eccd4c; color: #1a2139; }
+.gd .rd-star { color: rgba(255,255,255,.22); }
+.gd .rd-star.on { color: #ffd45e; }
+.gd .rd-vs { background: rgba(255,255,255,.08); box-shadow: inset 0 0 0 1px rgba(255,255,255,.12); }
+.gd .rd-bar .trk { background: rgba(255,255,255,.14); }
+.gd .rd-bar i { background: rgba(255,255,255,.4); }
+.gd .rd-bar.now i { background: #7bd9a6; }
+.gd .rd-vs.up .rd-line b { color: #7bd9a6; }
+.gd .rd-line b, .gd .rd-rank b, .gd .rd-num { color: var(--ink); }
+.gd-cele { width: 100%; max-width: 360px; padding: 12px 16px; border-radius: 18px; background: #eccd4c; color: #1a2139; text-align: center; display: flex; flex-direction: column; gap: 2px; animation: rdPop .6s .6s cubic-bezier(.2,1.4,.4,1) both; }
+.gd-cele b { font-size: 18px; font-weight: 800; }
+.gd-cele span { font-size: 13px; opacity: .8; }
+.gd .btn { background: #eccd4c; color: #1a2139; }
+.gd .btn.gray { background: rgba(255,255,255,.12); color: #fff6e4; }
+.gd .rd-msg { color: var(--ink-2); }
+@media (prefers-reduced-motion: reduce) { .gd .gd-rays { animation: none; } .gd-cele { animation: none; } }
+.gd .footer { background: none; }
+.gd .rd-bar { grid-template-columns: 44px 1fr 40px; }
+.gd .rd-bar span { white-space: nowrap; }

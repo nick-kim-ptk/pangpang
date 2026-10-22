@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v190';
+  var APP_VERSION = 'v191';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -1375,7 +1375,7 @@
     state.daily[day] = d; store.saveDaily(d);
     sfx(hit ? 'goal' : 'done');
     go('done', { result: {
-      kind: 'quiz', title: '문법 연습 끝!',
+      kind: 'quiz', game: 'grammar', right: g.right, total: g.steps.length, title: '문법 연습 끝!',
       line: g.steps.length + '문제 중 ' + g.right + '개 맞혔어요' + (g.right === g.steps.length ? '. 전부 정답이에요!' : '.') + ' 배운 문장을 말로도 해 볼까요?',
       answers: now, goal: goal, goalHit: hit, milestone: 0,
       again: { act: 'practice-lesson', id: l.id, label: '말하기로 마무리하기' }
@@ -1823,6 +1823,7 @@
   function maybeCelebrate() {
     var r = state.result;
     if (state.screen !== 'done' || !r) { if (celEl) closeCelebration(true); return; }
+    if (gdKind(r)) return;   // 게임 결과 화면은 같은 화면 안에서 축하해요 (겹쳐 뜨지 않게)
     if (r.milestone) showCelebration({ kind: 'streak', title: r.milestone + '일 연속 달성!', sub: '한 걸음씩 꾸준히, 정말 멋져요', chip: '<b>' + r.milestone + '일</b> 연속 기록 중' });
     else if (r.goalHit) showCelebration({ kind: 'complete', title: '오늘 목표 달성!', sub: '천천히, 그래도 끝까지 왔어요', chip: '오늘 푼 문제 <b>' + r.goal + '</b>개' });
   }
@@ -1844,6 +1845,44 @@
       '<button class="btn" data-act="' + r.again.act + '">' + esc(r.again.label) + '</button>' +
       '<button class="btn gray" data-act="home">홈으로</button></div></div>';
   }
+  // 게임 결과 화면(카드 학습·퀴즈·성조·기억 사슬·소나기) 공통: 어두운 배경 + 같은 구성
+  function gdKind(r) { return r && (r.kind === 'quiz' || r.kind === 'rain' || r.kind === 'chain'); }
+  function gdCele(r) {
+    return (r.milestone ? '<div class="gd-cele"><b>' + r.milestone + '일 연속 학습!</b><span>꾸준함이 실력이 돼요</span></div>' : '') +
+      (r.goalHit ? '<div class="gd-cele"><b>오늘 목표 달성!</b><span>오늘 푼 문제 ' + r.goal + '개 · 천천히, 그래도 끝까지 왔어요</span></div>' : '');
+  }
+  function gdStars(n) {
+    return '<div class="rd-stars">' + [0, 1, 2].map(function (i) { return '<i class="rd-star' + (i < n ? ' on' : '') + '" style="animation-delay:' + (0.5 + i * 0.25).toFixed(2) + 's">★</i>'; }).join('') + '</div>';
+  }
+  // 정답을 맞힌 연습(퀴즈·성조·듣기·문법)과 카드 학습 결과
+  function quizDone(r) {
+    var hasT = r.total > 0, pct = hasT ? r.right / r.total : 0;
+    var isCard = r.game === 'card';
+    var msg = isCard
+      ? (pct >= .9 ? '거의 다 알고 있어요! 눈에 쏙 들어오죠?' : pct >= .6 ? '점점 눈에 익어 가시는군요!' : pct >= .3 ? '조금씩 익숙해지고 있어요. 모르는 건 내일 또 나와요' : '처음엔 다 그래요. 모르는 단어는 내일 다시 나와요')
+      : (pct >= .9 ? '거의 완벽해요! 귀와 눈이 활짝 열렸어요' : pct >= .7 ? '점점 눈에 익어 가시는군요!' : pct >= .4 ? '조금씩 익숙해지고 있어요. 한 번만 더 해 볼까요?' : '처음엔 다 그래요. 틀린 건 내일 복습에 나와요');
+    var stars = pct >= .9 ? 3 : pct >= .7 ? 2 : pct >= .4 ? 1 : 0;
+    var rank = pct >= .9 ? '척척박사 달팽이' : pct >= .7 ? '쑥쑥 크는 달팽이' : pct >= .4 ? '꾸준한 달팽이' : '도전하는 달팽이';
+    var card = '';
+    if (isCard && r.prog) {
+      var pp = Math.round(r.prog.now / Math.max(1, r.prog.total) * 100);
+      card = '<div class="rd-vs"><div class="rd-line">HSK ' + r.prog.lv + '급 <b>' + r.prog.now + '</b> / ' + r.prog.total + '개 익혔어요</div><div class="rd-bars"><div class="rd-bar now"><span>진행</span><em class="trk"><i style="width:' + pp + '%"></i></em><b>' + pp + '%</b></div></div></div>';
+    } else if (hasT) {
+      var ap = Math.round(pct * 100);
+      card = '<div class="rd-vs"><div class="rd-line">' + r.total + '문제 중 <b>' + r.right + '개</b>를 맞혔어요</div><div class="rd-bars"><div class="rd-bar now"><span>정답률</span><em class="trk"><i style="width:' + ap + '%"></i></em><b>' + ap + '%</b></div></div></div>';
+    }
+    return '<div class="screen done-screen rd gd">' + gdFx() + ((hasT && pct >= .7) || r.goalHit || r.milestone ? confetti() + (pct >= 1 ? confetti() : '') : '') + '<div class="hero">' +
+      '<div class="stage rd-stage">' + mascot(pct >= .7 ? 'cheer' : pct >= .4 ? 'love' : 'thumbs') + '</div>' +
+      '<div class="rd-ttl">' + esc(r.title) + '</div>' +
+      (hasT ? '<div class="rd-score"><span class="rd-num" data-to="' + r.right + '">' + r.right + '</span><em>/ ' + r.total + '</em></div><div class="rd-rank">' + gdStars(stars) + '<b>' + rank + '</b></div>'
+        : '<p class="rd-msg">' + esc(r.line || '') + '</p>') +
+      card + gdCele(r) +
+      '<div class="rd-msgbox"><p class="rd-msg">“' + esc(msg) + '”</p></div>' +
+      '</div><div class="footer" style="padding-left:0;padding-right:0">' +
+      '<button class="btn" data-act="home">홈으로</button>' +
+      (r.again ? '<button class="btn gray" data-act="' + r.again.act + '"' + (r.again.id ? ' data-id="' + r.again.id + '"' : '') + '>' + esc(r.again.label) + '</button>' : '') + '</div></div>';
+  }
+  function gdFx() { return '<div class="gd-rays" aria-hidden="true"></div><div class="gd-glow" aria-hidden="true"></div>'; }
   // 소나기 퀴즈 결과: 점수를 크게 보여 주고 내 최고 기록과 견줘요
   function rainDone(r) {
     var diff = r.score - r.prev, pct = r.right / Math.max(1, r.waves);
@@ -1860,7 +1899,7 @@
     var stars = w >= 20 ? 3 : w >= 10 ? 2 : w >= 5 ? 1 : 0;
     var starHtml = [0, 1, 2].map(function (i) { return '<i class="rd-star' + (i < stars ? ' on' : '') + '" style="animation-delay:' + (0.5 + i * 0.25).toFixed(2) + 's">★</i>'; }).join('');
     var top = Math.max(r.score, r.prev, 1);
-    return '<div class="screen done-screen rd">' + (r.score > 0 ? confetti() + (r.newBest ? confetti() : '') : '') + '<div class="hero">' +
+    return '<div class="screen done-screen rd gd">' + gdFx() + (r.score > 0 ? confetti() + (r.newBest ? confetti() : '') : '') + '<div class="hero">' +
       '<div class="stage rd-stage">' + mascot(r.newBest || pct >= .7 ? 'cheer' : 'thumbs') + '</div>' +
       '<div class="rd-ttl">' + esc(r.title) + '</div>' +
       '<div class="rd-score"><span class="rd-num" data-to="' + r.score + '">' + r.score + '</span><em>점</em></div>' +
@@ -1870,8 +1909,8 @@
       '<div class="rd-vs ' + cls + '"><div class="rd-line">' + vs + '</div>' +
       (r.first ? '' : '<div class="rd-bars"><div class="rd-bar"><span>최고</span><em class="trk"><i style="width:' + Math.round(r.prev / top * 100) + '%"></i></em><b>' + r.prev + '</b></div>' +
         '<div class="rd-bar now"><span>이번</span><em class="trk"><i style="width:' + Math.round(r.score / top * 100) + '%"></i></em><b>' + r.score + '</b></div></div>') + '</div>' +
+      gdCele(r) +
       '<div class="rd-msgbox"><p class="rd-msg">“' + esc(msg) + '”</p></div>' +
-      (r.goalHit ? '<div class="cele"><b>오늘 목표 달성!</b><span>' + r.goal + '문제를 모두 풀었어요</span></div>' : '') +
       '</div><div class="footer" style="padding-left:0;padding-right:0">' +
       '<button class="btn" data-act="home">홈으로</button>' +
       '<button class="btn gray" data-act="rain-start" data-id="' + r.lv + '">한 번 더 하기</button></div></div>';
@@ -1892,6 +1931,7 @@
     if (r.kind === 'speed') return speedDone(r);
     if (r.kind === 'chain') return chainDone(r);
     if (r.kind === 'rain') return rainDone(r);
+    if (r.kind === 'quiz') return quizDone(r);
     var st = streak();
     return '<div class="screen done-screen">' + ((r.goalHit || r.milestone) ? confetti() : '') + '<div class="hero">' +
       '<div class="stage">' + mascot(r.kind === 'lesson' ? 'love' : 'cheer') + '</div>' +
@@ -3477,7 +3517,7 @@
     var hit = tn.before < goal && now >= goal;
     stopSpeak(); sfx(hit ? 'goal' : 'done');
     go('done', { result: {
-      kind: 'quiz', title: '성조 연습 끝!',
+      kind: 'quiz', game: 'tone', right: tn.right, total: tn.items.length, title: '성조 연습 끝!',
       line: tn.items.length + '문제 중 ' + tn.right + '개 맞혔어요' + (tn.right === tn.items.length ? '. 전부 정답이에요!' : '.'),
       answers: now, goal: goal, goalHit: hit, milestone: 0,
       again: { act: 'tone-start', id: String(tn.lv), label: '한 번 더 하기' }
@@ -3595,7 +3635,8 @@
   }
   function hskMark(yes) {
     var c = state.hc;
-    var q = c.queue[c.i];
+    var q = c && c.queue[c.i];
+    if (!q) return;   // 마지막 카드를 빠르게 두 번 눌러도 안전하게
     setHskKnown(q.lv, q.i, yes);
     srsGrade(q.lv, q.i, yes);
     if (yes) { c.known++; sfx('right', c.known); } else sfx('tap');
@@ -3611,7 +3652,7 @@
     clearTimeout(hskTimer); store.saveProfile();
     stopSpeak(); sfx(hit ? 'goal' : 'done');
     go('done', { result: {
-      kind: 'quiz', title: c.mode === 'due' ? '단어 복습 끝!' : 'HSK ' + c.lv + '급 카드 학습 끝!',
+      kind: 'quiz', game: 'card', right: c.known, total: c.queue.length, prog: c.mode === 'due' ? null : { lv: c.lv, now: hskCount(c.lv), total: hskList(c.lv).length }, title: c.mode === 'due' ? '단어 복습 끝!' : 'HSK ' + c.lv + '급 카드 학습 끝!',
       line: c.queue.length + '개 중 ' + c.known + '개를 알아요.' + (c.mode === 'due' ? (hskDue(0).length ? ' 아직 복습할 단어가 ' + hskDue(0).length + '개 남았어요.' : ' 오늘 단어 복습은 모두 끝났어요.') : ' 지금까지 ' + hskCount(c.lv) + '/' + hskList(c.lv).length + '개 익혔어요.'),
       answers: now, goal: goal, goalHit: hit, milestone: 0,
       again: c.mode === 'due'
@@ -3703,7 +3744,7 @@
     stopSpeak();
     sfx(hit ? 'goal' : 'done');
     go('done', { result: {
-      kind: 'quiz', title: label + ' 끝!',
+      kind: 'quiz', game: z.hsk ? 'hskquiz' : 'quiz', right: z.right, total: z.items.length, title: label + ' 끝!',
       line: z.items.length + '문제 중 ' + z.right + '개 맞혔어요' + (perfect ? '. 전부 정답이에요!' : '.'),
       answers: now, goal: goal, goalHit: hit, milestone: 0,
       again: z.hsk ? { act: 'hsk-quiz', id: String(z.hsk), label: '한 번 더 풀기' } : { act: z.kind === 'listen' ? 'quiz-listen' : 'quiz-word', id: z.lid || '', label: '한 번 더 풀기' }
@@ -4374,7 +4415,7 @@
     var stars = r.all ? 3 : st >= 10 ? 3 : st >= 7 ? 2 : st >= 4 ? 1 : 0;
     var starHtml = [0, 1, 2].map(function (i) { return '<i class="rd-star' + (i < stars ? ' on' : '') + '" style="animation-delay:' + (0.5 + i * 0.25).toFixed(2) + 's">★</i>'; }).join('');
     var top = Math.max(st, prev, 1);
-    return '<div class="screen done-screen rd">' + (st > 1 || r.all ? confetti() + (r.isBest || r.all ? confetti() : '') : '') + '<div class="hero">' +
+    return '<div class="screen done-screen rd gd">' + gdFx() + (st > 1 || r.all ? confetti() + (r.isBest || r.all ? confetti() : '') : '') + '<div class="hero">' +
       '<div class="stage rd-stage">' + chImg(r.isBest || r.all ? 'trophy' : st >= 5 ? 'love' : st >= 3 ? 'cheer' : 'focus', 'chr-done') + '</div>' +
       '<div class="rd-ttl">' + (r.all ? 'ALL CLEAR!' : '기억 사슬 끝!') + '</div>' +
       '<div class="rd-score"><span class="rd-num" data-to="' + st + '">' + st + '</span><em>단계</em></div>' +
@@ -4384,6 +4425,7 @@
       '<div class="rd-vs ' + cls + '"><div class="rd-line">' + vs + '</div>' +
       (prev ? '<div class="rd-bars"><div class="rd-bar"><span>최고</span><em class="trk"><i style="width:' + Math.round(prev / top * 100) + '%"></i></em><b>' + prev + '</b></div>' +
         '<div class="rd-bar now"><span>이번</span><em class="trk"><i style="width:' + Math.round(st / top * 100) + '%"></i></em><b>' + st + '</b></div></div>' : '') + '</div>' +
+      gdCele(r) +
       '<div class="rd-msgbox"><p class="rd-msg">“' + esc(msg) + '”</p></div>' +
       '</div><div class="footer" style="padding-left:0;padding-right:0">' +
       '<button class="btn" data-act="ch-start" data-id="' + r.lv + '">다시 도전</button>' +
