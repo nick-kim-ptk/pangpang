@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v164';
+  var APP_VERSION = 'v165';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -3212,7 +3212,7 @@
   function hskLvSel() {
     var v = state.hskLv;
     if (!v) { try { v = parseInt(localStorage.getItem('pangpang.hsklv'), 10); } catch (e) { /* 무시 */ } }
-    return [1, 2, 3, 4].indexOf(v) >= 0 ? v : 1;
+    return [1, 2, 3, 4].indexOf(v) >= 0 && !hskLocked(v) ? v : 1;
   }
   function hmi(n) { return '<img class="hm-img" src="img/hm-' + n + '.webp" alt="" draggable="false">'; }
   function hskSection() {
@@ -3221,7 +3221,7 @@
     var wd = hskDue(0).length, rec = chRec(lv), locked = hskLocked(lv);
     var dueCard = wd ? '<button class="hsk-due" data-act="hsk-due"><span class="hd-t">오늘 복습할 단어 <b>' + wd + '개</b></span><span class="chip y">복습</span></button>' : '';
     var chips = '<div class="hsk-chips" role="tablist" aria-label="HSK 급 선택">' + [1, 2, 3, 4].map(function (l) {
-      return '<button role="tab" class="hsk-chip' + (l === lv ? ' on' : '') + '" data-act="hsk-lv" data-id="' + l + '" aria-selected="' + (l === lv) + '">' + (hskLocked(l) ? '<i class="hc-lock">' + I.lock + '</i>' : '') + l + '급</button>';
+      return '<button role="tab" class="hsk-chip' + (l === lv ? ' on' : '') + '" data-act="hsk-lv" data-id="' + l + '" aria-selected="' + (l === lv) + '"' + (hskLocked(l) ? ' disabled aria-disabled="true"' : '') + '>' + (hskLocked(l) ? '<i class="hc-lock">' + I.lock + '</i>' : '') + l + '급</button>';
     }).join('') + '</div>';
     function mode(act, ico, title, sub, tag, cls) {
       return '<button class="hsk-mode' + (locked ? ' lk' : '') + (cls ? ' ' + cls : '') + '" data-act="' + act + '" data-id="' + lv + '"><span class="hm-ico">' + ico + '</span>' +
