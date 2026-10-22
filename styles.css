@@ -2444,3 +2444,12 @@ html, body, * { scrollbar-width: none; -ms-overflow-style: none; }
 .sc-lv { align-self: end; justify-self: start; margin-top: var(--sp-1); padding: 2px 8px; border-radius: 999px; font-style: normal; font-size: 11px; font-weight: 800; background: var(--soft); color: var(--ink-3); }
 .sc-lv.e { background: var(--green-soft); color: var(--green); }
 .sc-lv.h { background: var(--red-soft); color: var(--red); }
+
+/* v160 상황 레슨: 제목+단계 한 덩어리, 안내·해석 가운데 정렬 */
+.sc-fit .sc-head2 { flex: none; margin: 0 0 var(--sp-3); padding: var(--sp-3) var(--sp-4) var(--sp-2); border-radius: 16px; background: var(--card); box-shadow: inset 0 0 0 1.5px var(--line); }
+.sc-fit .sc-head2 .sc-ctx { margin: 0 0 var(--sp-2); padding: 0; border-radius: 0; background: none; box-shadow: none; font-size: 15px; font-weight: 800; color: var(--ink); }
+.sc-fit .sc-head2 .sc-steps, .sc-fit .sc-head2 .sc-stage { margin: 0; }
+.sc-fit .sc-gloss, .sc-fit .sc-ko { text-align: center; }
+.sc-fit .sc-gloss { margin-top: var(--sp-2); }
+.sc-fit .sc-gloss:not(.on) { font-size: clamp(12px, 1.6dvh, 13px); }
+.sc-fit .sc-ko { margin-top: var(--sp-1); }

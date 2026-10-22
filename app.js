@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v159';
+  var APP_VERSION = 'v160';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -3579,8 +3579,8 @@
     var pg = scProg(), todo = SCENES.filter(function (s) { return !scDone(pg, s); }), n = SCENES.length - todo.length;
     var show = (todo.length ? todo : SCENES).slice(0, 2);
     return '<div class="sc-head"><div class="section-title" style="margin:0">상황 레슨</div><span class="chip y">NEW</span>' +
-      '<button class="sec-more sc-all" data-act="sc-all">전체 보기 ' + n + '/' + SCENES.length + '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg></button></div>' +
-      '<p class="hsk-note under-title">하나의 상황을 말해 보고, 풀어 보고, AI와 직접 써 봐요. 한 번에 3분이면 끝나요.</p>' +
+      '<button class="sec-more sc-all" data-act="sc-all">전체 보기<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg></button></div>' +
+      '<p class="hsk-note under-title">하나의 상황에서 쓸 수 있는 중국어 문장을 익혀서 연습해요.</p>' +
       '<ul class="list" style="margin-top:0">' + show.map(function (s) { return scItemRow(s, pg); }).join('') + '</ul>';
   }
   var SC_CATS = ['전체', '일상', '여행', '대화'];
@@ -3684,6 +3684,10 @@
       return '<li class="' + st + '"' + (i === cur ? ' aria-current="step"' : '') + '><b>' + (i < cur ? I.check : i + 1) + '</b><span>' + SC_STAGE[k] + '</span></li>';
     }).join('') + '</ol>';
   }
+  // 상황 제목과 단계를 한 덩어리로: 위에 제목·몇 번째, 아래에 1-2-3 단계
+  function scHead(c, sc, label) {
+    return '<div class="sc-head2"><div class="sc-ctx"><span>' + sc.icon + ' ' + esc(sc.title) + '</span><em>' + (c.i + 1) + '번째 ' + label + '</em></div>' + scStageTag(c) + '</div>';
+  }
   function scVerdict(ok, c) {
     if (ok === null) return '<div class="qz-slot"></div>';
     return '<div class="qz-slot"><div class="qz-verdict ' + (ok ? 'ok' : 'no') + '" role="status"><img src="img/' + (ok ? 'qz-ok' : 'qz-no') + '.webp" alt="" draggable="false">' +
@@ -3720,7 +3724,7 @@
     if (c.stage === 'speak') {
       var l = sc.lines[c.i], canSkip = c.pass || c.tries >= 2 || c.noSR;
       var live = c.pass ? '' : c.msg ? esc(c.msg) : c.tries ? '다시 한번 말해 보세요' : '버튼을 누른 채로 따라 말해요';
-      var body = '<div class="qz-wrap sc-fit">' + scStageTag(c) + '<div class="sc-ctx"><span>' + sc.icon + ' ' + esc(sc.title) + '</span><em>' + (c.i + 1) + '번째 문장</em></div><div class="sc-main">' +
+      var body = '<div class="qz-wrap sc-fit">' + scHead(c, sc, '문장') + '<div class="sc-main">' +
         '<div class="sc-box"><div class="sc-card"><button class="round-btn sc-spk" data-act="say" data-text="' + esc(l[0]) + '" aria-label="듣기">' + I.spk + '</button>' + scLineView(l) + '</div>' + scKrRow(l) + '</div>' +
         '<div class="sc-heard-slot">' + (!c.pass && c.heard ? '<div class="sc-heard">들린 말: ' + esc(c.heard) + '</div>' : '') + '</div></div></div>';
       var foot;
@@ -3753,7 +3757,7 @@
       }).join('') + '</div>';
     }
     var foot2 = qzFoot(answered, ok, ok ? (c.combo >= 2 ? '연속 ' + c.combo + '번 정답' : '잘했어요') : '괜찮아요, 정답을 확인해 봐요', 'sc-next', last ? 'AI 미션으로' : '다음');
-    return '<div class="screen qz-fit">' + top + '<div class="qz-wrap sc-fit">' + scStageTag(c) + '<div class="sc-ctx"><span>' + sc.icon + ' ' + esc(sc.title) + '</span><em>' + (c.i + 1) + '번째 문제</em></div><div class="sc-main">' + prompt + opts + '</div></div>' + foot2 + '</div>';
+    return '<div class="screen qz-fit">' + top + '<div class="qz-wrap sc-fit">' + scHead(c, sc, '문제') + '<div class="sc-main">' + prompt + opts + '</div></div>' + foot2 + '</div>';
   }
   function viewSceneMission() {
     var c = state.sc, sc = sceneById(c.id), on = aiOn(), enough = on && aiBal() >= AI_CHAT_COST;
