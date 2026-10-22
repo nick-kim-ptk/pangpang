@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v168';
+  var APP_VERSION = 'v169';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -1005,7 +1005,16 @@
       return i.phrase ? '<div class="td-group">' + tdRow(i) + phraseCard + '</div>' : tdRow(i);
     }).join('');
     var more = !opt.length ? '' : (over ? '<div class="td-extra"><div class="td-more">더 해 볼까요? <em>선택</em></div>' + opt.map(tdRow).join('') + '</div>' : '');
-    return warn + '<div class="td-card' + (over ? ' over' : '') + '">' + head + '<div class="td-list">' + body + '</div></div>' + more;
+    // 필수를 막 끝낸 날: 18시 전이면 가끔(60%) 전체 화면으로 '하나만 더?'를 물어봐요. 저녁·밤엔 묻지 않아요
+    if (over && !o.overSeen) {
+      o.overSeen = 1; tdSave(o);
+      if (hr >= 6 && hr < 18 && Math.random() < 0.6) state.tdBonus = true;
+    }
+    var bonus = (over && state.tdBonus) ? '<div class="td-bonus" role="dialog" aria-label="하나만 더 해 볼까요?"><div class="tb-in">' +
+      '<img class="tb-m" src="img/td-more.webp" alt="" draggable="false">' +
+      '<h2>벌써 다 끝내셨네요!</h2><p>이렇게 빨리 끝내실 줄 몰랐어요.<br>딱 하나만 더 해 볼까요?</p>' +
+      '<button class="btn" data-act="td-bonus-more">좋아요, 하나 더</button><button class="btn soft" data-act="td-bonus-close">오늘은 여기까지</button></div></div>' : '';
+    return bonus + warn + '<div class="td-card' + (over ? ' over' : '') + '">' + head + '<div class="td-list">' + body + '</div></div>' + more;
   }
 
   function viewHome() {
@@ -4914,6 +4923,7 @@
       case 'ch-skip': chSkip(); break;
       case 'ch-pick': chAnswer(+id); break;
       case 'ch-hear': if (state.ch && state.ch.phase === 'ask') speak(hskList(state.ch.lv)[state.ch.qs[state.ch.qi]][0], 0.85); break;
+      case 'td-bonus-more': case 'td-bonus-close': state.tdBonus = false; renderKeep(); if (act === 'td-bonus-more') { var ex = document.querySelector('.td-extra'); if (ex && ex.scrollIntoView) ex.scrollIntoView({ block: 'center', behavior: 'smooth' }); } break;
       case 'ch-quit': if (state.ch && state.ch.stage > 1) { chSaveRec(state.ch); tdMark('ch-start'); } chStop(); go('tab', { tab: 'words' }); break;
       case 'ch-back': go('tab', { tab: 'words' }); break;
       case 'tone-start': if (hskGate(id)) break; startTone(parseInt(id, 10)); break;

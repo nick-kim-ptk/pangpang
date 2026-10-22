@@ -2473,3 +2473,11 @@ html, body, * { scrollbar-width: none; -ms-overflow-style: none; }
 
 /* v167 로그인 전 PRO 레슨 비활성 */
 .item.locked:disabled { opacity: .5; cursor: not-allowed; pointer-events: none; }
+
+/* v169 필수 완료 후 '하나만 더?' 전체 화면 */
+.td-bonus { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; background: var(--bg); padding: max(24px, env(safe-area-inset-top, 0px)) max(24px, env(safe-area-inset-right, 0px)) max(24px, env(safe-area-inset-bottom, 0px)) max(24px, env(safe-area-inset-left, 0px)); animation: tdIn .35s ease both; }
+.td-bonus .tb-in { width: 100%; max-width: 360px; display: grid; gap: var(--sp-3); text-align: center; justify-items: center; }
+.td-bonus .tb-m { width: min(62vw, 240px); height: auto; aspect-ratio: 360 / 340; object-fit: contain; }
+.td-bonus h2 { margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.02em; color: var(--ink); }
+.td-bonus p { margin: 0 0 var(--sp-3); font-size: 16px; line-height: 1.5; color: var(--ink-2); }
+.td-bonus .btn { width: 100%; }
