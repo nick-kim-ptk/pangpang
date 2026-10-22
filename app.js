@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v180';
+  var APP_VERSION = 'v181';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -1139,7 +1139,7 @@
     var show = (todo.length ? todo : GRAMMAR).slice(0, 2);
     return '<div class="sc-head" style="margin-top:24px"><div class="section-title" style="margin:0">문법 레슨</div><span class="chip y">NEW</span>' +
       '<button class="sec-more sc-all" data-act="gm-all">전체 보기<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg></button></div>' +
-      '<p class="hsk-note under-title">HSK 1급 문법을 규칙부터 짚어요. 순서 맞추기, 빈칸 채우기, 틀린 문장 고치기로 익혀요.</p>' +
+      '<p class="hsk-note under-title">중국어 문법을 다양한 방식을 통해서 익히고 학습해요.</p>' +
       '<ul class="list" style="margin-top:0">' + show.map(function (g) { return gmRow(g.id, false); }).join('') + '</ul>';
   }
   function viewGrams() {
@@ -1308,11 +1308,11 @@
     var r = l.rule; if (!r) return '';
     var ex = r.ex.map(function (e) {
       return '<div class="gm-ex"><div class="gm-row"><span class="gm-lab">한국어</span>' + e.ko.map(function (k, i) { return '<span class="gm-b c' + (i % 4) + '">' + esc(k) + '</span>'; }).join('') + '</div>' +
-        '<div class="gm-row"><span class="gm-lab">중국어</span>' + e.zh.map(function (z, i) { return '<span class="gm-b zh c' + (e.link[i] % 4) + '">' + esc(z) + '</span>'; }).join('') + '</div></div>';
+        '<div class="gm-row"><span class="gm-lab">중국어</span>' + e.zh.map(function (z, i) { return '<button class="gm-b zh c' + (e.link[i] % 4) + '" data-act="say" data-text="' + esc(z) + '" aria-label="듣기">' + esc(z) + '</button>'; }).join('') + '<button class="gm-spk" data-act="say" data-text="' + esc(e.zh.join('')) + '" aria-label="문장 듣기">' + I.spk + '</button></div></div>';
     }).join('');
     return '<div class="gm-rule"><div class="gm-rt">핵심 규칙</div><div class="gm-rl">' + esc(r.line) + '</div>' + ex +
       '<ul class="gm-notes">' + r.notes.map(function (n) { return '<li>' + esc(n) + '</li>'; }).join('') + '</ul></div>' +
-      '<div class="gm-steps"><span>어순 맞추기 ' + l.od.length + '</span><span>빈칸 채우기 ' + l.fl.length + '</span><span>틀린 문장 고치기 ' + l.fx.length + '</span></div>';
+'';
   }
   function gmPrep(g) {
     var st = g.steps[g.i], d = st.d;
@@ -1342,18 +1342,20 @@
     g.ok = ok; g.picked = true;
     if (ok) { g.right++; g.combo++; sfx('right', g.combo); } else { g.combo = 0; sfx('wrong'); }
     bumpAnswer();
+    var st = g.steps[g.i], d = st.d;
+    setTimeout(function () { if (state.screen === 'gram' && state.gm === g) speak(st.t === 'od' ? d.t.join('') : st.t === 'fl' ? d.zh.replace('___', d.opts[0]) : d.right); }, ok ? 350 : 500);
     render();
   }
   function gmPut(i) {
     var g = state.gm, st = g.steps[g.i]; if (g.picked || g.pool.indexOf(i) < 0) return;
-    g.pool.splice(g.pool.indexOf(i), 1); g.placed.push(i); sfx('tap');
+    g.pool.splice(g.pool.indexOf(i), 1); g.placed.push(i); sfx('tap'); speak(st.d.t[i]);
     if (!g.pool.length) gmResult(g.placed.every(function (v, k) { return st.d.t[v] === st.d.t[k]; }));
     else render();
   }
   function gmTake(i) {
     var g = state.gm; if (g.picked) return;
     var k = g.placed.indexOf(i); if (k < 0) return;
-    g.placed.splice(k, 1); g.pool.push(i); sfx('tap'); render();
+    g.placed.splice(k, 1); g.pool.push(i); sfx('tap'); speak(g.steps[g.i].d.t[i]); render();
   }
   function gmPick(i) { var g = state.gm; if (g.picked) return; g.pick = i; gmResult(!!g.opts[i].ok); }
   function gmNext() {
@@ -1410,7 +1412,7 @@
     var note = '';
     if (done) {
       var py = st.t === 'od' ? d.py : '';
-      note = '<div class="gm-exp"><div class="zh">' + esc(correctZh) + '</div>' + (py ? '<div class="py">' + esc(py) + '</div>' : '') +
+      note = '<div class="gm-exp"><button class="zh gm-say" data-act="say" data-text="' + esc(correctZh) + '" aria-label="다시 듣기">' + esc(correctZh) + I.spk + '</button>' + (py ? '<div class="py">' + esc(py) + '</div>' : '') +
         (st.t === 'fx' ? '<div class="why">' + esc(d.why) + '</div>' : '') + '</div>';
     }
     var foot = qzFoot(done, g.ok, g.ok ? (g.combo >= 2 ? '연속 ' + g.combo + '번 정답' : '잘했어요') : '괜찮아요, 규칙을 다시 봐요', 'gm-next', g.i + 1 >= g.steps.length ? '결과 보기' : '다음');
