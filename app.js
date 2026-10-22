@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v167';
+  var APP_VERSION = 'v168';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -537,6 +537,8 @@
     if (e.plan === 'lifetime') return true;
     return !!e.expires_at && new Date(e.expires_at) > new Date();
   }
+  // 비로그인·미멤버십은 앞의 2개 상황만 체험해요
+  function scAvail() { return (loggedOut() || !isPro()) ? SCENES.slice(0, 2) : SCENES; }
   function loggedOut() { return isGuest() || !state.user || state.user.id === 'local'; }
   function lessonLocked(id) {
     var i = LESSONS.indexOf(lessonById(id));
@@ -892,7 +894,7 @@
   function tdTarget(k) {
     var lv = tdLv(), pg, ds, o;
     if (k === 'scene') {
-      pg = scProg(); o = SCENES.filter(function (s) { return !(pg[s.id] && pg[s.id].done); })[0] || SCENES[0];
+      pg = scProg(); o = scAvail().filter(function (s) { return !(pg[s.id] && pg[s.id].done); })[0] || scAvail()[0];
       return o ? { id: o.id, name: o.title } : null;
     }
     if (k === 'dialog') {
@@ -1002,7 +1004,7 @@
     var body = items.map(function (i) {
       return i.phrase ? '<div class="td-group">' + tdRow(i) + phraseCard + '</div>' : tdRow(i);
     }).join('');
-    var more = !opt.length ? '' : (over ? '<div class="td-extra"><div class="td-more">더 해 볼까요? <em>선택</em></div>' + opt.map(tdRow).join('') + '</div>' : '<p class="td-lockhint">필수를 다 끝내면 더 해 볼 거리가 열려요</p>');
+    var more = !opt.length ? '' : (over ? '<div class="td-extra"><div class="td-more">더 해 볼까요? <em>선택</em></div>' + opt.map(tdRow).join('') + '</div>' : '');
     return warn + '<div class="td-card' + (over ? ' over' : '') + '">' + head + '<div class="td-list">' + body + '</div></div>' + more;
   }
 
@@ -3599,10 +3601,10 @@
   // 레슨 탭: 이어서 할 상황 2개만 보여 주고, 전체는 '전체 보기'에서 분류별로 봐요
   function scenesSection() {
     if (!SCENES.length) return '';
-    var pg = scProg(), todo = SCENES.filter(function (s) { return !scDone(pg, s); }), n = SCENES.length - todo.length;
-    var show = (todo.length ? todo : SCENES).slice(0, 2);
+    var pg = scProg(), av = scAvail(), todo = av.filter(function (s) { return !scDone(pg, s); }), full = av.length === SCENES.length;
+    var show = (todo.length ? todo : av).slice(0, 2);
     return '<div class="sc-head"><div class="section-title" style="margin:0">상황 레슨</div><span class="chip y">NEW</span>' +
-      '<button class="sec-more sc-all" data-act="sc-all">전체 보기<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg></button></div>' +
+      (full ? '<button class="sec-more sc-all" data-act="sc-all">전체 보기<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg></button>' : '') + '</div>' +
       '<p class="hsk-note under-title">하나의 상황에서 쓸 수 있는 중국어 문장을 익혀서 연습해요.</p>' +
       '<ul class="list" style="margin-top:0">' + show.map(function (s) { return scItemRow(s, pg); }).join('') + '</ul>';
   }
