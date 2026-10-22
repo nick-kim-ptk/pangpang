@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v174';
+  var APP_VERSION = 'v175';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -604,7 +604,7 @@
 
   /* ---------- 화면 이동 ---------- */
   // 뒤로 가기: 폰의 뒤로 제스처·버튼(기록)과 화면 왼쪽 가장자리에서 오른쪽으로 미는 동작을 같이 처리해요
-  var SUBSCREEN = { pay: 1, privacy: 1, login: 1, intro: 1, practice: 1, quiz: 1, stats: 1, done: 1, hsk: 1, hskstudy: 1, tone: 1, feedback: 1, speed: 1, account: 1, coupon: 1, aicharge: 1, aichat: 1, aiall: 1, aichats: 1, aichatlog: 1, scene: 1, chain: 1, rain: 1, scenes: 1, phrases: 1, prefs: 1, about: 1, advisor: 1 };
+  var SUBSCREEN = { pay: 1, privacy: 1, login: 1, intro: 1, practice: 1, quiz: 1, stats: 1, done: 1, hsk: 1, hskstudy: 1, tone: 1, feedback: 1, speed: 1, account: 1, coupon: 1, aicharge: 1, aichat: 1, aiall: 1, aichats: 1, aichatlog: 1, scene: 1, gram: 1, chain: 1, rain: 1, scenes: 1, phrases: 1, prefs: 1, about: 1, advisor: 1 };
   var inSub = false, ignorePop = 0, backAnim = false;
   function syncHistory(screen) {
     try {
@@ -641,6 +641,7 @@
     else if (sc === 'chain') { chStop(); go('tab', { tab: 'words' }); }
     else if (sc === 'rain') { rnStop(); go('tab', { tab: 'words' }); }
     else if (sc === 'scene') { stopSpeak(); scStopRec(); state.sc = null; go(state.scFrom === 'scenes' ? 'scenes' : 'tab'); }
+    else if (sc === 'gram') { stopSpeak(); go('intro', { lessonId: state.gm.l.id }); }
     else if (sc === 'scenes') go('tab', { tab: 'lessons' });
     else if (sc === 'done') go('tab', { tab: 'home' });
     else if (sc === 'feedback' || sc === 'account' || sc === 'coupon') go('prefs');
@@ -1101,7 +1102,7 @@
     var n = snap && snap.solved ? snap.solved : 0;
     return Math.max(0, Math.min(100, Math.round(n / CLEAR_COUNT * 100)));
   }
-  var lessonUi = { n: null, rn: null, g: null };
+  var lessonUi = { n: null, rn: null, g: null, go: {} };
   // 처음엔 7개, 다음 레슨(NEW)이 아래에 있으면 그 줄까지 보여 줘요
   function lessonInitN() {
     var nx = nextLesson(), idx = nx ? LESSONS.indexOf(nx) : 0;
@@ -1113,24 +1114,35 @@
     var s2 = document.querySelector('.scroll'); if (s2) s2.scrollTop = top;
     try { window.scrollTo(0, wy); } catch (e) { /* 무시 */ }
   }
-  // 문법 레슨(HSK 1급): 처음엔 5개, 더 보기로 나머지를 펼쳐요
+  // 문법 레슨(HSK 1급): 3개 묶음(기본 문장 / 문장 꾸미기 / 묻기와 위치)으로 나눠 보여요
+  function gmOpen(gi) {
+    if (lessonUi.go[gi] != null) return lessonUi.go[gi];
+    var gs = GRAMMAR.groups || [], f = gs.findIndex(function (g) { return g.ids.some(function (x) { return !state.done[x]; }); });
+    return gi === Math.max(0, f);
+  }
+  function gmShort(id) { var l = lessonById(id); return l ? l.title.split(' · ')[0] : ''; }
   function grammarSection() {
     if (!GRAMMAR.length) return '';
     var n = GRAMMAR.filter(function (g) { return state.done[g.id]; }).length, pct = Math.round(n / GRAMMAR.length * 100);
-    var firstUndone = GRAMMAR.findIndex(function (g) { return !state.done[g.id]; });
-    var take = Math.min(GRAMMAR.length, lessonUi.g || Math.max(5, Math.ceil((firstUndone + 1) / 5) * 5));
-    var list = GRAMMAR.slice(0, take).map(function (l, i) {
-      var isDone = !!state.done[l.id], pc = isDone ? 0 : lessonPercent(l.id);
-      return '<li><button class="item' + (isDone ? '' : ' off') + '" data-act="open-lesson" data-id="' + l.id + '">' +
-        '<span class="num">' + (i + 1) + '</span><span class="txt"><div class="t">' + esc(l.title) + '</div><div class="s">' + esc(l.sub) + '</div></span>' +
-        (isDone ? '<span class="chip green">' + I.check + '완료</span>' : '<span class="chips-end">' + (pc > 0 ? '<span class="chip soft pct">' + pc + '%</span>' : '') + '</span>') + '</button></li>';
+    var groups = GRAMMAR.groups || [{ name: '문법', ids: GRAMMAR.map(function (g) { return g.id; }) }];
+    var body = groups.map(function (g, gi) {
+      var dn = g.ids.filter(function (id) { return state.done[id]; }).length;
+      var open = gmOpen(gi);
+      var items = open ? '<ul class="list" style="margin-top:8px">' + g.ids.map(function (id) {
+        var l = lessonById(id), isDone = !!state.done[id], pc = isDone ? 0 : lessonPercent(id);
+        var rel = (l.rel || []).map(gmShort).filter(Boolean);
+        return '<li><button class="item' + (isDone ? '' : ' off') + '" data-act="open-lesson" data-id="' + id + '">' +
+          '<span class="num">' + (GRAMMAR.indexOf(l) + 1) + '</span><span class="txt"><div class="t">' + esc(l.title) + '</div><div class="s">' + esc(l.sub) + '</div>' +
+          (rel.length ? '<div class="gm-rel">같이 보면 좋아요 · ' + esc(rel.join(', ')) + '</div>' : '') + '</span>' +
+          '<span class="chips-end">' + (l.tag ? '<span class="chip soft gm-tag">' + esc(l.tag) + '</span>' : '') +
+          (isDone ? '<span class="chip green">' + I.check + '완료</span>' : (pc > 0 ? '<span class="chip soft pct">' + pc + '%</span>' : '')) + '</span></button></li>';
+      }).join('') + '</ul>' : '';
+      return '<div class="gm-group"><button class="gm-ghead" data-act="gm-group" data-id="' + gi + '" aria-expanded="' + open + '"><b>' + esc(g.name) + '</b><span>' + dn + ' / ' + g.ids.length + '</span><i class="gm-car' + (open ? ' on' : '') + '">' + I.back + '</i></button>' + items + '</div>';
     }).join('');
     return '<div class="sc-head" style="margin-top:24px"><div class="section-title" style="margin:0">문법 레슨</div><span class="chip y">NEW</span></div>' +
-      '<p class="hsk-note under-title">HSK 1급 문법을 말하면서 익혀요. 한 번에 3분이면 돼요.</p>' +
+      '<p class="hsk-note under-title">HSK 1급 문법을 규칙부터 짚어요. 순서 맞추기, 빈칸 채우기, 틀린 문장 고치기로 익혀요.</p>' +
       '<div class="lesson-progress"><div class="row"><b>' + n + ' / ' + GRAMMAR.length + '</b><span>문법 완료</span></div>' +
-      '<div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + pct + '"><i style="width:' + pct + '%"></i></div></div>' +
-      '<ul class="list" style="margin-top:0">' + list + '</ul>' +
-      (take < GRAMMAR.length ? '<button class="more-btn" data-act="grammar-more">문법 더보기 (' + (GRAMMAR.length - take) + '개 더 · 전체 ' + GRAMMAR.length + '개)</button>' : '');
+      '<div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + pct + '"><i style="width:' + pct + '%"></i></div></div>' + body;
   }
   function viewLessons() {
     var next = nextLesson();
@@ -1276,6 +1288,120 @@
       card('speed-start', '스피드 퀴즈', learned ? SPEED_SIZE + '문제 · ' + SPEED_SEC + '초' : '레슨을 마치면 열려요', !learned, sl) +
       card('quiz-listen', '듣기 연습', learned ? QUIZ_SIZE + '문제' : '레슨을 마치면 열려요', !learned, false) + '</div>';
   }
+  /* ---------- 문법 연습: 규칙 카드 → 어순 맞추기 → 틀 채우기 → 틀린 문장 고치기 ---------- */
+  function gmRuleCard(l) {
+    var r = l.rule; if (!r) return '';
+    var ex = r.ex.map(function (e) {
+      return '<div class="gm-ex"><div class="gm-row"><span class="gm-lab">한국어</span>' + e.ko.map(function (k, i) { return '<span class="gm-b c' + (i % 4) + '">' + esc(k) + '</span>'; }).join('') + '</div>' +
+        '<div class="gm-row"><span class="gm-lab">중국어</span>' + e.zh.map(function (z, i) { return '<span class="gm-b zh c' + (e.link[i] % 4) + '">' + esc(z) + '</span>'; }).join('') + '</div></div>';
+    }).join('');
+    return '<div class="gm-rule"><div class="gm-rt">핵심 규칙</div><div class="gm-rl">' + esc(r.line) + '</div>' + ex +
+      '<ul class="gm-notes">' + r.notes.map(function (n) { return '<li>' + esc(n) + '</li>'; }).join('') + '</ul></div>' +
+      '<div class="gm-steps"><span>어순 맞추기 ' + l.od.length + '</span><span>빈칸 채우기 ' + l.fl.length + '</span><span>틀린 문장 고치기 ' + l.fx.length + '</span></div>';
+  }
+  function gmPrep(g) {
+    var st = g.steps[g.i], d = st.d;
+    g.picked = null; g.ok = null; g.placed = [];
+    if (st.t === 'od') {
+      var idx = d.t.map(function (_, i) { return i; }), tries = 0;
+      do { idx = shuffle(idx); tries++; } while (tries < 8 && idx.every(function (v, i) { return d.t[v] === d.t[i]; }));
+      g.pool = idx;
+    } else if (st.t === 'fl') {
+      g.opts = shuffle(d.opts.map(function (o, i) { return { t: o, ok: i === 0 }; }));
+    } else {
+      g.opts = shuffle([d.right].concat(d.alts).map(function (o) { return { t: o, ok: o === d.right }; }));
+    }
+  }
+  function startGrammar(lid) {
+    var l = lessonById(lid); if (!l || !l.od) return;
+    var steps = [];
+    shuffle(l.od.slice()).forEach(function (d) { steps.push({ t: 'od', d: d }); });
+    shuffle(l.fl.slice()).forEach(function (d) { steps.push({ t: 'fl', d: d }); });
+    shuffle(l.fx.slice()).forEach(function (d) { steps.push({ t: 'fx', d: d }); });
+    state.gm = { l: l, steps: steps, i: 0, right: 0, combo: 0, before: todayAnswers() };
+    gmPrep(state.gm);
+    go('gram');
+  }
+  function gmResult(ok) {
+    var g = state.gm;
+    g.ok = ok; g.picked = true;
+    if (ok) { g.right++; g.combo++; sfx('right', g.combo); } else { g.combo = 0; sfx('wrong'); }
+    bumpAnswer();
+    render();
+  }
+  function gmPut(i) {
+    var g = state.gm, st = g.steps[g.i]; if (g.picked || g.pool.indexOf(i) < 0) return;
+    g.pool.splice(g.pool.indexOf(i), 1); g.placed.push(i); sfx('tap');
+    if (!g.pool.length) gmResult(g.placed.every(function (v, k) { return st.d.t[v] === st.d.t[k]; }));
+    else render();
+  }
+  function gmTake(i) {
+    var g = state.gm; if (g.picked) return;
+    var k = g.placed.indexOf(i); if (k < 0) return;
+    g.placed.splice(k, 1); g.pool.push(i); sfx('tap'); render();
+  }
+  function gmPick(i) { var g = state.gm; if (g.picked) return; g.pick = i; gmResult(!!g.opts[i].ok); }
+  function gmNext() {
+    var g = state.gm; if (!g.picked) return;
+    g.i++;
+    if (g.i >= g.steps.length) { finishGrammar(); return; }
+    gmPrep(g); render();
+  }
+  function finishGrammar() {
+    var g = state.gm, l = g.l, goal = state.profile.goal, now = todayAnswers(), hit = g.before < goal && now >= goal;
+    var t = new Date().toISOString(), prev = state.done[l.id];
+    var drow = { lesson_id: l.id, done_at: t, times: (prev ? prev.times : 0) + 1 };
+    state.done[l.id] = drow; store.saveDone(drow);
+    var day = dayStr(new Date()), d0 = state.daily[day] || { day: day, lessons: 0, answers: 0 };
+    var d = { day: day, lessons: d0.lessons + 1, answers: d0.answers };
+    state.daily[day] = d; store.saveDaily(d);
+    sfx(hit ? 'goal' : 'done');
+    go('done', { result: {
+      kind: 'quiz', title: '문법 연습 끝!',
+      line: g.steps.length + '문제 중 ' + g.right + '개 맞혔어요' + (g.right === g.steps.length ? '. 전부 정답이에요!' : '.') + ' 배운 문장을 말로도 해 볼까요?',
+      answers: now, goal: goal, goalHit: hit, milestone: 0,
+      again: { act: 'practice-lesson', id: l.id, label: '말하기로 마무리하기' }
+    } });
+  }
+  function viewGram() {
+    var g = state.gm, st = g.steps[g.i], d = st.d, done = g.picked !== null;
+    var pct = Math.round((g.i + (done ? 1 : 0)) / g.steps.length * 100);
+    var top = '<div class="topbar"><button class="icon-btn" data-act="gm-quit" aria-label="그만하기">' + I.close + '</button>' +
+      '<div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + pct + '"><i style="width:' + pct + '%"></i></div>' +
+      '<span class="chip" style="min-width:48px;justify-content:center">' + (g.i + (done ? 1 : 0)) + '/' + g.steps.length + '</span></div>';
+    var kind = st.t === 'od' ? '순서를 맞춰 문장을 만들어요' : st.t === 'fl' ? '빈칸에 알맞은 말을 골라요' : '맞는 문장을 골라요';
+    var body = '<div class="gm-kind">' + kind + '</div>';
+    var correctZh = st.t === 'od' ? d.t.join('') : st.t === 'fl' ? d.zh.replace('___', d.opts[0]).replace(/\s/g, '') : d.right;
+    if (st.t === 'od') {
+      body += '<div class="gm-q">' + esc(d.ko) + '</div>' +
+        '<div class="gm-slot' + (done ? (g.ok ? ' ok' : ' no') : '') + '">' + (g.placed.length ? g.placed.map(function (i) {
+          return '<button class="gm-b zh big" data-act="gm-take" data-id="' + i + '"' + (done ? ' disabled' : '') + '>' + esc(d.t[i]) + '</button>';
+        }).join('') : '<span class="gm-ph">아래 블록을 차례로 눌러요</span>') + '</div>' +
+        '<div class="gm-pool">' + g.pool.map(function (i) { return '<button class="gm-b zh big pool" data-act="gm-put" data-id="' + i + '">' + esc(d.t[i]) + '</button>'; }).join('') + '</div>';
+    } else if (st.t === 'fl') {
+      var parts = d.zh.split('___');
+      body += '<div class="gm-q">' + esc(d.ko) + '</div><div class="gm-sent">' + esc(parts[0]) + '<span class="gm-blank' + (done ? (g.ok ? ' ok' : ' no') : '') + '">' + (done ? esc(d.opts[0]) : '&nbsp;') + '</span>' + esc(parts[1]) + '</div>' +
+        '<div class="qz-opts gm-opts">' + g.opts.map(function (o, i) {
+          var cls = 'opt gm-opt'; if (done) cls += o.ok ? ' ok' : (i === g.pick ? ' no' : ' dim');
+          return '<button class="' + cls + '" data-act="gm-pick" data-id="' + i + '"' + (done ? ' disabled' : '') + '>' + esc(o.t) + '</button>';
+        }).join('') + '</div>';
+    } else {
+      body += '<div class="gm-q">이 문장을 바르게 고쳐요</div><div class="gm-sent wrong">' + esc(d.wrong) + '</div>' +
+        '<div class="qz-opts gm-opts">' + g.opts.map(function (o, i) {
+          var cls = 'opt gm-opt zh'; if (done) cls += o.ok ? ' ok' : (i === g.pick ? ' no' : ' dim');
+          return '<button class="' + cls + '" data-act="gm-pick" data-id="' + i + '"' + (done ? ' disabled' : '') + '>' + esc(o.t) + '</button>';
+        }).join('') + '</div>';
+    }
+    var note = '';
+    if (done) {
+      var py = st.t === 'od' ? d.py : '';
+      note = '<div class="gm-exp"><div class="zh">' + esc(correctZh) + '</div>' + (py ? '<div class="py">' + esc(py) + '</div>' : '') +
+        (st.t === 'fx' ? '<div class="why">' + esc(d.why) + '</div>' : '') + '</div>';
+    }
+    var foot = qzFoot(done, g.ok, g.ok ? (g.combo >= 2 ? '연속 ' + g.combo + '번 정답' : '잘했어요') : '괜찮아요, 규칙을 다시 봐요', 'gm-next', g.i + 1 >= g.steps.length ? '결과 보기' : '다음');
+    return '<div class="screen qz-fit">' + top + '<div class="qz-wrap qz-ctr gm-wrap">' + body + '<div class="gm-exp-slot">' + note + '</div></div>' + foot + '</div>';
+  }
+
   function viewIntro() {
     var l = lessonById(state.lessonId);
     var learned = !!state.done[l.id];
@@ -1285,8 +1411,8 @@
       '<div class="scroll" style="padding-bottom:8px">' +
         '<div class="intro-head"><div><span class="chip y lesson-no">' + (l.kind === 'grammar' ? '문법 ' + (GRAMMAR.indexOf(l) + 1) + ' · HSK 1급' : (LESSONS.indexOf(l) + 1) + '번째 레슨') + '</span><h1 class="big-title" style="margin-top:8px">' + esc(l.title) + '</h1>' +
         '<p class="sub-title" style="margin-bottom:0">' + esc(l.intro) + '</p></div></div>' +
-        '<div class="pattern" style="margin-top:16px"><div class="zh">' + esc(l.pattern.zh) + '</div><div class="py" style="margin-top:2px">' + esc(l.pattern.py) + '</div><div class="kr">' + esc(kr(l.pattern.py)) + '</div><div class="ko" style="margin-top:2px">' + esc(l.pattern.ko) + '</div></div>' +
-        introPractice(l, learned) +
+        (l.kind === 'grammar' ? '' : '<div class="pattern" style="margin-top:16px"><div class="zh">' + esc(l.pattern.zh) + '</div><div class="py" style="margin-top:2px">' + esc(l.pattern.py) + '</div><div class="kr">' + esc(kr(l.pattern.py)) + '</div><div class="ko" style="margin-top:2px">' + esc(l.pattern.ko) + '</div></div>') +
+        (l.kind === 'grammar' ? gmRuleCard(l) : introPractice(l, learned)) +
         '<div class="seg-row intro-seg" role="tablist" style="margin-top:24px">' +
           '<button role="tab" class="seg-b' + (state.introTab !== 'qs' ? ' on' : '') + '" data-act="intro-tab" data-id="words" aria-selected="' + (state.introTab !== 'qs') + '">단어 보기 ' + l.words.length + '</button>' +
           '<button role="tab" class="seg-b' + (state.introTab === 'qs' ? ' on' : '') + '" data-act="intro-tab" data-id="qs" aria-selected="' + (state.introTab === 'qs') + '">문제 문장 ' + l.qs.length + '</button></div>' +
@@ -1300,7 +1426,9 @@
             }).join('') + '</div>'
           : '<div class="words">' + l.words.map(wordRow).join('') + '</div>') +
       '</div>' +
-      '<div class="footer"><button class="btn" data-act="practice-lesson" data-id="' + l.id + '">' + (learned ? '다시 연습하기' : '말하기 연습 시작') + '</button></div>' +
+      '<div class="footer">' + (l.kind === 'grammar'
+        ? '<button class="btn" data-act="gm-start" data-id="' + l.id + '">' + (learned ? '문법 다시 연습하기' : '문법 연습 시작') + '</button>'
+        : '<button class="btn" data-act="practice-lesson" data-id="' + l.id + '">' + (learned ? '다시 연습하기' : '말하기 연습 시작') + '</button>') + '</div>' +
     '</div>';
   }
 
@@ -2537,6 +2665,7 @@
     else if (state.screen === 'intro') html = viewIntro();
     else if (state.screen === 'practice') html = viewPractice();
     else if (state.screen === 'quiz') html = viewQuiz();
+    else if (state.screen === 'gram') html = viewGram();
     else if (state.screen === 'stats') html = viewStats();
     else if (state.screen === 'hsk') html = viewHsk();
     else if (state.screen === 'feedback') html = viewFeedback();
@@ -4856,7 +4985,13 @@
       case 'ai-fix-del': aiFixDel(el.getAttribute('data-t')); render(); break;
       case 'ai-fix-more': var fk = el.getAttribute('data-k') || 'expr'; fixUi.n[fk] = (fixUi.n[fk] || 7) + 7; renderKeep(); break;
       case 'ai-seg': fixUi.seg = el.getAttribute('data-k') === 'fix' ? 'fix' : 'expr'; render(); break;
-      case 'grammar-more': lessonUi.g = GRAMMAR.length; renderKeep(); break;
+      case 'gm-group': lessonUi.go[id] = !gmOpen(+id); sfx('tap'); renderKeep(); break;
+      case 'gm-start': startGrammar(id); break;
+      case 'gm-pick': gmPick(+id); break;
+      case 'gm-put': gmPut(+id); break;
+      case 'gm-take': gmTake(+id); break;
+      case 'gm-next': gmNext(); break;
+      case 'gm-quit': stopSpeak(); go('intro', { lessonId: state.gm.l.id }); break;
       case 'lessons-more': lessonUi.n = (lessonUi.n || lessonInitN()) + 7; renderKeep(); break;
       case 'ac-showko': if (state.ac) { var sk = state.ac.msgs[+el.getAttribute('data-i')]; if (sk) { sk.showKo = !sk.showKo; render(); } } break;
       case 'ac-ko': if (state.ac && state.ac.mode === 'chat' && !state.ac.busy && !state.ac.ended) { state.ac.ko = { opts: null, heard: '', busy: false }; render(); acScroll(); } break;

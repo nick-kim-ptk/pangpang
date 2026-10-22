@@ -2528,3 +2528,53 @@ html, body, * { scrollbar-width: none; -ms-overflow-style: none; }
 
 /* v173 레슨 상세 연습 카드 */
 .pr-row.pr-two { grid-template-columns: repeat(2, 1fr); margin-top: var(--sp-4); }
+
+/* v175 문법 레슨: 규칙 카드·어순 블록·빈칸·고치기 */
+:root { --gm-c0: #3b82f6; --gm-c1: #f59e0b; --gm-c2: #10b981; --gm-c3: #ec4899; --gm-c0b: #e8f0fe; --gm-c1b: #fef3dc; --gm-c2b: #dff6ec; --gm-c3b: #fde6f1; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --gm-c0b: #1c2a44; --gm-c1b: #3a2e14; --gm-c2b: #12332a; --gm-c3b: #3b1c2d; } }
+:root[data-theme="dark"] { --gm-c0b: #1c2a44; --gm-c1b: #3a2e14; --gm-c2b: #12332a; --gm-c3b: #3b1c2d; }
+.gm-group { margin-top: 10px; }
+.gm-ghead { width: 100%; display: flex; align-items: center; gap: 8px; padding: 12px 4px; border: 0; background: none; color: var(--ink); font-size: 16px; text-align: left; border-bottom: 1px solid var(--line); }
+.gm-ghead b { flex: 1; }
+.gm-ghead span { color: var(--ink-3); font-size: 14px; }
+.gm-car { display: inline-flex; width: 18px; transform: rotate(-90deg); transition: transform .2s; color: var(--ink-3); }
+.gm-car.on { transform: rotate(90deg); }
+.gm-car svg { width: 18px; height: 18px; }
+.gm-rel { margin-top: 3px; font-size: 12px; color: var(--ink-3); }
+.gm-tag { font-size: 12px; }
+.gm-rule { margin-top: 16px; padding: 16px; border-radius: 18px; background: var(--soft); }
+.gm-rt { font-size: 12px; font-weight: 700; color: var(--ink-3); letter-spacing: .04em; }
+.gm-rl { margin: 4px 0 12px; font-size: 18px; font-weight: 700; color: var(--ink); text-wrap: balance; }
+.gm-ex { padding: 10px 0; border-top: 1px solid var(--line); }
+.gm-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 4px 0; }
+.gm-lab { width: 44px; font-size: 11px; color: var(--ink-3); }
+.gm-b { display: inline-flex; align-items: center; padding: 6px 10px; border-radius: 10px; border: 0; font-size: 15px; font-weight: 600; color: var(--ink); background: var(--card); box-shadow: inset 0 0 0 1.5px var(--line); }
+.gm-b.zh { font-size: 18px; }
+.gm-b.c0 { background: var(--gm-c0b); box-shadow: inset 0 0 0 1.5px var(--gm-c0); }
+.gm-b.c1 { background: var(--gm-c1b); box-shadow: inset 0 0 0 1.5px var(--gm-c1); }
+.gm-b.c2 { background: var(--gm-c2b); box-shadow: inset 0 0 0 1.5px var(--gm-c2); }
+.gm-b.c3 { background: var(--gm-c3b); box-shadow: inset 0 0 0 1.5px var(--gm-c3); }
+.gm-notes { margin: 8px 0 0; padding-left: 18px; color: var(--ink-2); font-size: 14px; line-height: 1.5; }
+.gm-steps { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.gm-steps span { padding: 5px 10px; border-radius: 999px; background: var(--soft); color: var(--ink-2); font-size: 12px; }
+.gm-wrap { gap: 14px; }
+.gm-kind { font-size: 13px; font-weight: 700; color: var(--ink-3); text-align: center; }
+.gm-q { font-size: 20px; font-weight: 700; color: var(--ink); text-align: center; text-wrap: balance; }
+.gm-slot { min-height: 64px; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px; padding: 12px; border-radius: 16px; background: var(--soft); box-shadow: inset 0 0 0 1.5px var(--line); }
+.gm-slot.ok { box-shadow: inset 0 0 0 2px var(--green); }
+.gm-slot.no { box-shadow: inset 0 0 0 2px #ef5350; }
+.gm-ph { color: var(--ink-3); font-size: 14px; }
+.gm-pool { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; min-height: 52px; }
+.gm-b.big { font-size: 22px; padding: 10px 14px; }
+.gm-b.pool:active { transform: scale(.96); }
+.gm-sent { font-size: 28px; font-weight: 700; text-align: center; color: var(--ink); letter-spacing: .04em; }
+.gm-sent.wrong { color: #ef5350; }
+.gm-blank { display: inline-block; min-width: 2.2em; margin: 0 4px; border-bottom: 3px solid var(--ink-3); text-align: center; }
+.gm-blank.ok { color: var(--green); border-color: var(--green); }
+.gm-blank.no { color: #ef5350; border-color: #ef5350; }
+.gm-opt.zh { font-size: 20px; }
+.gm-exp-slot { min-height: 76px; }
+.gm-exp { text-align: center; }
+.gm-exp .zh { font-size: 22px; font-weight: 700; color: var(--ink); }
+.gm-exp .py { font-size: 14px; color: var(--ink-3); }
+.gm-exp .why { margin-top: 4px; font-size: 14px; color: var(--ink-2); text-wrap: balance; }
