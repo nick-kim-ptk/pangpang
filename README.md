@@ -592,3 +592,6 @@ select kind, count(*) n, round(avg(in_tokens)) avg_in, round(avg(cache_read)) av
 
 ## v161
 - 상황 레슨 전체 보기: 완료 체크·완료 배경·'N/12개 완료' 줄 삭제. 레슨 화면 상단 카드 박스를 풀고 아래 구분선만 둠.
+
+## v162
+- HSK 탭 5개 학습 카드 아이콘을 이모지 → 전달받은 3D 이미지(img/hm-*.webp)로 교체.

@@ -35,7 +35,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v161';
+  var APP_VERSION = 'v162';
 
   var QMAP = {};
   LESSONS.forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -3195,6 +3195,7 @@
     if (!v) { try { v = parseInt(localStorage.getItem('pangpang.hsklv'), 10); } catch (e) { /* 무시 */ } }
     return [1, 2, 3, 4].indexOf(v) >= 0 ? v : 1;
   }
+  function hmi(n) { return '<img class="hm-img" src="img/hm-' + n + '.webp" alt="" draggable="false">'; }
   function hskSection() {
     if (!Object.keys(HSKW).length) return '';
     var lv = hskLvSel(), n = hskList(lv).length, k = hskCount(lv), pct = n ? Math.round(k / n * 100) : 0;
@@ -3214,11 +3215,11 @@
       (locked ? '<p class="hsk-lock-note">' + I.lock + ' ' + lv + '급은 멤버십이 필요해요. 1급은 무료예요.</p>' : '') +
       listCard +
       '<div class="hsk-modes">' +
-      mode('hsk-study', '🃏', '카드 학습', '밀어서 외우기', '') +
-      mode('hsk-quiz', '📝', '퀴즈', '소리·뜻 고르기', '') +
-      mode('ch-start', icn('chain'), '기억 사슬', rec.best ? '최고 ' + rec.best + '단계' : '몇 단계까지 갈까?', rec.plays ? '' : 'NEW') +
-      mode('tone-start', '🎵', '성조 연습', '소리로 성조 맞히기', '') +
-      mode('rain-start', '🌧️', '소나기 퀴즈', '떨어지는 한자를 잡아요', rnBest(lv) ? '' : 'NEW', 'wide') + '</div>' +
+      mode('hsk-study', hmi('game'), '카드 학습', '밀어서 외우기', '') +
+      mode('hsk-quiz', hmi('quiz'), '퀴즈', '소리·뜻 고르기', '') +
+      mode('ch-start', hmi('kisa'), '기억 사슬', rec.best ? '최고 ' + rec.best + '단계' : '몇 단계까지 갈까?', rec.plays ? '' : 'NEW') +
+      mode('tone-start', hmi('sungjo'), '성조 연습', '소리로 성조 맞히기', '') +
+      mode('rain-start', hmi('sonagi'), '소나기 퀴즈', '떨어지는 한자를 잡아요', rnBest(lv) ? '' : 'NEW', 'wide') + '</div>' +
       '<p class="hsk-note hsk-foot">' + HSK_NOTE + '</p></div>';
   }
   function hskRow(lv, w, i) {
