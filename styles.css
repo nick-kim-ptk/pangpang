@@ -2701,11 +2701,11 @@ html, body, * { scrollbar-width: none; -ms-overflow-style: none; }
   font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
   background: radial-gradient(120% 80% at 50% 36%, #2a3558 0%, #151b36 62%, #0b0f22 100%); }
 .gd > .hero, .gd > .footer { position: relative; z-index: 2; }
-.gd .gd-rays { position: absolute; z-index: 0; left: 50%; top: 24%; width: 190vmax; height: 190vmax; margin: -95vmax 0 0 -95vmax; pointer-events: none;
+.gd .gd-rays { position: absolute; z-index: 0; left: var(--cx, 50%); top: var(--cy, 24%); width: 190vmax; height: 190vmax; margin: -95vmax 0 0 -95vmax; pointer-events: none;
   background: repeating-conic-gradient(from 0deg, rgba(255,226,150,.13) 0deg 7deg, rgba(255,226,150,0) 7deg 30deg);
   -webkit-mask-image: radial-gradient(circle, #000 0, rgba(0,0,0,.55) 8%, transparent 20%); mask-image: radial-gradient(circle, #000 0, rgba(0,0,0,.55) 8%, transparent 20%);
   animation: gdSpin 90s linear infinite; }
-.gd .gd-glow { position: absolute; z-index: 0; left: 50%; top: 24%; width: min(120vw, 560px); aspect-ratio: 1; transform: translate(-50%, -50%); pointer-events: none;
+.gd .gd-glow { position: absolute; z-index: 0; left: var(--cx, 50%); top: var(--cy, 24%); width: min(120vw, 560px); aspect-ratio: 1; transform: translate(-50%, -50%); pointer-events: none;
   background: radial-gradient(circle, rgba(255,214,120,.28), rgba(255,214,120,0) 62%); }
 @keyframes gdSpin { to { transform: rotate(360deg); } }
 .gd .confetti { z-index: 3; }
@@ -2730,3 +2730,21 @@ html, body, * { scrollbar-width: none; -ms-overflow-style: none; }
 .gd .footer { background: none; }
 .gd .rd-bar { grid-template-columns: 44px 1fr 40px; }
 .gd .rd-bar span { white-space: nowrap; }
+.gd { height: 100dvh; max-height: 100dvh; }
+.gd > .hero { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+.gd > .hero > * { flex-shrink: 0; }
+.gd .rd-msgbox { flex-shrink: 1; min-height: 40px; }
+@media (max-height: 680px) {
+  .gd > .hero { padding-top: 14px; gap: 6px; }
+  .gd .stage.rd-stage { width: 104px; }
+  .gd .rd-stage .mascot, .gd .rd-stage .chr-done { width: 92px; height: auto; }
+  .gd .rd-stage .chr-done { height: 92px; }
+  .gd .rd-num { font-size: 52px; }
+  .gd .rd-score em { font-size: 20px; }
+  .gd .rd-star { font-size: 20px; }
+  .gd .rd-vs { padding: 10px 14px; }
+  .gd .rd-bars { margin-top: 6px; gap: 4px; }
+  .gd .footer { padding-top: 10px; gap: 6px; }
+  .gd .btn { height: 48px; }
+  .gd .rd-msg { font-size: 14px; }
+}

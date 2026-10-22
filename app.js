@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v191';
+  var APP_VERSION = 'v192';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -718,6 +718,7 @@
     render();
     window.scrollTo(0, 0);
     if (screen === 'done' && state.result && (state.result.kind === 'rain' || state.result.kind === 'chain')) rdCount();
+    if (screen === 'done' && gdKind(state.result)) { gdAim(); requestAnimationFrame(gdAim); setTimeout(gdAim, 250); }
     if (screen === 'done') maybeCelebrate(); else if (celEl) closeCelebration(true);
   }
 
@@ -1882,6 +1883,15 @@
       '<button class="btn" data-act="home">홈으로</button>' +
       (r.again ? '<button class="btn gray" data-act="' + r.again.act + '"' + (r.again.id ? ' data-id="' + r.again.id + '"' : '') + '>' + esc(r.again.label) + '</button>' : '') + '</div></div>';
   }
+  // 빛줄기와 후광의 중심을 달팽이 한가운데에 맞춰요 (화면 크기·스크롤이 달라도 같은 자리)
+  function gdAim() {
+    var g = document.querySelector('.gd'), st = g && g.querySelector('.rd-stage'); if (!st) return;
+    var gr = g.getBoundingClientRect(), r = st.getBoundingClientRect();
+    g.style.setProperty('--cx', (r.left - gr.left + r.width / 2).toFixed(1) + 'px');
+    g.style.setProperty('--cy', (r.top - gr.top + r.height / 2 - 3).toFixed(1) + 'px');
+    var h = g.querySelector('.hero'); if (h && !h.__gdAim) { h.__gdAim = 1; h.addEventListener('scroll', gdAim, { passive: true }); }
+  }
+  window.addEventListener('resize', function () { if (state.screen === 'done') gdAim(); });
   function gdFx() { return '<div class="gd-rays" aria-hidden="true"></div><div class="gd-glow" aria-hidden="true"></div>'; }
   // 소나기 퀴즈 결과: 점수를 크게 보여 주고 내 최고 기록과 견줘요
   function rainDone(r) {
