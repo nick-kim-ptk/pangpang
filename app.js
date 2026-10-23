@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v205';
+  var APP_VERSION = 'v206';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -3833,13 +3833,12 @@
     wkLastLoad();
     return '<div class="hsk-main">' + wkLastCard() + chips +
       (locked ? '<p class="hsk-lock-note">' + I.lock + ' ' + lv + '급은 멤버십이 필요해요. 1급은 무료예요.</p>' : '') +
-      study + gameHead +
+      study + '<p class="hsk-note hsk-foot hsk-grp-note">' + HSK_NOTE + '</p>' + gameHead +
       '<div class="hsk-modes">' +
       gmode('quiz', hmi('quiz'), '하트 3개로 도전') +
       gmode('chain', hmi('kisa'), '몇 단계까지 갈까?') +
       gmode('tone', hmi('sungjo'), '하트 5개로 도전') +
-      gmode('rain', hmi('sonagi'), '떨어지는 한자를 잡아요') + '</div>' +
-      '<p class="hsk-note hsk-foot">' + HSK_NOTE + '</p></div>';
+      gmode('rain', hmi('sonagi'), '떨어지는 한자를 잡아요') + '</div></div>';
   }
   function hskRow(lv, w, i) {
     var on = hskKnown(lv, i);
