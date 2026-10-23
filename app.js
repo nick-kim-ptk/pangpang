@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v229';
+  var APP_VERSION = 'v230';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -2120,7 +2120,14 @@
     }
     var dis = a.busy ? ' disabled' : '';
     var zhB = '<div class="ac-mic1"><button id="ac-mic" class="mic' + (a.listening && a.lk !== 'ko' ? ' on' : '') + '" data-achold="zh" aria-label="누른 채로 중국어로 말하기"' + dis + '>' + I.mic + '</button>' + (kind === 'both' ? '<span>중국어로 말하기</span>' : '') + '</div>';
-    var koB = '<div class="ac-mic1"><button id="ac-mic-ko" class="mic ko' + (a.listening && a.lk === 'ko' ? ' on' : '') + '" data-achold="ko" aria-label="누른 채로 한국어로 말하기"' + dis + '>' + I.mic + '</button>' + (kind === 'both' ? '<span>한국어로 말하기</span>' : '') + '</div>';
+    var tip = '';
+    if (kind === 'both' && !a.koTipDone) {   // 처음 들어오면 한국어 버튼 위에 말풍선을 3초만 보여 줘요(다시 그려도 이어서 재생)
+      if (!a.koTipT) a.koTipT = Date.now();
+      var el = Date.now() - a.koTipT;
+      if (el >= 3000) a.koTipDone = true;
+      else tip = '<div class="ac-tip" style="animation-delay:-' + el + 'ms" role="note">대답하고 싶은 중국어가 있다면<br>한국말로 말해주세요!</div>';
+    }
+    var koB = '<div class="ac-mic1">' + tip + '<button id="ac-mic-ko" class="mic ko' + (a.listening && a.lk === 'ko' ? ' on' : '') + '" data-achold="ko" aria-label="누른 채로 한국어로 말하기"' + dis + '>' + I.mic + '</button>' + (kind === 'both' ? '<span>한국어로 말하기</span>' : '') + '</div>';
     return '<div class="ac-micbox"><div id="ac-live" class="live' + (a.listening ? (a.live ? '' : ' wait') : ' hint') + '">' + esc(a.listening ? (a.live || '듣고 있어요…') : (a.busy ? '' : hint)) + '</div>' +
       '<div class="ac-mics">' + (kind === 'ko' ? koB : kind === 'both' ? zhB + koB : zhB) + '</div></div>';
   }
