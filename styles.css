@@ -3097,3 +3097,20 @@ body.vfx-on .ac-foot .live { color: #fff; font-weight: 800; }
 body.vfx-on .ac-foot .mic { transform: scale(1.18); }
 body.vfx-on .sq-mic span { box-shadow: 0 0 0 10px rgba(236,205,76,.25); }
 body.vfx-on .ac-foot .ac-mic1 span { color: #fff; }
+
+/* v258 맞았어요/틀렸어요: 캐릭터 2배, 설명글 삭제, 글자를 큼직한 스티커 느낌으로 (상황·문법·성조·단어 퀴즈 공통) */
+html body .screen.qz-fit .footer.qz-foot2 .qz-fb { min-height: clamp(72px, 14dvh, 120px); gap: 6px; }
+html body .screen.qz-fit .footer.qz-foot2 .qz-fb img { width: clamp(72px, 14dvh, 120px); height: clamp(72px, 14dvh, 120px); transform-origin: 50% 100%; }
+html body .screen.qz-fit .footer.qz-foot2 .qz-fb .qv-t { gap: 0; }
+html body .screen.qz-fit .footer.qz-foot2 .qz-fb .qv-t span { display: none; }
+html body .screen.qz-fit .footer.qz-foot2 .qz-fb .qv-t b { font-size: clamp(30px, 4.8dvh, 42px); font-weight: 900; line-height: 1.1; letter-spacing: -0.03em; text-shadow: 0 3px 0 rgba(0,0,0,.13); }
+html body .screen.qz-fit .footer.qz-foot2 .qz-fb.ok .qv-t b { color: #0e9f63; animation: qzpop .55s .05s cubic-bezier(.2,1.6,.4,1) both; }
+html body .screen.qz-fit .footer.qz-foot2 .qz-fb.no .qv-t b { color: #e5484d; animation: qzshake .45s .05s ease-in-out both; }
+html body .screen.qz-fit .footer.qz-foot2 .qz-fb.ok img { animation: qzsnailin .6s cubic-bezier(.2,1.5,.4,1) both, qzbob 1.6s .6s ease-in-out infinite; }
+html body .screen.qz-fit .footer.qz-foot2 .qz-fb.no img { animation: qzsnailno .5s ease-out both; }
+@media (prefers-reduced-motion: reduce) { html body .screen.qz-fit .footer.qz-foot2 .qz-fb img, html body .screen.qz-fit .footer.qz-foot2 .qz-fb .qv-t b { animation: none !important; } }
+@media (max-height: 720px) {
+  html body .screen.qz-fit .footer.qz-foot2 .qz-fb { min-height: 64px; }
+  html body .screen.qz-fit .footer.qz-foot2 .qz-fb img { width: 64px; height: 64px; }
+  html body .screen.qz-fit .footer.qz-foot2 .qz-fb .qv-t b { font-size: 28px; }
+}
