@@ -59,7 +59,7 @@ function draw(){
   live.textContent=!voiced&&!hzS?'듣고 있어요…':amp<0.25?'조금 더 크게 말해 보세요':amp>0.97?'조금 작게 말해 보세요':'좋아요!';
   raf=requestAnimationFrame(draw)}
 async function start(){
-  if(holding)return;holding=true;document.body.classList.add('rec');heard.textContent='';live.textContent='듣고 있어요…';if(navigator.vibrate)navigator.vibrate(12);
+  if(holding)return;if(navigator.vibrate)navigator.vibrate(10);holding=true;requestAnimationFrame(function(){document.body.classList.add('rec')});heard.textContent='';live.textContent='듣고 있어요…';
   try{stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:false}});
     if(!holding){stop();return}
     ac=new(window.AudioContext||window.webkitAudioContext)();an=ac.createAnalyser();an.fftSize=2048;buf=new Float32Array(an.fftSize);ac.createMediaStreamSource(stream).connect(an);hist=[];floor=0;amp=0;draw();
