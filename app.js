@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v230';
+  var APP_VERSION = 'v231';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -2077,7 +2077,7 @@
   function acPick(a) {
     if (a.direct) {   // 홈 카드에서 바로 시작: 주제 화면 없이 선생님을 불러와요
       return '<div class="screen"><div class="topbar"><button class="icon-btn" data-act="back" aria-label="뒤로">' + I.back + '</button></div>' +
-        '<div class="ac-loading"><span class="ai-dots"><i></i><i></i><i></i></span><b>선생님을 불러오고 있어요</b><span>' + esc(a.topic || '자유 주제') + '</span></div></div>';
+        '<div class="ac-loading"><img class="ac-load-img" src="img/ai-load' + (a.loadImg = a.loadImg || pick(['1', '2'])) + '.webp" alt="" draggable="false"><span class="ai-dots"><i></i><i></i><i></i></span><b>선생님을 불러오고 있어요</b><span>' + esc(a.topic || '자유 주제') + '</span></div></div>';
     }
     var bal = aiBal(), can = bal >= AI_CHAT_COST;
     var ok = can && !a.busy;
@@ -2125,7 +2125,7 @@
       if (!a.koTipT) a.koTipT = Date.now();
       var el = Date.now() - a.koTipT;
       if (el >= 3000) a.koTipDone = true;
-      else tip = '<div class="ac-tip" style="animation-delay:-' + el + 'ms" role="note">대답하고 싶은 중국어가 있다면<br>한국말로 말해주세요!</div>';
+      else tip = '<div class="ac-tip" style="animation-delay:-' + el + 'ms" role="note">중국어로 생각이 안 날 땐<br>한국어로 말해보세요!</div>';
     }
     var koB = '<div class="ac-mic1">' + tip + '<button id="ac-mic-ko" class="mic ko' + (a.listening && a.lk === 'ko' ? ' on' : '') + '" data-achold="ko" aria-label="누른 채로 한국어로 말하기"' + dis + '>' + I.mic + '</button>' + (kind === 'both' ? '<span>한국어로 말하기</span>' : '') + '</div>';
     return '<div class="ac-micbox"><div id="ac-live" class="live' + (a.listening ? (a.live ? '' : ' wait') : ' hint') + '">' + esc(a.listening ? (a.live || '듣고 있어요…') : (a.busy ? '' : hint)) + '</div>' +
