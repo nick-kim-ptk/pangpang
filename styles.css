@@ -3072,3 +3072,7 @@ body.kb .nav { display: none; }
 .sc-fit .opt.dim { opacity: .5; }
 .done-screen .footer { padding-bottom: calc(40px + var(--safe-b, 0px)); }
 .done-screen .hero h1 { text-wrap: balance; word-break: keep-all; }
+
+/* v253 마이페이지 '최근 7일': 공부한 날은 홈 체크리스트처럼 초록 원 + 흰 체크 */
+.week .d.on i { background: var(--green); }
+.week .d.on i::after { background: #fff; }
