@@ -12,7 +12,7 @@ button.g{background:#26304f;color:#e8ecf8}
 label{display:flex;gap:8px;align-items:center;font-size:14px;color:#c6cde6;margin:12px 0}
 #log{font-size:12px;color:#9aa5c7;white-space:pre-wrap;margin-top:12px}
 </style></head><body>
-<h1>음성 테스트</h1><p>마이크를 켜고 처음 1초는 조용히 해 주세요(주변 소음을 기억해요). 그다음 "你好", "谢谢"처럼 말해 보세요. 소리가 클수록 물결이 커지고, 목소리가 높을수록 색이 바뀌어요.</p>
+<h1>음성 테스트</h1><p>마이크를 켜고 "你好", "谢谢"처럼 말해 보세요. 소리가 클수록 물결이 커지고, 목소리가 높을수록 색이 바뀌어요.</p>
 <div class="stage"><canvas id="cv" width="900" height="560"></canvas><div id="msg">마이크를 켜 주세요</div></div>
 <div class="k" style="margin-top:12px"><div><b id="hz">–</b><span>음높이(Hz)</span></div><div><b id="db">–</b><span>소리 크기 (0~100)</span></div></div>
 <label><input type="checkbox" id="sr"> 음성 인식도 같이 켜기 (안 끊기는지 확인용)</label>
@@ -31,13 +31,14 @@ function pitch(b,sr){
   if(!bl||best/e0<0.6)return {f:0,rms:rms};
   return {f:sr/bl,rms:rms};
 }
-var floor=0,amp=0,ph=0,hue=48,hzS=0,ring=0,lastVoice=0;
+var hist=[],floor=0,amp=0,ph=0,hue=48,hzS=0,ring=0,lastVoice=0;
 function draw(t){
   an.getFloatTimeDomainData(buf);
   var r=pitch(buf,ac.sampleRate),rms=r.rms;
   // 주변 소음 기준선: 조용한 순간을 따라가며 천천히 갱신해서, 소음이 있는 곳에서도 그 소음은 '조용함'으로 봐요
-  if(!floor)floor=Math.max(rms,0.004);
-  floor+= (rms<floor?(rms-floor)*0.2:(rms-floor)*0.0015);floor=Math.max(floor,0.003);
+  // 최근 약 3초 중 가장 조용했던 순간을 소음 기준으로 써요 (말 사이의 쉬는 틈에서 배워서, 켜자마자 말해도 돼요)
+  hist.push(rms);if(hist.length>180)hist.shift();
+  var mn=Math.min.apply(null,hist);floor=floor?floor+(Math.max(mn,0.003)-floor)*(mn<floor?0.3:0.02):0.008;
   var voiced=rms>Math.max(floor*3,0.025);
   var over=voiced?20*Math.log10(rms/(floor*3)):0,lvl=Math.max(0,Math.min(1,over/22));
   if(!voiced)r.f=0;
@@ -47,7 +48,7 @@ function draw(t){
   var tgt=hzS?Math.max(0,Math.min(1,(Math.log2(hzS)-6.8)/1.8)):0.35;      // 낮은 목소리 0 ~ 높은 목소리 1
   hue+=((hzS?200-tgt*160:48)-hue)*0.12;                                    // 낮으면 파랑, 높으면 주황·노랑
   ph+=0.04+amp*0.12+tgt*0.03;
-  vb&&0;hz.textContent=hzS?Math.round(hzS):'–';dbEl.textContent=Math.round(lvl*100);
+  vb&&0;hz.textContent=hzS?Math.round(hzS):'–';dbEl.textContent=Math.round(amp*100);
   var w=cv.width,h=cv.height,mid=h*0.46;cx.clearRect(0,0,w,h);
   cx.globalCompositeOperation='lighter';
   var L=[[1,0,0.9,1.0],[1.6,1.7,0.6,0.8],[2.3,3.1,0.4,0.6]];
@@ -67,8 +68,8 @@ function draw(t){
   // 상태 문구
   var m=document.getElementById('msg');
   if(!voiced&&!hzS){m.textContent='말해 보세요';m.style.color='#9aa5c7'}
-  else if(lvl<0.25){m.textContent='조금 더 크게 말해 보세요';m.style.color='#eccd4c'}
-  else if(lvl>0.97){m.textContent='조금 작게 말해 보세요';m.style.color='#ff8a8f'}
+  else if(amp<0.25){m.textContent='조금 더 크게 말해 보세요';m.style.color='#eccd4c'}
+  else if(amp>0.97){m.textContent='조금 작게 말해 보세요';m.style.color='#ff8a8f'}
   else{m.textContent=hzS?'좋아요!':'듣고 있어요';m.style.color='#3cc88a'}
   raf=requestAnimationFrame(draw);
 }
@@ -77,7 +78,7 @@ document.getElementById('go').onclick=async function(){
     if(stream)return;
     stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:false}});
     ac=new (window.AudioContext||window.webkitAudioContext)();an=ac.createAnalyser();an.fftSize=2048;buf=new Float32Array(an.fftSize);
-    ac.createMediaStreamSource(stream).connect(an);draw();log('마이크 켜짐');
+    ac.createMediaStreamSource(stream).connect(an);hist=[];floor=0;draw();log('마이크 켜짐');
     if(document.getElementById('sr').checked){
       var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
       if(!SR){log('이 브라우저는 음성 인식을 지원하지 않아요')}else{
