@@ -700,3 +700,6 @@ select kind, count(*) n, round(avg(in_tokens)) avg_in, round(avg(cache_read)) av
 ## v196
 - 소나기 결과: 제목 삭제, 점수 숫자 굵고 자간 좁게(Pretendard 900), 달팽이 1.5배, 빛줄기 시작점을 달팽이 몸통에 맞춤.
 - v192~195에서 빠져 있던 빛줄기 위치 계산 함수(gdAim)를 복구.
+
+## v197
+- 결과 화면 내용을 아래로 내려 위쪽 여유(키 큰 폰일수록 더).

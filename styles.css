@@ -2763,3 +2763,7 @@ html, body, * { scrollbar-width: none; -ms-overflow-style: none; }
   .gd.rd-big .stage.rd-stage { width: 150px; }
   .gd.rd-big .rd-stage .mascot { width: 138px; }
 }
+/* v197 결과 화면: 내용을 아래로 내려 위쪽에 여유를 둬요 (키 큰 폰일수록 더) */
+@media (min-height: 681px) {
+  .gd > .hero, .gd.rd-big > .hero { padding-top: clamp(40px, 12dvh, 128px); }
+}
