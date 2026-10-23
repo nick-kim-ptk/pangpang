@@ -674,3 +674,68 @@ language sql security definer set search_path = public as $$
 $$;
 revoke all on function public.weekly_rank(date) from public;
 grant execute on function public.weekly_rank(date) to authenticated;
+
+-- v209: 순위 보안·다기기 정리 (v201을 이미 실행했어도, 안 했어도 이 블록만 실행하면 돼요)
+create table if not exists public.weekly_scores (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  week date not null,
+  game text not null,
+  score int not null default 0,
+  nick text not null default '',
+  updated_at timestamptz not null default now(),
+  primary key (user_id, week, game)
+);
+alter table public.weekly_scores enable row level security;
+drop policy if exists "weekly_scores own select" on public.weekly_scores;
+drop policy if exists "weekly_scores own insert" on public.weekly_scores;
+drop policy if exists "weekly_scores own update" on public.weekly_scores;
+create policy "weekly_scores own select" on public.weekly_scores for select using (auth.uid() = user_id);
+-- 쓰기는 아래 함수로만 (직접 insert/update 막음)
+alter table public.weekly_scores drop constraint if exists weekly_scores_game_chk;
+alter table public.weekly_scores add constraint weekly_scores_game_chk check (game in ('quiz','chain','tone','rain'));
+alter table public.weekly_scores drop constraint if exists weekly_scores_score_chk;
+alter table public.weekly_scores add constraint weekly_scores_score_chk check (score between 0 and 300000);
+
+create or replace function public.submit_weekly(p_week date, p_game text, p_score int, p_nick text)
+returns void language plpgsql security definer set search_path = public as $$
+declare cur date := (date_trunc('week', (now() at time zone 'Asia/Seoul')))::date;
+begin
+  if auth.uid() is null then return; end if;
+  if p_game not in ('quiz','chain','tone','rain') or p_score is null or p_score < 0 or p_score > 300000 or p_week <> cur then return; end if;
+  insert into public.weekly_scores (user_id, week, game, score, nick, updated_at)
+  values (auth.uid(), p_week, p_game, p_score, left(coalesce(p_nick, ''), 14), now())
+  on conflict (user_id, week, game) do update
+    set score = greatest(public.weekly_scores.score, excluded.score), nick = excluded.nick, updated_at = now();
+end $$;
+revoke all on function public.submit_weekly(date, text, int, text) from public;
+grant execute on function public.submit_weekly(date, text, int, text) to authenticated;
+
+create or replace function public.set_my_nick(p_nick text)
+returns void language sql security definer set search_path = public as $$
+  update public.weekly_scores set nick = left(coalesce(p_nick, ''), 14) where user_id = auth.uid();
+$$;
+revoke all on function public.set_my_nick(text) from public;
+grant execute on function public.set_my_nick(text) to authenticated;
+
+-- 순위: 참가자가 30명 이하면 전부, 그 이상이면 상위 10명 + 내 앞뒤 3명
+drop function if exists public.weekly_rank(date);
+create function public.weekly_rank(p_week date)
+returns table(rnk bigint, pos bigint, cnt bigint, nick text, total bigint, me boolean)
+language sql security definer set search_path = public as $$
+  with t as (
+    select user_id, max(nick) as nick, sum(score)::bigint as total
+    from public.weekly_scores where week = p_week group by user_id
+  ), r as (
+    select user_id, nick, total,
+           rank() over (order by total desc) as rnk,
+           row_number() over (order by total desc, user_id) as pos,
+           count(*) over () as cnt
+    from t
+  ), m as (select pos as mp from r where user_id = auth.uid())
+  select r.rnk, r.pos, r.cnt, coalesce(nullif(r.nick, ''), '익명 달팽이'), r.total, (r.user_id = auth.uid())
+  from r left join m on true
+  where r.cnt <= 30 or r.pos <= 10 or (m.mp is not null and abs(r.pos - m.mp) <= 3)
+  order by r.pos;
+$$;
+revoke all on function public.weekly_rank(date) from public;
+grant execute on function public.weekly_rank(date) to authenticated;
