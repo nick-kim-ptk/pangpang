@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v211';
+  var APP_VERSION = 'v212';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -56,10 +56,12 @@
     });
     return out;
   }
-  var PN_KEYS = ['streak', 'rank', 'week', 'review', 'back', 'goal', 'word'];
+  var PN_KEYS = ['learn', 'game', 'word'];
   function normPn(o) {
     o = o || {}; var out = {};
-    PN_KEYS.forEach(function (k) { out[k] = !!o[k]; });
+    out.learn = !!(o.learn || o.streak || o.goal || o.review);   // 예전 개별 설정은 묶음으로 합쳐요
+    out.game = !!(o.game || o.rank || o.week);
+    out.word = !!o.word;
     return out;
   }
   function normWordLv(a) {
@@ -5962,14 +5964,10 @@
   }
   // 알림은 종류마다 따로 켜고 꺼요. 하나라도 켜져 있으면 구독을 두고, 모두 꺼지면 구독을 지워요.
   var PN_LIST = [
-    ['daily', '복습 알림', '정한 시간에 “오늘 중국어 한 문장만 말해 볼까요?”'],
-    ['streak', '연속 학습 지키기', '밤 9시, 오늘 아직 공부 전이고 3일 이상 이어 온 때만'],
-    ['goal', '오늘 목표 거의 다 왔어요', '밤 8시, 목표의 절반을 넘겼을 때 남은 문제 수를 알려요'],
-    ['review', '복습할 단어 알림', '낮 12시 반, 복습할 단어가 10개 넘게 쌓였을 때'],
-    ['rank', '주간 순위 마감 알림', '일요일 저녁 7시, 내 순위와 다음 순위까지 남은 점수'],
-    ['week', '지난주 결과', '월요일 아침 9시, 지난주 순위와 점수'],
-    ['back', '오랜만이에요', '3일, 7일 동안 안 들어왔을 때 (7일 뒤엔 더 보내지 않아요)'],
-    ['word', '오늘의 단어', '앱을 안 열어도 낮 동안 한 시간에 한 단어씩 (오전 8시~밤 9시)']
+    ['daily', '복습 알림', '정한 시간에 한 번'],
+    ['learn', '학습 알림', '연속 학습 · 목표 · 복습할 단어'],
+    ['game', '게임 알림', '주간 순위 · 지난주 결과'],
+    ['word', '오늘의 단어', '한 시간에 한 단어']
   ];
   function pushAny(p) {
     return !!(p.remindOn || PN_KEYS.some(function (k) { return p.pn && p.pn[k]; }));
@@ -5977,8 +5975,8 @@
   function pnIsOn(k) { return pushOn && (k === 'daily' ? !!state.profile.remindOn : !!state.profile.pn[k]); }
   function pushRow(sub, p) {
     var j = sub.toJSON();
-    var prefs = { daily: !!p.remindOn, wordLv: p.wordLv };
-    PN_KEYS.forEach(function (k) { prefs[k] = !!p.pn[k]; });
+    var L = !!p.pn.learn, G = !!p.pn.game;   // 서버는 세부 종류로 나눠 봐요
+    var prefs = { daily: !!p.remindOn, streak: L, goal: L, review: L, rank: G, week: G, back: false, word: !!p.pn.word, wordLv: p.wordLv };
     return {
       user_id: state.user.id, endpoint: sub.endpoint,
       p256dh: j.keys.p256dh, auth: j.keys.auth,
@@ -6023,8 +6021,14 @@
     }
   }
   function pnToggle(k) {
-    var on = !pnIsOn(k), p = state.profile;
-    if (on && !isPro()) { go('pay', { payWhy: '알림은 멤버십 기능이에요.' }); return; }
+    var on = k === 'all' ? false : !pnIsOn(k), p = state.profile;
+    if (k !== 'all' && on && !isPro()) { go('pay', { payWhy: '알림은 멤버십 기능이에요.' }); return; }
+    if (k === 'all') {
+      var allOn = !pushAny(p);
+      if (allOn && !isPro()) { go('pay', { payWhy: '알림은 멤버십 기능이에요.' }); return; }
+      pushApply({ remindOn: allOn, pn: { learn: allOn, game: allOn, word: allOn } }, allOn ? '알림을 모두 켰어요' : '알림을 모두 껐어요');
+      return;
+    }
     var name = (PN_LIST.filter(function (x) { return x[0] === k; })[0] || [])[1] || '알림';
     if (k === 'daily') { pushApply({ remindOn: on }, name + (on ? ' · 켰어요' : ' · 껐어요')); return; }
     var pn = Object.assign({}, p.pn); pn[k] = on;
@@ -6056,6 +6060,9 @@
       }
     }
     if (pushReady()) {
+      var anyOn = pushOn && pushAny(p);
+      h += '<div class="set-row"><div class="set-t">알림 받기</div>' +
+        '<button class="pill-sm' + (!anyOn && !isPro() ? ' pro' : '') + '" data-act="pn-toggle" data-id="all">' + (anyOn ? '모두 끄기' : (isPro() ? '모두 켜기' : I.lock + 'PRO')) + '</button></div>';
       PN_LIST.forEach(function (x) {
         var k = x[0], on = pnIsOn(k);
         h += '<div class="set-row"><div><div class="set-t">' + x[1] + '</div><div class="set-s">' + x[2] + '</div></div>' +
@@ -6064,7 +6071,7 @@
           h += '<div class="set-row"><div class="set-t">알림 시간</div><input class="time-in" type="time" value="' + esc(p.remind) + '" aria-label="알림 시간"></div>';
         }
         if (k === 'word' && on) {
-          h += '<div class="set-row col"><div class="set-s">받을 급을 골라요 (여러 개 가능) · 한자, 병음, 읽는 표기, 뜻이 함께 와요</div><div class="chips">' +
+          h += '<div class="set-row col"><div class="set-s">받을 급 (여러 개 선택 가능)</div><div class="chips">' +
             [1, 2, 3, 4].map(function (l) { return '<button class="chip' + (p.wordLv.indexOf(l) >= 0 ? ' y' : '') + '" data-act="pn-wlv" data-id="' + l + '">HSK ' + l + '급</button>'; }).join('') + '</div></div>';
         }
       });
