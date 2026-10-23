@@ -11,7 +11,6 @@
 // 선택: AI_MODEL (기본 claude-sonnet-5-5)
 // (SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY 는 Supabase가 자동으로 넣어 줘요. 이 함수는 'Verify JWT'를 꺼 두고, 코드 안에서 로그인을 직접 확인해요.)
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { todayContext } from './trends.ts';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -60,8 +59,6 @@ const SYSTEM_CHAT = `당신은 한국인 중국어 초보 학습자와 짧은 �
   · 질문은 매 턴 하지 말고 두 번에 한 번 정도만 하세요. 질문할 때는 방금 나온 이야기에서 이어지는 것으로 하고(예: 영화를 좋아한다고 하면 "什么电影？" "和谁看？"), 음악→춤→영화처럼 항목을 하나씩 훑는 질문은 하지 마세요.
   · "你喜欢X吗？"를 연달아 하지 마세요. 같은 틀의 질문을 두 번 연속 쓰지 마세요.
   · 학습자가 한 말 중 하나를 골라 깊게 파고드세요(왜 좋아해요? 언제부터? 누구랑?). 화제가 자연스럽게 흘러가도 좋아요.
-  · today_context(오늘 날짜·계절·가까운 행사·요즘 화제)를 알고 있는 사람처럼 가끔 자연스럽게 꺼내세요. 매 턴 쓰지 말고, 대화 흐름과 맞을 때만 한두 번(예: "最近天气变冷了" "快到双十一了"). 학습자가 한국인이니 한국 이야기를 물어보고 중국 이야기를 들려주는 식의 비교도 좋아요.
-  · 화제 목록(trends)은 제목 정도만 가볍게 언급하세요. 목록에 없는 줄거리·출연진·수치·소식을 절대 지어내지 마세요. 확실하지 않으면 "听说"(들었는데)처럼 말하거나 꺼내지 마세요. 학습자가 더 깊이 물으면 "我不太清楚"라고 솔직하게 말하고 학습자의 생각을 물으세요.
   · 로봇처럼 매번 칭찬하거나 가르치려 하지 마세요. 대화 상대로서만 말하고, 교정은 fix에서만 하세요.
 - 학습자의 말은 음성 인식이나 직접 입력이라 오타가 있을 수 있어요. 뜻이 통하면 자연스럽게 이어 가세요.
 - 학습자의 답이 한두 단어나 짧은 구라서 문장이 아니어도 정상적인 답으로 받아들이고, 그 말에 자연스럽게 반응해서 대화를 이어 가세요.
@@ -362,11 +359,10 @@ async function chatStart(deps: Deps, uid: string, body: any) {
     if (!env('ANTHROPIC_API_KEY')) {
       parsed = { reply: MOCK_LINES[0], fix: null, suggestions: MOCK_SUG, end: false };
     } else {
-      const ctx = todayContext();
-      const first = { role: 'user', content: JSON.stringify({ scenario, today_context: ctx, instruction_data: '대화를 시작하세요. 먼저 말을 거세요.' }) };
+      const first = { role: 'user', content: JSON.stringify({ scenario, instruction_data: '대화를 시작하세요. 먼저 말을 거세요.' }) };
       let a: any = null;
       for (let attempt = 0; attempt < 2 && !parsed; attempt++) {
-        a = await askClaude(deps, SYSTEM_CHAT, [attempt ? { role: 'user', content: JSON.stringify({ scenario, today_context: ctx, instruction_data: '대화를 시작하세요. 먼저 말을 거세요.', format_reminder: '반드시 지정한 JSON 객체 하나만 출력하세요.' }) } : first], 1200);
+        a = await askClaude(deps, SYSTEM_CHAT, [attempt ? { role: 'user', content: JSON.stringify({ scenario, instruction_data: '대화를 시작하세요. 먼저 말을 거세요.', format_reminder: '반드시 지정한 JSON 객체 하나만 출력하세요.' }) } : first], 1200);
         parsed = parseChat(a.text);
       }
       if (!parsed) throw new Error('parse');
