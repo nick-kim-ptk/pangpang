@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v222';
+  var APP_VERSION = 'v223';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -2798,7 +2798,7 @@
     var run = runGet(g.game), ri = run ? runInfo(g.game, run) : null;
     var resume = ri && !hskLocked(ri.key) ? '<div class="gs-resume"><div><b>이어서 하기</b><span>' + ri.text + '</span></div><button class="btn sm" data-act="gs-resume">이어서</button></div>' : '';
     var pyOn0 = gsPyOn(g.game);
-    var py = (g.game === 'rain' || g.game === 'chain') ? '<button class="rn-pytog gs-py' + (pyOn0 ? ' on' : '') + '" data-act="gs-py" aria-pressed="' + (pyOn0 ? 'true' : 'false') + '"><i></i> ' + (g.game === 'chain' ? '병음·뜻 힌트 ' : '병음 힌트 ') + (pyOn0 ? '켜짐' : '꺼짐') + '</button>' : '';
+    var py = (g.game === 'rain' || g.game === 'chain') ? '<button class="rn-pytog gs-py' + (pyOn0 ? ' on' : '') + '" data-act="gs-py" aria-pressed="' + (pyOn0 ? 'true' : 'false') + '"><i></i> ' + '병음 힌트 ' + (pyOn0 ? '켜짐' : '꺼짐') + '</button>' : '';
     var chips = hskAvail().map(function (l) {
       var on = g.sel.indexOf(l) >= 0, lk = hskLocked(l), w = o.r[g.game + l] || 0;
       return '<button class="gs-chip' + (on ? ' on' : '') + (lk ? ' lk' : '') + '" data-act="gs-toggle" data-id="' + l + '" aria-pressed="' + on + '">' +
@@ -4997,7 +4997,7 @@
       return '<div class="screen qz-fit">' + top + '<div class="qz-wrap ch-wrap ch-intro">' + chStrip(c) +
         '<button class="ch-card ' + (isNew ? 'new' : 'old') + '" data-act="ch-skip" aria-label="다음으로">' +
         '<span class="ch-tag">' + (isNew ? '✨ 새 카드' : '다시 보기') + '</span>' +
-        '<span class="ch-zh" style="font-size:' + chFit(w[0], true) + '">' + esc(w[0]) + '</span><span class="ch-py">' + esc(w[1]) + '</span>' +
+        '<span class="ch-zh" style="font-size:' + chFit(w[0], true) + '">' + esc(w[0]) + '</span>' + (chPyOn() ? '<span class="ch-py">' + esc(w[1]) + '</span>' : '') +
         (isNew ? '<span class="ch-ko">' + esc(w[2]) + '</span><span class="ch-tap">화면을 누르면 넘어가요</span>' : '<span class="ch-ko ch-ghost">&nbsp;</span>') + '</button>' +
         '<div class="ch-dots">' + dots + '</div></div></div>';
     }
@@ -5015,9 +5015,9 @@
     var ti = c.qs[c.qi], t = list[ti], fb = c.phase === 'fb';
     var hint = chPyOn();
     var tiles = c.grid.map(function (i, pos) {
-      var w = list[i], cls = 'ch-tile' + (hint ? ' hint' : '');
+      var w = list[i], cls = 'ch-tile hint';
       if (fb) cls += i === ti ? ' ok' : (pos === c.pick ? ' no' : ' dim');
-      return '<button class="' + cls + '" data-act="ch-pick" data-id="' + pos + '"' + (fb ? ' disabled' : '') + ' style="font-size:' + chFit(w[0], false) + '"><span>' + esc(w[0]) + '</span>' + (hint ? '<small class="ch-h"><b>' + esc(w[1]) + '</b><em>' + esc(String(w[2]).split(/[,;]/)[0]) + '</em></small>' : '') + (fb && i === ti ? '<i class="mk" aria-hidden="true">✓</i><span class="sr"> (정답)</span>' : fb && pos === c.pick ? '<i class="mk" aria-hidden="true">✗</i><span class="sr"> (오답)</span>' : '') + '</button>';
+      return '<button class="' + cls + '" data-act="ch-pick" data-id="' + pos + '"' + (fb ? ' disabled' : '') + ' style="font-size:' + chFit(w[0], false) + '"><span>' + esc(w[0]) + '</span>' + '<small class="ch-h">' + (hint ? '<b>' + esc(w[1]) + '</b>' : '') + '<em>' + esc(String(w[2]).split(/[,;]/)[0]) + '</em></small>' + (fb && i === ti ? '<i class="mk" aria-hidden="true">✓</i><span class="sr"> (정답)</span>' : fb && pos === c.pick ? '<i class="mk" aria-hidden="true">✗</i><span class="sr"> (오답)</span>' : '') + '</button>';
     }).join('');
     var fbHtml = fb ? '<div class="ch-fb ' + (c.ok ? 'ok' : 'no') + '">' + chImg(!c.ok ? 'sad' : c.grad ? 'grad' : c.combo >= 3 ? 'fire' : 'cheer', 'chr-fb') + '<b class="zh">' + esc(t[0]) + '</b><span>' + esc(t[1]) + ' · ' + esc(t[2].split(',')[0]) + '</span>' +
       (c.ok ? '<em>' + (c.grad ? icn('grad-cap') + ' 졸업! ' : '') + '+' + c.lastPts + '</em>' : '<em>' + (c.timeout ? pick(['시간 초과', '달팽이보다 느렸어요']) : pick(['성조가 도망갔어요', '거의 맞았어요, 거의', '한자가 장난쳤어요', '아깝다! 다음엔 될 거예요'])) + '</em>') + '</div>' : '<div class="ch-fb ghost"></div>';
@@ -5891,7 +5891,7 @@
         var pyGame = state.gs && state.gs.game === 'chain' ? 'chain' : 'rain';
         var pyOn = !gsPyOn(pyGame); try { localStorage.setItem('pangpang.' + pyGame + '.py', pyOn ? '1' : '0'); } catch (e) { /* 무시 */ }
         el.classList.toggle('on', pyOn); el.setAttribute('aria-pressed', pyOn ? 'true' : 'false');
-        el.lastChild.textContent = ' ' + (pyGame === 'chain' ? '병음·뜻 힌트 ' : '병음 힌트 ') + (pyOn ? '켜짐' : '꺼짐'); sfx('tap'); break;
+        el.lastChild.textContent = ' ' + '병음 힌트 ' + (pyOn ? '켜짐' : '꺼짐'); sfx('tap'); break;
       case 'gs-toggle':
         if (state.gs) {
           var gl = parseInt(id, 10), gi = state.gs.sel.indexOf(gl);

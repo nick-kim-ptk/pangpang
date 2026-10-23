@@ -802,3 +802,6 @@ select kind, count(*) n, round(avg(in_tokens)) avg_in, round(avg(cache_read)) av
 
 ## v222
 - 게임 시작 창 캐릭터를 오른쪽에서 조금 띄움(16px→28px).
+
+## v223
+- 기억 사슬: 뜻은 항상 보이고, "병음 힌트"를 켜면 병음도 함께 보임(꺼짐이면 외우기 카드에서도 병음 숨김).
