@@ -873,3 +873,6 @@ select kind, count(*) n, round(avg(in_tokens)) avg_in, round(avg(cache_read)) av
 
 ## v243
 - 문법 레슨: 소개 설명의 "예)"는 다음 줄부터, 핵심 규칙은 규칙만 한 줄·설명은 다음 줄.
+
+## v244
+- AI 대화 마친 뒤 화면 맨 아래의 큰 빈 공간 제거(하단 버튼은 이미 따라다녀서 여백이 필요 없었음).

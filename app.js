@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v243';
+  var APP_VERSION = 'v244';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -2229,7 +2229,7 @@
       '<div class="scroll" style="padding-top:4px"><h1 class="big-title" style="margin-top:0">대화 끝! 수고했어요</h1>' +
       '<p class="sub-title">' + esc(a.scenario.title) + '</p>' +
       '<div class="ac-settle"><div><span>주고받은 횟수</span><b>' + a.turns + '번</b></div><div><span>사용한 크레딧</span><b>' + (a.turns * AI_CHAT_COST) + '</b></div><div><span>남은 크레딧</span><b>' + aiBal() + '</b></div></div>' +
-      '<div class="section-title" style="margin-top:8px">이렇게 고쳐 보세요</div>' + (a.fixes.length ? '<p class="hsk-note under-title">AI 대화 탭에도 모아 뒀어요.</p>' : '') + fx + acWrapHtml(a) + '<div style="height:150px"></div></div>' +
+      '<div class="section-title" style="margin-top:8px">이렇게 고쳐 보세요</div>' + (a.fixes.length ? '<p class="hsk-note under-title">AI 대화 탭에도 모아 뒀어요.</p>' : '') + fx + acWrapHtml(a) + '<div style="height:8px"></div></div>' +
       '<div class="footer fc-foot"><button class="btn gray" data-act="ac-leave-yes">닫기</button><button class="btn" data-act="ac-again">한 번 더 하기</button></div></div>';
   }
   async function acCall(body) {
