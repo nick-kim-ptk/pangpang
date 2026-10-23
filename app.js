@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v234';
+  var APP_VERSION = 'v235';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -1993,7 +1993,7 @@
     if (r.kind === 'quiz') return quizDone(r);
     var st = streak();
     return '<div class="screen done-screen">' + ((r.goalHit || r.milestone) ? confetti() : '') + '<div class="hero">' +
-      '<div class="stage">' + mascot(r.kind === 'lesson' ? 'love' : 'cheer') + '</div>' +
+      '<div class="stage">' + (r.kind === 'scene' ? '<img class="mascot sc-done-img" src="img/sc-done.webp" alt="" draggable="false">' : mascot(r.kind === 'lesson' ? 'love' : 'cheer')) + '</div>' +
       '<h1>' + esc(r.title) + '</h1>' +
       '<p>' + esc(r.line) + '</p>' +
       (r.goalHit ? '<div class="cele"><b>오늘 목표 달성!</b><span>' + r.goal + '문제를 모두 풀었어요</span></div>' : '') +
@@ -2886,6 +2886,7 @@
   function lockSoon() { if (!lockRaf) lockRaf = requestAnimationFrame(lockIfFits); }
   try {
     new MutationObserver(lockSoon).observe($app, { childList: true, subtree: true });
+    new MutationObserver(function () { requestAnimationFrame(scFit); }).observe($app, { childList: true, subtree: true });
     window.addEventListener('resize', lockSoon);
     document.addEventListener('load', lockSoon, true);
   } catch (e) { /* 무시 */ }
@@ -4628,6 +4629,16 @@
         '<span class="sc-cz">' + esc(ch[0]) + '</span><span class="sc-cp">' + esc(ch[1]) + '</span></button>';
     }).join('') + '</div>';
   }
+  // 상황 레슨 문장은 한 줄에 — 넘치면 이 줄만 비율로 줄여요(zoom)
+  function scFit() {
+    var els = document.querySelectorAll('.sc-fit .sc-chunks, .sc-fit .sc-zh, .sc-fit .sc-ko, .sc-fit .sc-py');
+    for (var i = 0; i < els.length; i++) {
+      var e = els[i];
+      e.style.zoom = '';
+      var need = e.scrollWidth, avail = e.clientWidth;
+      if (need > avail + 1 && avail > 0) e.style.zoom = String(Math.max(.5, avail / need - .01));
+    }
+  }
   function scLineView(l, key) {
     var c = state.sc, g = c.gloss >= 0 ? l[4][c.gloss] : null;
     return '<div class="sc-line">' + scChunks(l, key) +
@@ -4685,13 +4696,13 @@
   }
   function viewSceneMission() {
     var c = state.sc, sc = sceneById(c.id), on = aiOn(), enough = on && aiBal() >= AI_CHAT_COST;
-    var note = !on ? 'AI 대화는 멤버십에서 쓸 수 있어요. 지금은 건너뛰고 마칠 수 있어요.' : (enough ? '대화 한 번에 ' + AI_CHAT_COST + ' 크레딧이 소모돼요.' : '크레딧이 부족해요. 지금은 건너뛰고 마칠 수 있어요.');
-    return '<div class="screen">' + scTop(c) + '<div class="qz-wrap sc-pad sc-mis">' + scStageTag(c) +
+    var note = !on ? 'AI 대화는 멤버십에서 쓸 수 있어요. 지금은 건너뛰고 마칠 수 있어요.' : (enough ? '' : '크레딧이 부족해요. 지금은 건너뛰고 마칠 수 있어요.');
+    return '<div class="screen">' + scTop(c) + '<div class="qz-wrap sc-pad sc-mis">' +
       '<div class="sc-mis-ico">' + sc.icon + '</div><h1 class="big-title" style="margin:6px 0 4px">배운 말로 직접 해 봐요</h1>' +
       '<p class="sub-title" style="margin:0 0 16px">방금 익힌 문장을 AI 선생님과 실제처럼 써 보는 미션이에요.</p>' +
       '<div class="sc-mis-card"><span>오늘의 미션</span><b>' + esc(sc.mission) + '</b></div>' +
-      '<p class="hsk-note" style="text-align:center">' + note + '</p></div>' +
-      '<div class="footer"><button class="btn" data-act="sc-mission"' + (enough ? '' : ' disabled') + '>AI와 해 보기</button>' +
+      (note ? '<p class="hsk-note" style="text-align:center">' + note + '</p>' : '') + '</div>' +
+      '<div class="footer"><button class="btn" data-act="sc-mission"' + (enough ? '' : ' disabled') + '>AI 선생님과 대화 나누기<span class="sc-paid">유료</span></button>' +
       '<button class="btn gray" data-act="sc-finish">다음에 할게요</button></div></div>';
   }
   function scFinish(withMission) {
