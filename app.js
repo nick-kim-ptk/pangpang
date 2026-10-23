@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v245';
+  var APP_VERSION = 'v246';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -1259,7 +1259,7 @@
          ['HSK 2~4급과 모든 상황 대화가 열려요', '기억 사슬·카드·퀴즈를 전 급수에서 쓸 수 있어요.']]
       : [['학습 기록이 계정에 저장돼요', '기기를 바꿔도 그대로 이어서 공부해요.'],
          ['복습 일정을 챙겨 줘요', '틀린 문장과 단어를 잊기 전에 다시 알려줘요.'],
-         ['HSK 1급 단어와 첫 상황 대화는 무료예요', '가입만 해도 바로 시작할 수 있어요.'],
+         ['HSK 1급과 레슨 앞 2개는 무료예요', '가입만 해도 바로 시작할 수 있어요.'],
          ['멤버십을 시작하면 AI 대화를 바로 써요', '가입한 계정으로 이어서 이용해요.']];
     return '<div class="ai-promo"><div class="ap-hero"><img src="img/ai-promo.webp" alt="" draggable="false"></div>' +
       '<h2>' + (member ? 'AI 대화, 멤버십으로 시작해요' : '가입하고 AI 선생님과 말해 봐요') + '</h2>' +

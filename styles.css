@@ -3030,3 +3030,17 @@ body.kb .nav { display: none; }
 .sc-card.locked { background: var(--soft); }
 .sc-card.locked .sc-ci, .sc-card.locked b, .sc-card.locked .sc-cs { opacity: .55; }
 .sc-card .sc-pro { position: absolute; top: 10px; right: 10px; }
+
+/* v246 AI 대화 안내: 박스 네 개 대신 하나의 넉넉한 패널로, 줄 사이에 숨 쉴 틈 */
+.ai-promo { gap: 14px; }
+.ai-promo h2 { margin-top: 10px; }
+.ap-sub { margin: -6px 0 4px; font-size: 14px; }
+.ap-list { margin: 4px 0 0; padding: 4px 18px; gap: 0; border-radius: 22px; background: var(--card); box-shadow: inset 0 0 0 1.5px var(--line); }
+.ap-list li { padding: 15px 0; border-radius: 0; background: none; box-shadow: none; align-items: flex-start; gap: 14px; }
+.ap-list li + li { border-top: 1px solid var(--line); }
+.ap-list li i { width: 24px; height: 24px; margin-top: 1px; }
+.ap-list b { font-size: 15.5px; line-height: 1.35; }
+.ap-list span { margin-top: 3px; font-size: 13.5px; line-height: 1.45; }
+.ai-promo .btn { margin-top: 6px; }
+@media (max-height: 820px) { .ap-list span { display: block; } .ap-list li { padding: 11px 0; } .ap-list b { font-size: 14.5px; } .ap-list span { font-size: 12.5px; } }
+@media (max-height: 700px) { .ap-list span { display: none; } .ap-list li { padding: 9px 0; } }
