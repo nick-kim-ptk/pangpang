@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v254';
+  var APP_VERSION = 'v255';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -4866,21 +4866,26 @@
       if (msg !== lastMsg) { lastMsg = msg; var lv = document.getElementById('live'); if (lv && document.body.classList.contains('vfx-on')) lv.textContent = msg; }
       raf = requestAnimationFrame(draw);
     }
+    // 마이크는 물결용을 먼저 열고, 그 다음에 음성 인식을 시작해야 둘이 부딪히지 않아요. 준비가 되면(또는 1.2초가 지나면) 알려 줘요
     function start(soft) {
-      if (on) return;
-      on = true; var my = ++tok; ensure();
-      document.body.classList.toggle('vfx-soft', !!soft);
-      document.body.classList.add('vfx-on');
-      clearTimeout(safe); safe = setTimeout(stop, 40000);
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
-      navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: false } }).then(function (st) {
-        if (!on || my !== tok) { st.getTracks().forEach(function (t) { t.stop(); }); return; }
-        stream = st;
-        var AC = window.AudioContext || window.webkitAudioContext;
-        ac = new AC(); an = ac.createAnalyser(); an.fftSize = 2048; buf = new Float32Array(an.fftSize);
-        ac.createMediaStreamSource(st).connect(an);
-        hist = []; floor = 0; amp = 0; lastMsg = ''; draw();
-      }).catch(function () { /* 마이크를 못 열면 물결 없이 기존 화면 그대로 써요 */ if (my === tok) stop(); });
+      return new Promise(function (resolve) {
+        if (on) { resolve(); return; }
+        on = true; var my = ++tok, done = false; ensure();
+        function fin() { if (!done) { done = true; resolve(); } }
+        document.body.classList.toggle('vfx-soft', !!soft);
+        document.body.classList.add('vfx-on');
+        clearTimeout(safe); safe = setTimeout(stop, 40000);
+        setTimeout(fin, 1200);
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { fin(); return; }
+        navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: false } }).then(function (st) {
+          if (!on || my !== tok) { st.getTracks().forEach(function (t) { t.stop(); }); fin(); return; }
+          stream = st;
+          var AC = window.AudioContext || window.webkitAudioContext;
+          ac = new AC(); an = ac.createAnalyser(); an.fftSize = 2048; buf = new Float32Array(an.fftSize);
+          ac.createMediaStreamSource(st).connect(an);
+          hist = []; floor = 0; amp = 0; lastMsg = ''; draw(); fin();
+        }).catch(function () { /* 마이크를 못 열면 물결 없이 기존 화면 그대로 써요 */ if (my === tok) stop(); fin(); });
+      });
     }
     function stop() {
       if (!on) return;
@@ -4946,8 +4951,7 @@
     if (navigator.vibrate) { try { navigator.vibrate(10); } catch (x) { /* noop */ } }
     scHolding = true; clearTimeout(scHoldTimer);
     sfx('pop');
-    VFX.start();
-    scListen();
+    VFX.start().then(function () { if (state.sc === c && c.stage === 'speak' && !scRec) scListen(); });
   });
   ['pointerup', 'pointercancel'].forEach(function (ev) {
     document.addEventListener(ev, function () {
@@ -5601,8 +5605,7 @@
     if (navigator.vibrate) { try { navigator.vibrate(10); } catch (x) { /* noop */ } }
     holding = true; clearTimeout(holdTimer);
     sfx('pop');
-    VFX.start(true);   // 문제 글자가 카드 없이 놓인 화면이라, 위쪽은 어둡게 하지 않아요
-    startListening();
+    VFX.start(true).then(function () { if (state.s === s && state.screen === 'practice' && !rec) startListening(); });   // 문제 글자가 카드 없이 놓인 화면이라 위쪽은 어둡게 하지 않아요
   }
   function micUp() {
     if (!holding) return;
