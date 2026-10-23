@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v213';
+  var APP_VERSION = 'v214';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -186,6 +186,7 @@
     user: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20c1-4 4-6 8-6s7 2 8 6"/></svg>',
     star: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L12 16.9 6.8 19.7l1-5.9L3.5 9.7l5.9-.8L12 3.5z"/></svg>',
     book: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h10a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3V4z"/><path d="M8 17h10"/></svg>',
+    kakao: '<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path fill="#191919" d="M12 3C6.5 3 2 6.6 2 11c0 2.8 1.8 5.3 4.6 6.7l-1 3.6c-.1.3.3.6.6.4l4.2-2.8c.5.1 1 .1 1.6.1 5.500 0 10-3.600 10-8S17.500 3 12 3z"/></svg>',
     google: '<svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4.1 7.1-10.1 7.1-17.5z"/><path fill="#FBBC05" d="M10.5 28.7A14.5 14.5 0 0 1 9.5 24c0-1.6.3-3.2.8-4.7l-7.9-6.1A24 24 0 0 0 0 24c0 3.9.9 7.5 2.6 10.8l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.9 2.3-8.4 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.500 42.600 14.600 48 24 48z"/></svg>'
   };
 
@@ -800,7 +801,13 @@
     else if (local) cta = '<div class="lg-note">Supabase 설정 전이라 미리보기 모드예요. 학습 기록은 이 기기에만 저장돼요.</div>' +
       '<button class="btn g-btn" data-act="start-local">미리보기로 시작하기</button>';
     else if (state.loginBusy) cta = '<button class="btn g-btn loading" disabled><span class="lg-spin"></span>로그인 중…</button>';
-    else cta = '<button class="btn g-btn" data-act="google">' + I.google + 'Google로 계속하기</button>';
+    else {
+      var last = lastLogin();
+      var badge = '<i class="last-badge">최근 로그인</i>';
+      cta = '<button class="btn g-btn" data-act="google">' + I.google + 'Google로 계속하기' + (last === 'google' ? badge : '') + '</button>' +
+        '<button class="btn k-btn" data-act="kakao">' + I.kakao + '카카오로 계속하기' + (last === 'kakao' ? badge : '') + '</button>' +
+        '<p class="lg-hint">쓰던 계정이 있다면 그때 쓴 방법으로 들어오세요.</p>';
+    }
     var later = (!local && !state.loginBusy) ? '<button class="lg-later" data-act="lg-later">' + (state.loginLater ? '나중에 할게요' : '둘러보기') + '</button>' : '';
     function bub(cls, zh, ko, d, x1, y1, x2, y2) {
       return '<div class="lg-bub ' + cls + '" style="--d:' + d + 's;--x1:' + x1 + 'px;--y1:' + y1 + 'px;--x2:' + x2 + 'px;--y2:' + y2 + 'px">' + zh + ' <small>' + ko + '</small></div>';
@@ -2565,7 +2572,7 @@
   }
   function meCard(initial, email) {
     var nick = nickname();
-    var sub = sb ? email : '기록이 이 기기에만 저장돼요';
+    var sub = sb ? (email || acctWho()) : '기록이 이 기기에만 저장돼요';
     if (state.editNick) {
       return '<div class="me-card edit" style="margin-top:16px"><div class="ava">' + esc(initial) + '</div><div class="who">' +
         '<label class="lab" for="nick">닉네임</label>' +
@@ -3305,6 +3312,23 @@
     ['보관과 삭제', '정보는 계정을 유지하는 동안 보관해요. 마이 화면의 “계정 삭제”를 누르면 계정과 학습 기록, 설정, 알림 구독이 바로 삭제되고 되돌릴 수 없어요. 이미 보낸 의견·오류 기록은 개인을 알아볼 수 없는 상태로 남을 수 있어요.'],
     ['문의', '궁금한 점이나 삭제·정정 요청은 마이 화면의 “의견 보내기”로 남겨 주세요.']
   ];
+  function acctWho() {
+    var p = state.user && state.user.app_metadata && state.user.app_metadata.provider;
+    return (PROVIDER_NAME[p] || '연결된') + ' 계정';
+  }
+  function linkCard() {
+    var list = state.idents, have = {};
+    (list || []).forEach(function (i) { have[i.provider] = true; });
+    var rows = ['google', 'kakao'].map(function (p) {
+      var on = !!have[p], can = list && list.length > 1;
+      var btn = !list ? '' : on
+        ? (can ? '<button class="pill-sm" data-act="link-undo" data-id="' + p + '">해제</button>' : '<span class="set-v">연결됨</span>')
+        : '<button class="pill-sm" data-act="link-do" data-id="' + p + '">연결</button>';
+      return '<div class="set-row"><div><div class="set-t">' + PROVIDER_NAME[p] + '</div>' + (on ? '<div class="set-s">연결됨</div>' : '') + '</div>' + btn + '</div>';
+    }).join('');
+    return '<div class="section-title" style="margin-top:24px">로그인 방법 연결</div>' +
+      '<p class="sub-title" style="margin:0 0 8px">연결해 두면 어느 쪽으로 들어와도 같은 계정이에요.</p><div class="set-card">' + rows + '</div>';
+  }
   function viewAccount() {
     var email = state.user && state.user.email ? state.user.email : '';
     var m = memberLabel();
@@ -3312,9 +3336,10 @@
       '<div class="scroll" style="padding-top:4px"><h1 class="big-title" style="margin-top:0">계정 관리</h1>' +
       '<p class="sub-title">내 계정 정보예요.</p>' +
       '<div class="set-card">' +
-        '<div class="set-row"><div class="set-t">로그인 계정</div><div class="set-v acc-v">' + esc(email || 'Google 계정') + '</div></div>' +
+        '<div class="set-row"><div class="set-t">로그인 계정</div><div class="set-v acc-v">' + esc(email || acctWho()) + '</div></div>' +
         '<div class="set-row"><div class="set-t">멤버십</div><div class="set-v acc-v">' + esc(m.t) + '</div></div>' +
       '</div>' +
+      linkCard() +
       '<div class="acc-danger"><div class="acc-t">계정 삭제</div>' +
         '<p>계정과 모든 학습 기록, 설정, 알림 구독이 바로 삭제돼요. 삭제한 뒤에는 되돌릴 수 없어요.' + (isPro() && !state.entErr && state.ent ? ' 이용 중인 멤버십도 함께 사라져요.' : '') + '</p>' +
         '<button class="btn gray acc-del" data-act="delete-account">계정 삭제하기</button></div>' +
@@ -5475,14 +5500,45 @@
     beginSession('review', rounds(qs, WEAK_SIZE));
   }
   /* ---------- 로그인/로그아웃 ---------- */
-  async function signIn() {
+  // 가장 최근에 로그인한 방법을 기억해요 (로그인 화면에서 표시)
+  function lastLogin() { try { var v = localStorage.getItem('pangpang.lastLogin'); return v === 'google' || v === 'kakao' ? v : ''; } catch (e) { return ''; } }
+  var AUTH_BACK = (window.location.search || '') + (window.location.hash || '');   // 연결 실패 같은 결과가 주소에 실려 와요
+  var PROVIDER_NAME = { google: 'Google', kakao: '카카오' };
+  async function signIn(provider) {
+    provider = provider === 'kakao' ? 'kakao' : 'google';
     state.loginBusy = true;
     if (state.screen === 'login') render();
+    try { localStorage.setItem('pangpang.loginTry', provider); } catch (e) { /* 무시 */ }
     var res = await sb.auth.signInWithOAuth({
-      provider: 'google',
+      provider: provider,
       options: { redirectTo: window.location.origin + window.location.pathname }
     });
     if (res.error) { state.loginBusy = false; if (state.screen === 'login') render(); toast('로그인을 시작하지 못했어요: ' + res.error.message); }
+  }
+  // 로그인한 계정에 다른 로그인 방법을 연결해요 (같은 계정으로 들어올 수 있게)
+  async function loadIdents() {
+    if (!sb || isGuest() || !sb.auth.getUserIdentities) return;
+    try {
+      var r = await sb.auth.getUserIdentities();
+      state.idents = (r && r.data && r.data.identities) || [];
+    } catch (e) { state.idents = []; }
+    if (state.screen === 'account') renderKeep();
+  }
+  async function linkProvider(provider) {
+    try {
+      var r = await sb.auth.linkIdentity({ provider: provider, options: { redirectTo: window.location.origin + window.location.pathname } });
+      if (r && r.error) toast(/manual|disabled/i.test(r.error.message) ? '연결 기능이 아직 꺼져 있어요. 관리자 설정이 필요해요' : '연결하지 못했어요. 잠시 후 다시 시도해 주세요');
+    } catch (e) { toast('연결하지 못했어요. 잠시 후 다시 시도해 주세요'); }
+  }
+  async function unlinkProvider(provider) {
+    var list = state.idents || [], target = list.filter(function (i) { return i.provider === provider; })[0];
+    if (!target || list.length < 2) { toast('로그인 방법이 하나뿐이라 해제할 수 없어요'); return; }
+    try {
+      var r = await sb.auth.unlinkIdentity(target);
+      if (r && r.error) { toast('해제하지 못했어요. 잠시 후 다시 시도해 주세요'); return; }
+      toast(PROVIDER_NAME[provider] + ' 연결을 해제했어요');
+      loadIdents();
+    } catch (e) { toast('해제하지 못했어요. 잠시 후 다시 시도해 주세요'); }
   }
   async function handleSession(session) {
     var u = session && session.user;
@@ -5497,9 +5553,16 @@
         history.replaceState(null, '', window.location.pathname);
       }
       state.loginReason = null; state.loginLater = null; state.loginBusy = false;
+      try {
+        var tried = localStorage.getItem('pangpang.loginTry');
+        if (tried) { localStorage.setItem('pangpang.lastLogin', tried); localStorage.removeItem('pangpang.loginTry'); }
+      } catch (e) { /* 무시 */ }
+      var linkErr = /identity_already_exists|already.*linked/i.test(AUTH_BACK);
+      AUTH_BACK = '';
       afterSplash(function () {
         go('tab', { tab: 'home' });
-        if (moved) toast('로그인 전에 한 학습도 저장했어요');
+        if (linkErr) toast('이미 다른 팽팽이 계정에 연결된 로그인이에요');
+        else if (moved) toast('로그인 전에 한 학습도 저장했어요');
       });
     } else {
       if (isGuest()) return;
@@ -5526,14 +5589,17 @@
         el.disabled = true; el.textContent = '연결 중…';
         setTimeout(function () { if (navigator.onLine === false) { el.disabled = false; el.textContent = '다시 시도'; toast('아직 연결되지 않았어요'); } else render(); }, 1400);
         break;
-      case 'google': signIn(); break;
+      case 'google': signIn('google'); break;
+      case 'kakao': signIn('kakao'); break;
+      case 'link-do': linkProvider(id); break;
+      case 'link-undo': askConfirm({ title: PROVIDER_NAME[id] + ' 연결을 해제할까요?', body: '해제해도 계정과 기록은 그대로 있어요. 다른 로그인 방법으로 들어오면 돼요.', ok: '해제', cancel: '취소' }, function () { unlinkProvider(id); }); break;
       case 'lg-later': loginLater(); break;
       case 'open-pay': go('pay', { payWhy: null }); break;
       case 'ai-login': requireLogin('ai', null); break;
       case 'buy': buyPlan(id); break;
       case 'coupon-redeem': redeemCoupon(); break;
       case 'test-reset': resetPlan(); break;
-      case 'open-account': go('account'); break;
+      case 'open-account': go('account'); loadIdents(); break;
       case 'open-coupon': go('coupon'); break;
       case 'open-aicharge': go('aicharge'); break;
       case 'open-phrases': go('phrases'); break;

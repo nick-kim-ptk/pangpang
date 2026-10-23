@@ -769,3 +769,6 @@ select kind, count(*) n, round(avg(in_tokens)) avg_in, round(avg(cache_read)) av
 
 ## v213
 - 스플래시 화면을 위로 48px 올림.
+
+## v214
+- 카카오 로그인 추가(Supabase Kakao). 로그인 화면에 최근 로그인 방법 표시. 계정 관리에 "로그인 방법 연결"(연결/해제, Supabase의 manual linking 켜야 함). 이메일 없는 계정 표시 보완.
