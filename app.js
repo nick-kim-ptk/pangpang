@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v253';
+  var APP_VERSION = 'v254';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -739,6 +739,7 @@
     if (f) f(); else go('tab', { tab: 'home' });
   }
   function go(screen, extra) {
+    if (typeof VFX !== 'undefined' && VFX) VFX.stop();
     if (screen === 'done' && isGuest() && !(extra && extra.loginDone)) {
       requireLogin('save', function () { go('done', Object.assign({}, extra || {}, { loginDone: true })); });
       return;
@@ -4813,6 +4814,85 @@
     else { c.tries++; c.combo = 0; c.msg = ''; sfx('wrong'); }
     render();
   }
+
+  /* ---------- 음성 물결 (v254): 마이크를 누르고 있는 동안 화면 아래를 살짝 어둡게 하고 목소리에 맞춰 물결이 일어요 ---------- */
+  var VFX = (function () {
+    var el, cv, cx, ac, an, stream, raf, buf, hist = [], floor = 0, amp = 0, ph = 0, hue = 48, hzS = 0, lastVoice = 0, tok = 0, safe, lastMsg = '', on = false;
+    function ensure() {
+      if (el) return;
+      el = document.createElement('div'); el.className = 'vfx'; el.setAttribute('aria-hidden', 'true');
+      el.innerHTML = '<div class="vfx-dim"></div><canvas class="vfx-cv" width="900" height="700"></canvas>';
+      document.body.appendChild(el); cv = el.querySelector('canvas'); cx = cv.getContext('2d');
+    }
+    function pitch(b, sr) {
+      var n = b.length, rms = 0, i, lag;
+      for (i = 0; i < n; i++) rms += b[i] * b[i];
+      rms = Math.sqrt(rms / n);
+      if (rms < 0.02) return { f: 0, rms: rms };
+      var minL = Math.floor(sr / 500), maxL = Math.floor(sr / 70), best = 0, bl = 0, e0 = 0;
+      for (lag = minL; lag <= maxL; lag++) { var sm = 0; for (i = 0; i < n - lag; i += 2) sm += b[i] * b[i + lag]; if (sm > best) { best = sm; bl = lag; } }
+      for (i = 0; i < n; i += 2) e0 += b[i] * b[i];
+      if (!bl || best / e0 < 0.6) return { f: 0, rms: rms };
+      return { f: sr / bl, rms: rms };
+    }
+    function draw() {
+      if (!on || !an) return;
+      an.getFloatTimeDomainData(buf);
+      var r = pitch(buf, ac.sampleRate), rms = r.rms;
+      // 주변 소음 기준: 최근 약 3초 중 가장 조용했던 순간. 그보다 확실히 큰 소리만 목소리로 봐요
+      hist.push(rms); if (hist.length > 180) hist.shift();
+      var mn = Math.min.apply(null, hist);
+      floor = floor ? floor + (Math.max(mn, 0.003) - floor) * (mn < floor ? 0.3 : 0.02) : 0.008;
+      var voiced = rms > Math.max(floor * 3, 0.025), over = voiced ? 20 * Math.log10(rms / (floor * 3)) : 0, lvl = Math.max(0, Math.min(1, over / 22));
+      if (!voiced) r.f = 0;
+      amp += (lvl - amp) * (lvl > amp ? 0.18 : 0.07);
+      if (r.f) { hzS = hzS ? hzS + (r.f - hzS) * 0.25 : r.f; lastVoice = performance.now(); } else if (performance.now() - lastVoice > 400) hzS = 0;
+      var tgt = hzS ? Math.max(0, Math.min(1, (Math.log2(hzS) - 6.8) / 1.8)) : 0.35;
+      hue += ((hzS ? 200 - tgt * 160 : 48) - hue) * 0.12; ph += 0.04 + amp * 0.12 + tgt * 0.03;
+      var w = cv.width, h = cv.height, mid = h * 0.5;
+      cx.clearRect(0, 0, w, h); cx.globalCompositeOperation = 'lighter';
+      [[1, 0, 0.9, 1], [1.6, 1.7, 0.6, 0.8], [2.3, 3.1, 0.4, 0.6]].forEach(function (l, k) {
+        cx.beginPath();
+        for (var x = 0; x <= w; x += 6) {
+          var u = x / w, env = Math.pow(Math.sin(Math.PI * u), 1.5), y = mid + Math.sin(u * Math.PI * 2 * l[0] * 1.4 + ph * (k % 2 ? -1 : 1) * l[3] + l[1]) * env * (6 + amp * h * 0.3) * l[2];
+          if (x) cx.lineTo(x, y); else cx.moveTo(x, y);
+        }
+        var hh = hue + k * 22;
+        cx.strokeStyle = 'hsla(' + hh + ',92%,' + (60 + amp * 10) + '%,' + (0.4 + amp * 0.55) + ')'; cx.lineWidth = 6 - k * 1.4 + amp * 6; cx.lineJoin = 'round';
+        cx.shadowColor = 'hsl(' + hh + ',95%,60%)'; cx.shadowBlur = 16 + amp * 30; cx.stroke();
+      });
+      cx.shadowBlur = 0; cx.globalCompositeOperation = 'source-over';
+      var msg = !voiced && !hzS ? '듣고 있어요…' : amp < 0.25 ? '조금 더 크게 말해 보세요' : amp > 0.97 ? '조금 작게 말해 보세요' : '좋아요!';
+      if (msg !== lastMsg) { lastMsg = msg; var lv = document.getElementById('live'); if (lv && document.body.classList.contains('vfx-on')) lv.textContent = msg; }
+      raf = requestAnimationFrame(draw);
+    }
+    function start(soft) {
+      if (on) return;
+      on = true; var my = ++tok; ensure();
+      document.body.classList.toggle('vfx-soft', !!soft);
+      document.body.classList.add('vfx-on');
+      clearTimeout(safe); safe = setTimeout(stop, 40000);
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
+      navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: false } }).then(function (st) {
+        if (!on || my !== tok) { st.getTracks().forEach(function (t) { t.stop(); }); return; }
+        stream = st;
+        var AC = window.AudioContext || window.webkitAudioContext;
+        ac = new AC(); an = ac.createAnalyser(); an.fftSize = 2048; buf = new Float32Array(an.fftSize);
+        ac.createMediaStreamSource(st).connect(an);
+        hist = []; floor = 0; amp = 0; lastMsg = ''; draw();
+      }).catch(function () { /* 마이크를 못 열면 물결 없이 기존 화면 그대로 써요 */ if (my === tok) stop(); });
+    }
+    function stop() {
+      if (!on) return;
+      on = false; tok++; clearTimeout(safe); cancelAnimationFrame(raf);
+      document.body.classList.remove('vfx-on');
+      if (stream) { stream.getTracks().forEach(function (t) { t.stop(); }); stream = null; }
+      if (ac) { try { ac.close(); } catch (e) { /* noop */ } ac = null; }
+      an = null;
+      setTimeout(function () { if (!on && cx) cx.clearRect(0, 0, cv.width, cv.height); }, 300);
+    }
+    return { start: start, stop: stop };
+  })();
   function scListen(prev) {
     prev = prev || '';
     var c = state.sc;
@@ -4863,15 +4943,17 @@
     var c = state.sc;
     if (!t || state.screen !== 'scene' || !c || c.stage !== 'speak' || c.pass || scRec || state.modal) return;
     e.preventDefault();
+    if (navigator.vibrate) { try { navigator.vibrate(10); } catch (x) { /* noop */ } }
     scHolding = true; clearTimeout(scHoldTimer);
     sfx('pop');
+    VFX.start();
     scListen();
   });
   ['pointerup', 'pointercancel'].forEach(function (ev) {
     document.addEventListener(ev, function () {
       if (!scHolding) return;
       scHolding = false; clearTimeout(scHoldTimer);
-      scHoldTimer = setTimeout(function () { if (scRec && !scHolding) { try { scRec.stop(); } catch (e) { /* noop */ } } }, 450);
+      scHoldTimer = setTimeout(function () { if (!scHolding) VFX.stop(); if (scRec && !scHolding) { try { scRec.stop(); } catch (e) { /* noop */ } } }, 450);
     });
   });
 
@@ -5516,15 +5598,17 @@
     var s = state.s;
     if (state.screen !== 'practice' || !s || s.phase !== 'ask' || s.typing || state.modal || rec) return;
     if (e && e.preventDefault) e.preventDefault();
+    if (navigator.vibrate) { try { navigator.vibrate(10); } catch (x) { /* noop */ } }
     holding = true; clearTimeout(holdTimer);
     sfx('pop');
+    VFX.start(true);   // 문제 글자가 카드 없이 놓인 화면이라, 위쪽은 어둡게 하지 않아요
     startListening();
   }
   function micUp() {
     if (!holding) return;
     holding = false;
     clearTimeout(holdTimer);
-    holdTimer = setTimeout(function () { if (rec && !holding) { try { rec.stop(); } catch (e) { /* noop */ } } }, 450);
+    holdTimer = setTimeout(function () { if (!holding) VFX.stop(); if (rec && !holding) { try { rec.stop(); } catch (e) { /* noop */ } } }, 450);
   }
   document.addEventListener('pointerdown', function (e) {
     var t = e.target && e.target.closest && e.target.closest('[data-hold="mic"]');

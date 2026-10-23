@@ -3076,3 +3076,17 @@ body.kb .nav { display: none; }
 /* v253 마이페이지 '최근 7일': 공부한 날은 홈 체크리스트처럼 초록 원 + 흰 체크 */
 .week .d.on i { background: var(--green); }
 .week .d.on i::after { background: #fff; }
+
+/* v254 음성 물결: 마이크를 누르는 동안 어둡게 + 물결 */
+.vfx { position: fixed; inset: 0; z-index: 15; pointer-events: none; visibility: hidden; transition: visibility 0s .3s; }
+body.vfx-on .vfx { visibility: visible; transition: none; }
+.vfx-dim { position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(10,16,34,.55), rgba(10,16,34,.8)); opacity: 0; transition: opacity .25s; }
+body.vfx-on .vfx-dim { opacity: 1; }
+.vfx-cv { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 46dvh; opacity: 0; transition: opacity .25s; }
+body.vfx-on .vfx-cv { opacity: 1; }
+body.vfx-on .screen > .mic-area { background: none; }
+body.vfx-on .mic-area .live { color: #fff; font-weight: 800; font-size: 17px; font-family: inherit; }
+body.vfx-on .mic-area .mic { transform: scale(1.18); }
+body.vfx-on .sc-fit .sc-card, body.vfx-on .q-wrap .cb.them.cur { position: relative; z-index: 18; }
+@media (prefers-reduced-motion: reduce) { .vfx-dim, .vfx-cv { transition: none; } }
+body.vfx-soft .vfx-dim { background: linear-gradient(to bottom, rgba(10,16,34,0) 22%, rgba(10,16,34,.5) 55%, rgba(10,16,34,.82)); }
