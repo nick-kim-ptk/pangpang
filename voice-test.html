@@ -15,7 +15,7 @@ label{display:flex;gap:8px;align-items:center;font-size:14px;color:#c6cde6;margi
 <h1>음성 테스트</h1><p>마이크를 누르고 "你好", "谢谢"처럼 말해 보세요. 위 막대는 소리 크기, 아래 선은 음높이(오르내림)예요.</p>
 <div class="vol"><i id="vb"></i></div>
 <canvas id="cv" width="800" height="440"></canvas>
-<div class="k" style="margin-top:12px"><div><b id="hz">–</b><span>음높이(Hz)</span></div><div><b id="db">–</b><span>소리 크기</span></div></div>
+<div class="k" style="margin-top:12px"><div><b id="hz">–</b><span>음높이(Hz)</span></div><div><b id="db">–</b><span>소리 크기 (0~100)</span></div></div>
 <label><input type="checkbox" id="sr"> 음성 인식도 같이 켜기 (안 끊기는지 확인용)</label>
 <div class="row"><button id="go">마이크 시작</button><button id="stop" class="g">멈추기</button></div>
 <div id="log"></div>
@@ -35,7 +35,7 @@ function pitch(b,sr){
 function draw(){
   an.getFloatTimeDomainData(buf);
   var r=pitch(buf,ac.sampleRate),db=r.rms>0?20*Math.log10(r.rms):-90;
-  vb.style.width=Math.max(0,Math.min(100,(db+60)/50*100))+'%';dbEl.textContent=Math.round(db)+' dB';
+  vb.style.width=Math.max(0,Math.min(100,(db+60)/50*100))+'%';dbEl.textContent=Math.round(Math.max(0,Math.min(100,(db+60)/50*100)));
   if(r.f){hz.textContent=Math.round(r.f)}else hz.textContent='–';
   pts.push(r.f?Math.log2(r.f):null);if(pts.length>240)pts.shift();
   cx.clearRect(0,0,W,H);cx.strokeStyle='#26304f';cx.lineWidth=2;
