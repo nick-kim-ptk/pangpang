@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v251';
+  var APP_VERSION = 'v252';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -2009,8 +2009,9 @@
       '<p>' + esc(r.line) + '</p>' +
       (r.goalHit ? '<div class="cele"><b>오늘 목표 달성!</b><span>' + r.goal + '문제를 모두 풀었어요</span></div>' : '') +
       (r.milestone ? '<div class="cele"><b>' + r.milestone + '일 연속 학습!</b><span>꾸준함이 실력이 돼요</span></div>' : '') +
-      '<div class="chips"><span class="chip soft">오늘 푼 문제 ' + r.answers + '/' + r.goal + '</span>' +
-      (st > 0 ? '<span class="chip y">' + st + '일 연속 학습</span>' : '') + '</div>' +
+      (r.badges ? '<div class="chips">' + r.badges.map(function (b) { return '<span class="chip soft">' + esc(b) + '</span>'; }).join('') + '</div>'
+        : '<div class="chips"><span class="chip soft">오늘 푼 문제 ' + r.answers + '/' + r.goal + '</span>' +
+          (st > 0 ? '<span class="chip y">' + st + '일 연속 학습</span>' : '') + '</div>') +
       '</div><div class="footer" style="padding-left:0;padding-right:0">' +
       '<button class="btn" data-act="home">홈으로</button>' +
       (r.again ? '<button class="btn gray" data-act="' + r.again.act + '"' + (r.again.id ? ' data-id="' + r.again.id + '"' : '') + '>' + esc(r.again.label) + '</button>' : '') +
@@ -4785,10 +4786,11 @@
       go('aichat'); acStart();
       return;
     }
-    var stNow = streak();
+    var stNow = streak(), scTot = c.blank.length + c.listen.length, scPct = scTot ? Math.round(c.right / scTot * 100) : 0;
     var result = {
-      kind: 'scene', title: sc.title + ' 완료!',
-      line: '따라 말하기 ' + c.spoke + '문장, 퀴즈 ' + c.right + '/' + (c.blank.length + c.listen.length) + '개 정답이에요.',
+      kind: 'scene', title: sc.title + ', 이젠 자신 있죠?',
+      line: scPct + '% 맞았어요!',
+      badges: ['따라 말하기 ' + c.spoke + '문장', '퀴즈 ' + c.right + '개 정답'],
       answers: d.answers, goal: goal, goalHit: before < goal && d.answers >= goal,
       milestone: (before === 0 && d.answers > 0 && MILESTONES.indexOf(stNow) >= 0) ? stNow : 0,
       again: { act: 'sc-open', id: sc.id, label: '한 번 더 해보기' }

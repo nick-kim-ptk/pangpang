@@ -3063,3 +3063,12 @@ body.kb .nav { display: none; }
 .sc-fit .sc-card { padding-left: 22px; padding-right: 22px; }
 .sc-fit .sc-head2 { border-bottom: 0; padding-bottom: var(--sp-2); }
 .sc-fit .sc-head2 .sc-ctx { margin-bottom: 22px; }
+
+/* v252 상황 레슨: 판정 글자와 아래 설명 간격, 틀린 선택은 테두리만, 결과 화면 하단 여백 */
+.screen.qz-fit:has(.sc-fit) .qz-fb .qv-t { gap: 0; }
+.screen.qz-fit:has(.sc-fit) .qz-fb .qv-t b { line-height: 1.1; }
+.screen.qz-fit:has(.sc-fit) .qz-fb .qv-t span { line-height: 1.25; margin-top: -1px; }
+.sc-fit .opt.no { background: var(--card); color: var(--ink); box-shadow: inset 0 0 0 3px #e5484d; animation: none; }
+.sc-fit .opt.dim { opacity: .5; }
+.done-screen .footer { padding-bottom: calc(40px + var(--safe-b, 0px)); }
+.done-screen .hero h1 { text-wrap: balance; word-break: keep-all; }
