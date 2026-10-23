@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v235';
+  var APP_VERSION = 'v236';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -56,6 +56,7 @@
       var s = h && typeof h[lv] === 'string' ? h[lv] : '';
       out[lv] = /^[01]*$/.test(s) ? s.slice(0, 2200) : '';
     });
+    out.m = h && h.m === 'a' ? 'a' : '';   // 'a' = v235 단어 번호 정리(중복 삭제) 반영 완료 표시
     return out;
   }
   var PN_KEYS = ['learn', 'game', 'word'];
@@ -318,6 +319,7 @@
           state.profile = normProfile(raw.profile);
           state.srs = raw.srs || {};
         } catch (e) { state.progress = {}; state.done = {}; state.daily = {}; state.profile = normProfile({}); state.srs = {}; }
+        hskMigrate();
         applyTheme();
         return;
       }
@@ -326,6 +328,7 @@
       applyRemote(d);
       await srsLoadRemote();
       await hskLoadRemote();
+      hskMigrate();
     },
     saveProgress: tracked(async function (rows) {
       persistLocal();
@@ -3576,6 +3579,34 @@
     persistLocal();
     clearTimeout(srsTimer);
     srsTimer = setTimeout(srsRemoteSave, 1500);
+  }
+  // v235: 1~4급 중복 단어를 지우면서 번호가 당겨졌어요. 이미 저장된 '익힘 표시'와 복습 기록을 새 번호에 맞춰 옮겨요(한 번만).
+  // 지운 단어의 기록은 앞 급에 남은 같은 단어로 옮겨요. [지운 급, 옛 번호, 남은 급, 남은 단어의 옛 번호]
+  var HSK_DEDUP = { dels: { 2: [35], 3: [159, 182, 465], 4: [146, 472] }, carry: [[2, 35, 1, 32], [3, 159, 2, 49], [3, 182, 1, 81], [3, 465, 2, 185], [4, 146, 2, 33], [4, 472, 1, 110]] };
+  function hskMigrate() {
+    var h = state.profile && state.profile.hsk3;
+    if (!h || h.m === 'a') return;
+    var srs = state.srs || {}, had = Object.keys(srs).length > 0;
+    HSK_ALL.forEach(function (l) { if (/1/.test(h[l])) had = true; });
+    HSK_DEDUP.carry.forEach(function (c) {
+      if ((h[c[0]] || '').charAt(c[1]) === '1') { var t = h[c[2]] || ''; while (t.length <= c[3]) t += '0'; h[c[2]] = t.slice(0, c[3]) + '1' + t.slice(c[3] + 1); }
+      var ek = srsKey(c[0], c[1]), tk = srsKey(c[2], c[3]);
+      if (srs[ek] && !srs[tk]) srs[tk] = srs[ek];
+    });
+    Object.keys(HSK_DEDUP.dels).forEach(function (lv) {
+      var s = h[lv] || '';
+      HSK_DEDUP.dels[lv].slice().sort(function (a, b) { return b - a; }).forEach(function (i) { if (i < s.length) s = s.slice(0, i) + s.slice(i + 1); });
+      h[lv] = s;
+    });
+    var ns = {};
+    Object.keys(srs).forEach(function (k) {
+      var p = k.split('.'), lv = parseInt(p[0], 10), i = parseInt(p[1], 10), d = HSK_DEDUP.dels[lv];
+      if (d) { if (d.indexOf(i) >= 0) return; var sh = 0; d.forEach(function (x) { if (x < i) sh++; }); i -= sh; }
+      ns[srsKey(lv, i)] = srs[k];
+    });
+    state.srs = ns; h.m = 'a';
+    persistLocal();
+    if (had && sb && !isGuest() && state.user) { hskRemoteSave(); srsRemoteSave(); }
   }
   async function srsRemoteSave() {
     if (!sb || isGuest() || !state.user) return;
