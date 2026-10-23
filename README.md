@@ -758,3 +758,8 @@ select kind, count(*) n, round(avg(in_tokens)) avg_in, round(avg(cache_read)) av
 
 ## v210
 - "새 버전이 있어요" 알림 글자가 두 줄로 내려가던 문제 수정(한 줄 고정).
+
+## v211
+- 알림 개편: 종류별로 따로 켜고 끄는 설정(복습 알림·연속 학습 지키기·오늘 목표 거의 다 왔어요·복습할 단어·주간 순위 마감·지난주 결과·오랜만이에요·오늘의 단어). "1분 중국어"는 삭제.
+- 오늘의 단어: HSK 1~4급 중 여러 급을 골라, 낮(8~21시) 한 시간에 한 단어씩 한자·병음·읽는 표기·뜻을 알림으로 보내요. 단어는 `words.json`(hsk.js에서 만든 파일 — hsk.js를 고치면 다시 만들 것: `node gen-words.js`).
+- 서버(supabase/functions/send-reminders)와 supabase.sql의 v211 블록(prefs·goal 칸, push_sent 표) 필요. 함수는 앱과 따로 배포해야 해요.

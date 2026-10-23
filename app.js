@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v210';
+  var APP_VERSION = 'v211';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -56,6 +56,18 @@
     });
     return out;
   }
+  var PN_KEYS = ['streak', 'rank', 'week', 'review', 'back', 'goal', 'word'];
+  function normPn(o) {
+    o = o || {}; var out = {};
+    PN_KEYS.forEach(function (k) { out[k] = !!o[k]; });
+    return out;
+  }
+  function normWordLv(a) {
+    var out = [];
+    (Array.isArray(a) ? a : []).forEach(function (x) { x = parseInt(x, 10); if (x >= 1 && x <= 4 && out.indexOf(x) < 0) out.push(x); });
+    out.sort();
+    return out.length ? out : [1];
+  }
   function normProfile(p) {
     p = p || {};
     var g = parseInt(p.goal, 10);
@@ -67,7 +79,8 @@
       theme: (p.theme === 'light' || p.theme === 'dark') ? p.theme : 'auto',
       remind: /^\d\d:\d\d$/.test(p.remind || '') ? p.remind : '20:00',
       remindOn: !!p.remindOn,
-      minuteOn: !!p.minuteOn,
+      pn: normPn(p.pn),
+      wordLv: normWordLv(p.wordLv),
       speedUsed: Math.max(0, parseInt(p.speedUsed, 10) || 0),
       sound: p.sound !== false,
       kr: p.kr !== false,
@@ -251,7 +264,7 @@
     state.progress = {}; state.done = {}; state.daily = {};
     if (!keepProfile) {
       var meta = (state.user && state.user.user_metadata) || {};
-      state.profile = normProfile({ nickname: meta.nickname, rankPub: meta.rankPub, rankAnon: meta.rankAnon, goal: meta.goal, theme: meta.theme, remind: meta.remind, remindOn: meta.remindOn, minuteOn: meta.minuteOn, speedUsed: meta.speedUsed, sound: meta.sound, kr: meta.kr, input: meta.input, favs: meta.favs, dlg: meta.dlg, hsk3: meta.hsk3 });
+      state.profile = normProfile({ nickname: meta.nickname, rankPub: meta.rankPub, rankAnon: meta.rankAnon, goal: meta.goal, theme: meta.theme, remind: meta.remind, remindOn: meta.remindOn, pn: meta.pn, wordLv: meta.wordLv, speedUsed: meta.speedUsed, sound: meta.sound, kr: meta.kr, input: meta.input, favs: meta.favs, dlg: meta.dlg, hsk3: meta.hsk3 });
       applyTheme();
     }
     (res[0].data || []).forEach(function (r) { state.progress[r.qid] = r; });
@@ -325,7 +338,7 @@
       persistLocal();
       if (!sb || isGuest()) return;
       var p = state.profile;
-      var res = await sb.auth.updateUser({ data: { nickname: p.nickname, rankPub: p.rankPub, rankAnon: p.rankAnon, goal: p.goal, theme: p.theme, remind: p.remind, remindOn: p.remindOn, minuteOn: p.minuteOn, speedUsed: p.speedUsed, sound: p.sound, kr: p.kr, input: p.input, favs: p.favs, dlg: p.dlg, hsk3: p.hsk3 } });
+      var res = await sb.auth.updateUser({ data: { nickname: p.nickname, rankPub: p.rankPub, rankAnon: p.rankAnon, goal: p.goal, theme: p.theme, remind: p.remind, remindOn: p.remindOn, pn: p.pn, wordLv: p.wordLv, speedUsed: p.speedUsed, sound: p.sound, kr: p.kr, input: p.input, favs: p.favs, dlg: p.dlg, hsk3: p.hsk3 } });
       if (res.error) saveFailed(res.error); else if (res.data && res.data.user) state.user = res.data.user;
     }),
     saveDaily: tracked(async function (row) {
@@ -5718,13 +5731,8 @@
       case 'install':
         if (installEvt) { installEvt.prompt(); installEvt.userChoice.then(function () { installEvt = null; render(); }); }
         break;
-      case 'minute-toggle':
-        if (!state.profile.minuteOn && !isPro()) { go('pay', { payWhy: '알림은 멤버십 기능이에요.' }); break; }
-        toggleMinute(); break;
-      case 'remind-toggle':
-        if (pushOn) { disableReminder(); break; }
-        if (!isPro()) { go('pay', { payWhy: '알림은 멤버십 기능이에요.' }); break; }
-        enableReminder(); break;
+      case 'pn-toggle': pnToggle(id); break;
+      case 'pn-wlv': pnWordLv(parseInt(id, 10)); break;
       case 'hsk-open':
         if (hskLocked(parseInt(id, 10))) { go('pay', { payWhy: 'HSK ' + id + '급은 멤버십이 필요해요. 1급은 무료예요.' }); break; }
         state.hsk = { lv: parseInt(id, 10), unknownOnly: false }; go('hsk'); break;
@@ -5827,7 +5835,7 @@
         if (!rpub && !ranon) ranon = String(Math.floor(10000 + Math.random() * 90000));
         setProfile({ rankPub: rpub, rankAnon: ranon }); wkNickSync(); break;
       case 'set-sound': setProfile({ sound: el.getAttribute('data-v') === 'on' }); sfx('pop'); break;
-      case 'set-goal': setProfile({ goal: parseInt(el.getAttribute('data-v'), 10) }); break;
+      case 'set-goal': setProfile({ goal: parseInt(el.getAttribute('data-v'), 10) }); pushResync(); break;
       case 'set-theme': setProfile({ theme: el.getAttribute('data-v') }); break;
       case 'nick-edit': state.editNick = true; render(); break;
       case 'nick-cancel': state.editNick = false; render(); break;
@@ -5922,8 +5930,7 @@
         reg.update().catch(function () { /* 무시 */ });
         if (!reg.pushManager) return;
         return reg.pushManager.getSubscription().then(function (sub) {
-          pushOn = !!sub && state.profile.remindOn;
-          if (!sub) { state.profile.minuteOn = false; }
+          pushOn = !!sub && pushAny(state.profile);
           if (state.screen === 'tab' && state.tab === 'me') render();
         });
       }).catch(function () { /* 미리보기 등에서는 조용히 건너뜀 */ });
@@ -5953,18 +5960,32 @@
     for (var i = 0; i < b.length; i++) s += String.fromCharCode(b[i]);
     return btoa(s);
   }
-  // 알림은 두 가지가 따로 켜고 꺼져요: 복습 알림(매일 정한 시간) / 1분 중국어(낮 동안 한 시간에 한 번)
-  function pushRow(sub, daily, minute) {
+  // 알림은 종류마다 따로 켜고 꺼요. 하나라도 켜져 있으면 구독을 두고, 모두 꺼지면 구독을 지워요.
+  var PN_LIST = [
+    ['daily', '복습 알림', '정한 시간에 “오늘 중국어 한 문장만 말해 볼까요?”'],
+    ['streak', '연속 학습 지키기', '밤 9시, 오늘 아직 공부 전이고 3일 이상 이어 온 때만'],
+    ['goal', '오늘 목표 거의 다 왔어요', '밤 8시, 목표의 절반을 넘겼을 때 남은 문제 수를 알려요'],
+    ['review', '복습할 단어 알림', '낮 12시 반, 복습할 단어가 10개 넘게 쌓였을 때'],
+    ['rank', '주간 순위 마감 알림', '일요일 저녁 7시, 내 순위와 다음 순위까지 남은 점수'],
+    ['week', '지난주 결과', '월요일 아침 9시, 지난주 순위와 점수'],
+    ['back', '오랜만이에요', '3일, 7일 동안 안 들어왔을 때 (7일 뒤엔 더 보내지 않아요)'],
+    ['word', '오늘의 단어', '앱을 안 열어도 낮 동안 한 시간에 한 단어씩 (오전 8시~밤 9시)']
+  ];
+  function pushAny(p) {
+    return !!(p.remindOn || PN_KEYS.some(function (k) { return p.pn && p.pn[k]; }));
+  }
+  function pnIsOn(k) { return pushOn && (k === 'daily' ? !!state.profile.remindOn : !!state.profile.pn[k]); }
+  function pushRow(sub, p) {
     var j = sub.toJSON();
-    var row = {
+    var prefs = { daily: !!p.remindOn, wordLv: p.wordLv };
+    PN_KEYS.forEach(function (k) { prefs[k] = !!p.pn[k]; });
+    return {
       user_id: state.user.id, endpoint: sub.endpoint,
       p256dh: j.keys.p256dh, auth: j.keys.auth,
-      remind_time: state.profile.remind,
+      remind_time: p.remind, goal: p.goal, prefs: prefs,
+      daily_on: !!p.remindOn, minute_on: false,
       tz: (Intl.DateTimeFormat().resolvedOptions().timeZone) || 'Asia/Seoul'
     };
-    if (!daily) row.daily_on = false;     // 표에 daily_on / minute_on 칸을 만든 뒤에만 보내요
-    if (minute) row.minute_on = true;
-    return row;
   }
   async function getPushSub() {
     if (!swReg) swReg = await navigator.serviceWorker.ready;
@@ -5974,10 +5995,10 @@
     if (!sub) sub = await swReg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToBytes(cfg.VAPID_PUBLIC_KEY) });
     return sub;
   }
-  // 두 알림의 켜짐 상태를 서버에 맞춰요. 둘 다 꺼지면 구독을 지워요.
-  async function syncPush(daily, minute) {
+  // 프로필(p) 기준으로 서버의 구독 정보를 맞춰요
+  async function syncPush(p) {
     var sub = swReg ? await swReg.pushManager.getSubscription() : null;
-    if (!daily && !minute) {
+    if (!pushAny(p)) {
       if (sub) {
         await sb.from('push_subscriptions').delete().eq('user_id', state.user.id).eq('endpoint', sub.endpoint);
         await sub.unsubscribe();
@@ -5986,47 +6007,43 @@
     }
     if (!sub) sub = await getPushSub();
     if (!sub) throw new Error('no-sub');
-    var res = await sb.from('push_subscriptions').upsert(pushRow(sub, daily, minute), { onConflict: 'user_id,endpoint' });
+    var res = await sb.from('push_subscriptions').upsert(pushRow(sub, p), { onConflict: 'user_id,endpoint' });
     if (res.error) throw res.error;
   }
-  async function enableReminder() {
+  async function pushApply(patch, msg) {
+    var next = normProfile(Object.assign({}, state.profile, patch));
     try {
-      if (!(await getPushSub())) return;
-      await syncPush(true, !!state.profile.minuteOn);
-      pushOn = true;
-      setProfile({ remindOn: true });
-      toast('매일 ' + state.profile.remind + '에 알려 드릴게요');
+      await syncPush(next);
+      pushOn = pushAny(next);
+      setProfile(patch);
+      if (msg) toast(msg);
     } catch (err) {
       if (window.console) console.error(err);
-      toast('알림을 켜지 못했어요. 잠시 후 다시 시도해 주세요');
+      toast('알림을 바꾸지 못했어요. 잠시 후 다시 시도해 주세요');
     }
   }
-  async function disableReminder() {
-    try { await syncPush(false, !!state.profile.minuteOn); } catch (err) { if (window.console) console.error(err); }
-    pushOn = false;
-    setProfile({ remindOn: false });
-    toast('복습 알림을 껐어요');
+  function pnToggle(k) {
+    var on = !pnIsOn(k), p = state.profile;
+    if (on && !isPro()) { go('pay', { payWhy: '알림은 멤버십 기능이에요.' }); return; }
+    var name = (PN_LIST.filter(function (x) { return x[0] === k; })[0] || [])[1] || '알림';
+    if (k === 'daily') { pushApply({ remindOn: on }, name + (on ? ' · 켰어요' : ' · 껐어요')); return; }
+    var pn = Object.assign({}, p.pn); pn[k] = on;
+    pushApply({ pn: pn }, name + (on ? ' · 켰어요' : ' · 껐어요'));
   }
-  async function toggleMinute() {
-    var on = !state.profile.minuteOn;
-    try {
-      if (on && !(await getPushSub())) return;
-      await syncPush(!!state.profile.remindOn, on);
-      setProfile({ minuteOn: on });
-      toast(on ? '낮 동안 한 시간에 한 번 1분 중국어를 보내 드려요' : '1분 중국어를 껐어요');
-    } catch (err) {
-      if (window.console) console.error(err);
-      toast('바꾸지 못했어요. 잠시 후 다시 시도해 주세요');
-    }
+  function pnWordLv(lv) {
+    var cur = state.profile.wordLv.slice(), i = cur.indexOf(lv);
+    if (i >= 0) { if (cur.length === 1) { toast('한 가지 급은 꼭 골라야 해요'); return; } cur.splice(i, 1); } else cur.push(lv);
+    if (pushOn && state.profile.pn.word) pushApply({ wordLv: cur }); else setProfile({ wordLv: cur });
+  }
+  // 목표·시간 같은 값이 바뀌면 서버에도 알려 줘요 (알림이 켜져 있을 때만)
+  async function pushResync() {
+    if (!pushOn || !swReg || !sb || !state.user) return;
+    try { await syncPush(state.profile); } catch (err) { if (window.console) console.error(err); }
   }
   async function updateReminderTime(v) {
     setProfile({ remind: v });
-    if (!pushOn || !swReg || !sb) return;
-    try {
-      var sub = await swReg.pushManager.getSubscription();
-      if (sub) await sb.from('push_subscriptions').update({ remind_time: v }).eq('user_id', state.user.id).eq('endpoint', sub.endpoint);
-      toast('알림 시간을 ' + v + '로 바꿨어요');
-    } catch (err) { saveFailed(err); }
+    if (!pushOn) return;
+    try { await syncPush(state.profile); toast('알림 시간을 ' + v + '로 바꿨어요'); } catch (err) { saveFailed(err); }
   }
   function settingsExtra() {
     var p = state.profile, h = '';
@@ -6039,15 +6056,18 @@
       }
     }
     if (pushReady()) {
-      h += '<div class="set-row"><div><div class="set-t">복습 알림</div><div class="set-s">' +
-        (pushOn ? '오늘 공부 전이면 ' + esc(p.remind) + '에 알려 드려요' : '정해 둔 시간에 알려 드려요') + '</div></div>' +
-        '<button class="pill-sm' + (!pushOn && !isPro() ? ' pro' : '') + '" data-act="remind-toggle">' + (pushOn ? '끄기' : (isPro() ? '켜기' : I.lock + 'PRO')) + '</button></div>';
-      if (pushOn) {
-        h += '<div class="set-row"><div class="set-t">알림 시간</div><input class="time-in" type="time" value="' + esc(p.remind) + '" aria-label="알림 시간"></div>';
-      }
-      h += '<div class="set-row"><div><div class="set-t">1분 중국어</div><div class="set-s">' +
-        (p.minuteOn ? '오전 9시~밤 9시, 한 시간에 한 번 알림으로 바로 공부해요' : '낮 동안 한 시간에 한 번, 알림에서 바로 배워요') + '</div></div>' +
-        '<button class="pill-sm' + (!p.minuteOn && !isPro() ? ' pro' : '') + '" data-act="minute-toggle">' + (p.minuteOn ? '끄기' : (isPro() ? '켜기' : I.lock + 'PRO')) + '</button></div>';
+      PN_LIST.forEach(function (x) {
+        var k = x[0], on = pnIsOn(k);
+        h += '<div class="set-row"><div><div class="set-t">' + x[1] + '</div><div class="set-s">' + x[2] + '</div></div>' +
+          '<button class="pill-sm' + (!on && !isPro() ? ' pro' : '') + '" data-act="pn-toggle" data-id="' + k + '">' + (on ? '끄기' : (isPro() ? '켜기' : I.lock + 'PRO')) + '</button></div>';
+        if (k === 'daily' && on) {
+          h += '<div class="set-row"><div class="set-t">알림 시간</div><input class="time-in" type="time" value="' + esc(p.remind) + '" aria-label="알림 시간"></div>';
+        }
+        if (k === 'word' && on) {
+          h += '<div class="set-row col"><div class="set-s">받을 급을 골라요 (여러 개 가능) · 한자, 병음, 읽는 표기, 뜻이 함께 와요</div><div class="chips">' +
+            [1, 2, 3, 4].map(function (l) { return '<button class="chip' + (p.wordLv.indexOf(l) >= 0 ? ' y' : '') + '" data-act="pn-wlv" data-id="' + l + '">HSK ' + l + '급</button>'; }).join('') + '</div></div>';
+        }
+      });
     } else {
       h += '<div class="set-row"><div><div class="set-t">복습 알림</div><div class="set-s">' +
         (sb ? (cfg.VAPID_PUBLIC_KEY ? '이 브라우저는 알림을 지원하지 않아요' + (isIOS ? ' (홈 화면에 추가한 뒤 켤 수 있어요)' : '') : '관리자 설정(VAPID 키)이 필요해요')

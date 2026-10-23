@@ -2879,3 +2879,5 @@ html, body, * { scrollbar-width: none; -ms-overflow-style: none; }
 /* v210: 업데이트 알림 글자가 두 줄로 내려가던 문제(왼쪽 50% 기준이라 폭이 반으로 줄던 것) */
 .upd-bar { width: max-content; white-space: nowrap; justify-content: center; }
 .upd-bar b, .upd-bar span { white-space: nowrap; }
+.set-row .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.set-row .chip { border: 0; font-family: inherit; cursor: pointer; }

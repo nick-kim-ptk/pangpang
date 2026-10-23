@@ -739,3 +739,18 @@ language sql security definer set search_path = public as $$
 $$;
 revoke all on function public.weekly_rank(date) from public;
 grant execute on function public.weekly_rank(date) to authenticated;
+
+-- v211: 알림 종류별 켜기/끄기. 앱의 "알림" 설정과 send-reminders 함수가 쓰는 칸·표예요.
+alter table public.push_subscriptions add column if not exists prefs jsonb;
+alter table public.push_subscriptions add column if not exists goal  int;
+-- 같은 알림을 두 번 보내지 않으려고 보낸 기록을 남기는 표 (서버 함수만 써요)
+create table if not exists public.push_sent (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  kind    text not null,
+  key     text not null,
+  day     text not null,
+  sent_at timestamptz not null default now(),
+  primary key (user_id, kind, key)
+);
+alter table public.push_sent enable row level security;   -- 정책을 만들지 않아서 앱에서는 못 읽고, 서비스 키를 쓰는 함수만 써요
+notify pgrst, 'reload schema';
