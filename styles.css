@@ -3044,3 +3044,6 @@ body.kb .nav { display: none; }
 .ai-promo .btn { margin-top: 6px; }
 @media (max-height: 820px) { .ap-list span { display: block; } .ap-list li { padding: 11px 0; } .ap-list b { font-size: 14.5px; } .ap-list span { font-size: 12.5px; } }
 @media (max-height: 700px) { .ap-list span { display: none; } .ap-list li { padding: 9px 0; } }
+
+/* v247 로그인 화면: 위 버튼과 '나중에 할게요/둘러보기' 사이, 아래쪽에도 여유 */
+.lg-later { height: 48px; margin-top: 10px; margin-bottom: 6px; }

@@ -883,3 +883,6 @@ select kind, count(*) n, round(avg(in_tokens)) avg_in, round(avg(cache_read)) av
 
 ## v246
 - AI 대화 안내(로그인 전/멤버십 전): 4개의 박스를 하나의 패널로 합치고 줄 간격·글씨를 넉넉하게. 무료 안내 문구를 "HSK 1급과 레슨 앞 2개는 무료예요"로.
+
+## v247
+- 로그인 화면 "나중에 할게요/둘러보기" 버튼 위·아래 간격 확대.
