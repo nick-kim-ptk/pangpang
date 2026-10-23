@@ -3009,3 +3009,12 @@ html, body, * { scrollbar-width: none; -ms-overflow-style: none; }
 
 /* v237 크레딧 차감 뱃지: 어떤 버튼 색에서도 보이도록 진한 빨강 바탕 + 흰 글씨 */
 .sc-paid, .btn.gray .sc-paid { background: #e5484d; color: #fff; box-shadow: 0 0 0 1.5px rgba(255,255,255,.85); padding: 3px 8px; font-size: 11.5px; }
+
+/* v238 상황 목록: 난이도 필터, 카드 난이도 뱃지는 아이콘 위 고정 */
+.sc-filt { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); margin: var(--sp-3) 0 var(--sp-3); }
+.sc-filt > span { font-size: 13px; font-weight: 700; color: var(--ink-3); }
+.sc-lvf { display: flex; gap: 6px; }
+.sc-lvb { border: 0; padding: 6px 12px; border-radius: 999px; background: var(--soft); color: var(--ink-3); font: inherit; font-size: 13px; font-weight: 800; cursor: pointer; }
+.sc-lvb.on { background: var(--ink); color: var(--card); }
+.sc-card .sc-lv { order: 0; align-self: start; justify-self: start; margin: 0 0 var(--sp-1); }
+.sc-card .sc-ci { margin-bottom: 2px; }

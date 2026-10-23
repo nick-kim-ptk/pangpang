@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v237';
+  var APP_VERSION = 'v238';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -4542,23 +4542,27 @@
       '<p class="hsk-note under-title">하나의 상황에서 쓸 수 있는 중국어 문장을 익혀서 연습해요.</p>' +
       '<ul class="list" style="margin-top:0">' + show.map(function (s) { return scItemRow(s, pg); }).join('') + '</ul>';
   }
-  var SC_CATS = ['전체', '일상', '여행', '대화', '직장·학교'];
+  var SC_CATS = ['일상', '여행', '대화', '직장·학교'];
   function viewScenes() {
-    var pg = scProg(), cat = state.scCat || '전체';
+    var pg = scProg(), cat = SC_CATS.indexOf(state.scCat) >= 0 ? state.scCat : SC_CATS[0], lvf = state.scLv || '';
     var chips = '<div class="hsk-chips sc-cats" role="tablist" aria-label="상황 분류">' + SC_CATS.map(function (c) {
-      var cnt = SCENES.filter(function (s) { return c === '전체' || s.cat === c; }).length;
+      var cnt = SCENES.filter(function (s) { return s.cat === c; }).length;
       return '<button role="tab" class="hsk-chip' + (c === cat ? ' on' : '') + '" data-act="sc-cat" data-id="' + c + '" aria-selected="' + (c === cat) + '">' + c + ' ' + cnt + '</button>';
     }).join('') + '</div>';
-    var list = SCENES.filter(function (s) { return cat === '전체' || s.cat === cat; });
+    var inCat = SCENES.filter(function (s) { return s.cat === cat; });
+    var list = inCat.filter(function (s) { return !lvf || s.lv === lvf; });
+    var filt = '<div class="sc-filt"><span>' + list.length + '개</span><div class="sc-lvf" role="group" aria-label="난이도">' + ['쉬움', '보통', '어려움'].map(function (v) {
+      return '<button class="sc-lvb' + (lvf === v ? ' on' : '') + '" data-act="sc-lv" data-id="' + v + '" aria-pressed="' + (lvf === v) + '">' + v + '</button>';
+    }).join('') + '</div></div>';
     var lvCls = { '쉬움': 'e', '보통': 'm', '어려움': 'h' };
-    var grid = '<div class="sc-grid">' + list.map(function (s) {
-      return '<button class="sc-card" data-act="sc-open" data-id="' + s.id + '"><span class="sc-ci">' + s.icon + '</span>' +
-        '<b>' + esc(s.title) + '</b><span class="sc-cs">' + esc(s.sub) + '</span>' +
-        '<em class="sc-lv ' + (lvCls[s.lv] || 'm') + '">' + esc(s.lv || '보통') + '</em></button>';
-    }).join('') + '</div>';
+    var grid = list.length ? '<div class="sc-grid">' + list.map(function (s) {
+      return '<button class="sc-card" data-act="sc-open" data-id="' + s.id + '">' +
+        '<em class="sc-lv ' + (lvCls[s.lv] || 'm') + '">' + esc(s.lv || '보통') + '</em><span class="sc-ci">' + s.icon + '</span>' +
+        '<b>' + esc(s.title) + '</b><span class="sc-cs">' + esc(s.sub) + '</span></button>';
+    }).join('') + '</div>' : '<p class="hsk-note" style="text-align:center;margin-top:32px">이 난이도의 상황이 아직 없어요</p>';
     return '<div class="screen"><div class="topbar"><button class="icon-btn" data-act="back" aria-label="뒤로">' + I.back + '</button></div>' +
       '<div class="scroll" style="padding-top:4px"><h1 class="big-title" style="margin-top:0">상황 레슨</h1>' +
-      chips + grid + '<div style="height:32px"></div></div></div>';
+      chips + filt + grid + '<div style="height:32px"></div></div></div>';
   }
   function scLcs(a, b) {
     var L = [], i, j;
@@ -6004,6 +6008,7 @@
       case 'myweeks-open': openMyWeeks(); break;
       case 'sc-open': state.scFrom = state.screen === 'scenes' ? 'scenes' : ''; startScene(id); break;
       case 'sc-all': go('scenes'); break;
+      case 'sc-lv': state.scLv = state.scLv === id ? '' : id; sfx('tap'); render(); break;
       case 'sc-cat': state.scCat = id; sfx('tap'); render(); break;
       case 'sc-next': scAdvance(); break;
       case 'sc-skip': if (state.sc) { state.sc.combo = 0; scAdvance(); } break;
