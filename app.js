@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v239';
+  var APP_VERSION = 'v240';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -6134,8 +6134,6 @@
   function registerSW() {
     try {
       if (!('serviceWorker' in navigator) || !/^https?:$/.test(location.protocol)) return;
-      var hadCtl = !!navigator.serviceWorker.controller;
-      navigator.serviceWorker.addEventListener('controllerchange', function () { if (hadCtl) showUpdateBar(); hadCtl = true; });
       document.addEventListener('visibilitychange', function () { if (!document.hidden && swReg) swReg.update().catch(function () { /* 무시 */ }); });
       navigator.serviceWorker.register('sw.js').then(function (reg) {
         swReg = reg;
@@ -6147,15 +6145,6 @@
         });
       }).catch(function () { /* 미리보기 등에서는 조용히 건너뜀 */ });
     } catch (e) { /* 무시 */ }
-  }
-  // 새 버전을 받으면 화면 아래에 알려 줘요 (누르면 새로고침)
-  function showUpdateBar() {
-    if (document.getElementById('updbar')) return;
-    var b = document.createElement('button');
-    b.id = 'updbar'; b.className = 'upd-bar'; b.type = 'button';
-    b.innerHTML = '<b>새 버전이 있어요</b><span>눌러서 업데이트</span>';
-    b.addEventListener('click', function () { location.reload(); });
-    document.body.appendChild(b);
   }
   function pushReady() {
     return !!(sb && cfg.VAPID_PUBLIC_KEY && 'PushManager' in window && 'Notification' in window && 'serviceWorker' in navigator);
