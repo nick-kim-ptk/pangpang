@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v228';
+  var APP_VERSION = 'v229';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -1032,8 +1032,8 @@
   function tdMeta(k) {
     var t = tdTarget(k) || { id: '', name: '' }, rec = chRec(parseInt(t.id, 10) || 1);
     var tbl = {
-      'hsk-study': { title: 'HSK 카드 학습', sub: '밀어서 외우기', act: 'hsk-study', id: t.id },
-      'hsk-quiz': { title: 'HSK 단어 퀴즈', sub: '소리·뜻 고르기', act: 'hsk-quiz', id: t.id },
+      'hsk-study': { title: '카드 학습', sub: '밀어서 외우기', act: 'hsk-study', id: t.id },
+      'hsk-quiz': { title: '단어 퀴즈', sub: '소리·뜻 고르기', act: 'hsk-quiz', id: t.id },
       'ch-start': { title: '기억 사슬', sub: rec.best ? '최고 ' + rec.best + '단계에 도전' : '몇 단계까지 갈까요?', act: 'ch-start', id: t.id },
       'tone-start': { title: '성조 연습', sub: '소리로 성조 맞히기', act: 'tone-start', id: t.id },
       'rain-start': { title: '소나기 퀴즈', sub: '떨어지는 한자를 잡아요', act: 'rain-start', id: t.id },
@@ -2065,7 +2065,9 @@
     if (acRec) { try { acRec.abort(); } catch (e) { /* 무시 */ } acRec = null; }
     stopSpeak();
   }
-  function acScroll() { try { window.scrollTo(0, document.body.scrollHeight); } catch (e) { /* 무시 */ } }
+  function acScroll() {   // 첫 말(선생님 인사)만 있을 땐 맨 위에 두어 위쪽이 잘리지 않게 해요
+    try { var a0 = state.ac, first = a0 && a0.mode === 'chat' && a0.msgs && a0.msgs.length <= 1; window.scrollTo(0, first ? 0 : document.body.scrollHeight); } catch (e) { /* 무시 */ }
+  }
   function viewAiChat() {
     var a = state.ac;
     if (!aiOn() || !a) return '<div class="screen"><div class="topbar"><button class="icon-btn" data-act="back" aria-label="뒤로">' + I.back + '</button></div><div class="scroll"><p class="sub-title">멤버십이 있을 때 쓸 수 있어요.</p></div></div>';

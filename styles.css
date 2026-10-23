@@ -2967,3 +2967,8 @@ html, body, * { scrollbar-width: none; -ms-overflow-style: none; }
 /* v226: 마감 막대 제거 */
 .rk-cd { gap: 6px; }
 .aisec-head { margin: 24px 0 var(--sp-2); }
+
+/* v229: 확인 창 — 캐릭터가 글자와 겹치거나 붙지 않게 위로 올리고 위쪽 여백을 늘려요 */
+.dialog:not(.gsheet) { padding-top: 44px; }
+.dialog .mascot { top: auto; bottom: calc(100% - 30px); width: 108px; }
+.dialog h3 { margin-bottom: 8px; }
