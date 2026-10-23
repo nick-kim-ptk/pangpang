@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v250';
+  var APP_VERSION = 'v251';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -4610,10 +4610,10 @@
     state.sc = { id: id, stage: 'speak', i: 0, blank: blank, listen: listen, right: 0, spoke: 0, combo: 0 };
     scReset(state.sc);
     go('scene');
-    scAuto();
+    scAuto(1100);
   }
   function scLen(c, st) { var sc = sceneById(c.id); return st === 'speak' ? sc.lines.length : c[st].length; }
-  function scAuto() {
+  function scAuto(delay) {
     var c = state.sc;
     if (!c) return;
     setTimeout(function () {
@@ -4621,7 +4621,7 @@
       var sc = sceneById(c.id);
       if (c.stage === 'speak' && !c.pass && !c.listening) speak(sc.lines[c.i][0], 0.8);
       else if (c.stage === 'listen' && c.picked === null) speak(sc.lines[c.listen[c.i].i][0], 0.85);
-    }, 400);
+    }, delay || 400);
   }
   function scAdvance() {
     var c = state.sc;
