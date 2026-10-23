@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v255';
+  var APP_VERSION = 'v256';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -4815,41 +4815,25 @@
     render();
   }
 
-  /* ---------- 음성 물결 (v254): 마이크를 누르고 있는 동안 화면 아래를 살짝 어둡게 하고 목소리에 맞춰 물결이 일어요 ---------- */
+  /* ---------- 음성 물결 (v256): 마이크를 누르고 있는 동안 화면 아래를 살짝 어둡게 하고 물결이 일어요.
+     폰에서는 마이크를 앱과 음성 인식이 함께 쓰면 인식이 안 되므로, 마이크는 음성 인식만 쓰고
+     물결은 음성 인식이 알려 주는 '말하는 중이에요' 신호에 맞춰 움직여요 ---------- */
   var VFX = (function () {
-    var disabled = false, el, cv, cx, ac, an, stream, raf, buf, hist = [], floor = 0, amp = 0, ph = 0, hue = 48, hzS = 0, lastVoice = 0, tok = 0, safe, lastMsg = '', on = false;
+    var el, cv, cx, raf, on = false, speaking = false, bump = 0, amp = 0.06, ph = 0, t0 = 0, safe, lastMsg = '', msgT = 0;
     function ensure() {
       if (el) return;
       el = document.createElement('div'); el.className = 'vfx'; el.setAttribute('aria-hidden', 'true');
       el.innerHTML = '<div class="vfx-dim"></div><canvas class="vfx-cv" width="900" height="700"></canvas>';
       document.body.appendChild(el); cv = el.querySelector('canvas'); cx = cv.getContext('2d');
     }
-    function pitch(b, sr) {
-      var n = b.length, rms = 0, i, lag;
-      for (i = 0; i < n; i++) rms += b[i] * b[i];
-      rms = Math.sqrt(rms / n);
-      if (rms < 0.02) return { f: 0, rms: rms };
-      var minL = Math.floor(sr / 500), maxL = Math.floor(sr / 70), best = 0, bl = 0, e0 = 0;
-      for (lag = minL; lag <= maxL; lag++) { var sm = 0; for (i = 0; i < n - lag; i += 2) sm += b[i] * b[i + lag]; if (sm > best) { best = sm; bl = lag; } }
-      for (i = 0; i < n; i += 2) e0 += b[i] * b[i];
-      if (!bl || best / e0 < 0.6) return { f: 0, rms: rms };
-      return { f: sr / bl, rms: rms };
-    }
-    function draw() {
-      if (!on || !an) return;
-      an.getFloatTimeDomainData(buf);
-      var r = pitch(buf, ac.sampleRate), rms = r.rms;
-      // 주변 소음 기준: 최근 약 3초 중 가장 조용했던 순간. 그보다 확실히 큰 소리만 목소리로 봐요
-      hist.push(rms); if (hist.length > 180) hist.shift();
-      var mn = Math.min.apply(null, hist);
-      floor = floor ? floor + (Math.max(mn, 0.003) - floor) * (mn < floor ? 0.3 : 0.02) : 0.008;
-      var voiced = rms > Math.max(floor * 3, 0.025), over = voiced ? 20 * Math.log10(rms / (floor * 3)) : 0, lvl = Math.max(0, Math.min(1, over / 22));
-      if (!voiced) r.f = 0;
-      amp += (lvl - amp) * (lvl > amp ? 0.18 : 0.07);
-      if (r.f) { hzS = hzS ? hzS + (r.f - hzS) * 0.25 : r.f; lastVoice = performance.now(); } else if (performance.now() - lastVoice > 400) hzS = 0;
-      var tgt = hzS ? Math.max(0, Math.min(1, (Math.log2(hzS) - 6.8) / 1.8)) : 0.35;
-      hue += ((hzS ? 200 - tgt * 160 : 48) - hue) * 0.12; ph += 0.04 + amp * 0.12 + tgt * 0.03;
-      var w = cv.width, h = cv.height, mid = h * 0.5;
+    function draw(t) {
+      if (!on) return;
+      // 말하는 중이면 숨 쉬듯 출렁이고, 글자가 새로 인식될 때마다 한 번 크게 일어요
+      bump *= 0.93;
+      var target = speaking ? 0.42 + 0.16 * Math.sin(t / 130) + 0.1 * Math.sin(t / 53) + bump * 0.4 : 0.07 + 0.02 * Math.sin(t / 400);
+      amp += (target - amp) * (target > amp ? 0.2 : 0.08);
+      ph += 0.035 + amp * 0.14;
+      var hue = speaking ? 52 : 205, w = cv.width, h = cv.height, mid = h * 0.5;
       cx.clearRect(0, 0, w, h); cx.globalCompositeOperation = 'lighter';
       [[1, 0, 0.9, 1], [1.6, 1.7, 0.6, 0.8], [2.3, 3.1, 0.4, 0.6]].forEach(function (l, k) {
         cx.beginPath();
@@ -4862,45 +4846,35 @@
         cx.shadowColor = 'hsl(' + hh + ',95%,60%)'; cx.shadowBlur = 16 + amp * 30; cx.stroke();
       });
       cx.shadowBlur = 0; cx.globalCompositeOperation = 'source-over';
-      var msg = !voiced && !hzS ? '듣고 있어요…' : amp < 0.25 ? '조금 더 크게 말해 보세요' : amp > 0.97 ? '조금 작게 말해 보세요' : '좋아요!';
-      if (msg !== lastMsg) { lastMsg = msg; var lv = document.getElementById('live'); if (lv && document.body.classList.contains('vfx-on')) lv.textContent = msg; }
+      var msg = speaking ? '좋아요!' : '듣고 있어요…';
+      if (msg !== lastMsg && performance.now() - msgT > 250) {
+        lastMsg = msg; msgT = performance.now();
+        var lv = document.getElementById('live'); if (lv && document.body.classList.contains('vfx-on')) lv.textContent = msg;
+      }
       raf = requestAnimationFrame(draw);
     }
-    // 마이크는 물결용을 먼저 열고, 그 다음에 음성 인식을 시작해야 둘이 부딪히지 않아요. 준비가 되면(또는 1.2초가 지나면) 알려 줘요
     function start(soft) {
-      return new Promise(function (resolve) {
-        if (on || disabled) { resolve(); return; }
-        on = true; var my = ++tok, done = false; ensure();
-        function fin() { if (!done) { done = true; resolve(); } }
-        document.body.classList.toggle('vfx-soft', !!soft);
-        document.body.classList.add('vfx-on');
-        clearTimeout(safe); safe = setTimeout(stop, 40000);
-        setTimeout(fin, 1200);
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { fin(); return; }
-        navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: false } }).then(function (st) {
-          if (!on || my !== tok) { st.getTracks().forEach(function (t) { t.stop(); }); fin(); return; }
-          stream = st;
-          var AC = window.AudioContext || window.webkitAudioContext;
-          ac = new AC(); an = ac.createAnalyser(); an.fftSize = 2048; buf = new Float32Array(an.fftSize);
-          ac.createMediaStreamSource(st).connect(an);
-          hist = []; floor = 0; amp = 0; lastMsg = ''; draw(); fin();
-        }).catch(function () { /* 마이크를 못 열면 물결 없이 기존 화면 그대로 써요 */ if (my === tok) stop(); fin(); });
-      });
+      if (on) return;
+      on = true; speaking = false; bump = 0; amp = 0.06; lastMsg = ''; ensure();
+      document.body.classList.toggle('vfx-soft', !!soft);
+      document.body.classList.add('vfx-on');
+      clearTimeout(safe); safe = setTimeout(stop, 40000);
+      raf = requestAnimationFrame(draw);
     }
     function stop() {
       if (!on) return;
-      on = false; tok++; clearTimeout(safe); cancelAnimationFrame(raf);
+      on = false; clearTimeout(safe); cancelAnimationFrame(raf);
       document.body.classList.remove('vfx-on');
-      if (stream) { stream.getTracks().forEach(function (t) { t.stop(); }); stream = null; }
-      if (ac) { try { ac.close(); } catch (e) { /* noop */ } ac = null; }
-      an = null;
       setTimeout(function () { if (!on && cx) cx.clearRect(0, 0, cv.width, cv.height); }, 300);
     }
-    // 이 기기에서 물결 때문에 음성 인식이 막히면(마이크 충돌) 물결을 끄고 인식을 우선해요
-    try { disabled = localStorage.getItem('pangpang.vfxoff') === '1'; } catch (e) { /* noop */ }
-    function disable() { disabled = true; try { localStorage.setItem('pangpang.vfxoff', '1'); } catch (e) { /* noop */ } stop(); }
-    return { start: start, stop: stop, disable: disable, active: function () { return on; } };
+    // 음성 인식이 알려 주는 신호 (말하기 시작/끝, 새 글자 인식)
+    function hook(r) {
+      r.onspeechstart = r.onsoundstart = function () { speaking = true; };
+      r.onspeechend = r.onsoundend = function () { speaking = false; };
+    }
+    return { start: start, stop: stop, hook: hook, bump: function () { speaking = true; bump = 1; }, active: function () { return on; } };
   })();
+
   function scListen(prev) {
     prev = prev || '';
     var c = state.sc;
@@ -4912,6 +4886,7 @@
     var finals = [], lastInterim = '', err = '', r = new SR();
     scRec = r;
     r.lang = 'zh-CN'; r.interimResults = true; r.maxAlternatives = 3; r.continuous = false;
+    VFX.hook(r);
     r.onstart = function () {
       if (state.sc !== c) return;
       c.listening = true;
@@ -4922,10 +4897,10 @@
     };
     r.onresult = function (e) {
       var res = e.results[e.results.length - 1];
-      lastInterim = res[0].transcript;
+      lastInterim = res[0].transcript; VFX.bump();
       if (res.isFinal) { finals = []; for (var i = 0; i < res.length; i++) finals.push(res[i].transcript); }
     };
-    r.onerror = function (e) { err = e.error || 'error'; if (VFX.active() && (err === 'audio-capture' || err === 'aborted')) VFX.disable(); };
+    r.onerror = function (e) { err = e.error || 'error'; };
     r.onend = function () {
       if (scRec === r) scRec = null;
       if (state.sc !== c || state.screen !== 'scene' || c.stage !== 'speak' || c.pass) return;
@@ -4954,7 +4929,8 @@
     if (navigator.vibrate) { try { navigator.vibrate(10); } catch (x) { /* noop */ } }
     scHolding = true; clearTimeout(scHoldTimer);
     sfx('pop');
-    VFX.start().then(function () { if (state.sc === c && c.stage === 'speak' && !scRec) scListen(); });
+    VFX.start();
+    scListen();
   });
   ['pointerup', 'pointercancel'].forEach(function (ev) {
     document.addEventListener(ev, function () {
@@ -5547,6 +5523,7 @@
     r.interimResults = true;
     r.maxAlternatives = 3;
     r.continuous = false;
+    VFX.hook(r);
 
     r.onstart = function () {
       if (state.s !== s) return;
@@ -5559,14 +5536,14 @@
     };
     r.onresult = function (e) {
       var res = e.results[e.results.length - 1];
-      lastInterim = res[0].transcript;
+      lastInterim = res[0].transcript; VFX.bump();
       // 듣는 동안엔 인식 중인 글자를 보여 주지 않고 '듣고 있어요…'만 보여요
       if (res.isFinal) {
         finals = [];
         for (var i = 0; i < res.length; i++) finals.push(res[i].transcript);
       }
     };
-    r.onerror = function (e) { errCode = e.error || 'error'; if (VFX.active() && (errCode === 'audio-capture' || errCode === 'aborted')) VFX.disable(); };
+    r.onerror = function (e) { errCode = e.error || 'error'; };
     r.onend = function () {
       if (rec === r) rec = null;
       if (state.s !== s || state.screen !== 'practice' || s.phase !== 'ask') return;
@@ -5608,7 +5585,8 @@
     if (navigator.vibrate) { try { navigator.vibrate(10); } catch (x) { /* noop */ } }
     holding = true; clearTimeout(holdTimer);
     sfx('pop');
-    VFX.start(true).then(function () { if (state.s === s && state.screen === 'practice' && !rec) startListening(); });   // 문제 글자가 카드 없이 놓인 화면이라 위쪽은 어둡게 하지 않아요
+    VFX.start(true);   // 문제 글자가 카드 없이 놓인 화면이라 위쪽은 어둡게 하지 않아요
+    startListening();
   }
   function micUp() {
     if (!holding) return;
