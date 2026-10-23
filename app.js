@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v238';
+  var APP_VERSION = 'v239';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -2365,7 +2365,7 @@
     }
     a.busy = true; render();
     try {
-      var d = await acCall({ action: 'chat_start', scenario: { id: 'free', title: topic, intro: intro } });
+      var d = await acCall({ action: 'chat_start', scenario: { id: 'free', title: topic, intro: intro }, lookup: !!a.typed && !intro && AC_TOPICS.indexOf(topic) < 0 });
       a.busy = false;
       if (!d.ok) { toast(AI_ERR[d.error] || '대화를 시작하지 못했어요. 잠시 후 다시 해 주세요'); acFailRender(a); return; }
       try { localStorage.setItem(aiUsedKey(), '1'); } catch (e) { /* 무시 */ }
@@ -5768,7 +5768,7 @@
       }
       case 'ai-go':
         if (aiBal() < AI_CHAT_COST) { toast('크레딧이 부족해요. 충전해 주세요'); break; }
-        state.ac = { mode: 'pick', topic: String(state.acTopic || '').trim(), direct: true, busy: false };
+        state.ac = { mode: 'pick', topic: String(state.acTopic || '').trim(), direct: true, typed: true, busy: false };
         go('aichat'); acStart(); break;
       case 'ac-open': state.ac = { mode: 'pick', topic: '' }; go('aichat'); break;
       case 'ac-topic': if (state.ac) { state.ac.topic = AC_TOPICS[+el.getAttribute('data-i')] || ''; render(); } break;
