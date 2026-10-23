@@ -3090,3 +3090,10 @@ body.vfx-on .mic-area .mic { transform: scale(1.18); }
 body.vfx-on .sc-fit .sc-card, body.vfx-on .q-wrap .cb.them.cur { position: relative; z-index: 18; }
 @media (prefers-reduced-motion: reduce) { .vfx-dim, .vfx-cv { transition: none; } }
 body.vfx-soft .vfx-dim { background: linear-gradient(to bottom, rgba(10,16,34,0) 22%, rgba(10,16,34,.5) 55%, rgba(10,16,34,.82)); }
+
+/* v257 스피드 퀴즈·AI 대화에도 물결 */
+body.vfx-on .ac-foot { background: none; }
+body.vfx-on .ac-foot .live { color: #fff; font-weight: 800; }
+body.vfx-on .ac-foot .mic { transform: scale(1.18); }
+body.vfx-on .sq-mic span { box-shadow: 0 0 0 10px rgba(236,205,76,.25); }
+body.vfx-on .ac-foot .ac-mic1 span { color: #fff; }

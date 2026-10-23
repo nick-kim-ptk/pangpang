@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v256';
+  var APP_VERSION = 'v257';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -2533,9 +2533,11 @@
     var r = new SR(), got = '', errCode = '', alts = [];
     if (kind === 'ko' && a.rep) { acHolding = false; return; }
     a.lk = kind; acRec = r; r.lang = kind === 'ko' ? 'ko-KR' : 'zh-CN'; r.interimResults = true; r.continuous = false; r.maxAlternatives = a.rep ? 5 : 1;
+    VFX.hook(r); VFX.start(true);
+    if (!prev && navigator.vibrate) { try { navigator.vibrate(10); } catch (x) { /* noop */ } }
     var live = function () { var m = document.getElementById(kind === 'ko' ? 'ac-mic-ko' : 'ac-mic'), lv = document.getElementById('ac-live'); if (m) m.classList.toggle('on', !!a.listening); if (lv) { lv.textContent = a.listening ? (a.live || '듣고 있어요…') : ''; lv.classList.remove('hint'); lv.classList.toggle('wait', !a.live); } };
     r.onstart = function () { a.listening = true; a.live = ''; live(); if (!acHolding) { try { r.stop(); } catch (e) { /* 무시 */ } } };
-    r.onresult = function (e) { var rs = e.results[e.results.length - 1]; got = rs[0].transcript; alts = []; for (var z = 0; z < rs.length; z++) alts.push(rs[z].transcript); };   // 듣는 동안엔 인식 중인 글자를 보여 주지 않고 '듣고 있어요…'만 보여요
+    r.onresult = function (e) { VFX.bump(); var rs = e.results[e.results.length - 1]; got = rs[0].transcript; alts = []; for (var z = 0; z < rs.length; z++) alts.push(rs[z].transcript); };   // 듣는 동안엔 인식 중인 글자를 보여 주지 않고 '듣고 있어요…'만 보여요
     r.onerror = function (e) { errCode = e.error || 'error'; };
     r.onend = function () {
       if (acRec === r) acRec = null;
@@ -2559,7 +2561,7 @@
     try { r.start(); } catch (e) { acRec = null; acHolding = false; }
   }
   function acMicUp() {
-    acHolding = false;
+    acHolding = false; VFX.stop();
     if (acRec) { try { acRec.stop(); } catch (e) { /* 무시 */ } }
   }
   document.addEventListener('pointerdown', function (e) {
@@ -3142,10 +3144,13 @@
     var alive = function () { return state.sp === sp && sp.tok === tok && sp.phase === 'run'; };
     var one = function () {
       if (!alive() || spRec) return;
+      VFX.start(true);
       var r = new SR(); spRec = r;
       r.lang = 'zh-CN'; r.interimResults = true; r.maxAlternatives = 3; r.continuous = false;
+      VFX.hook(r);
       r.onresult = function (e) {
         if (!alive()) return;
+        VFX.bump();
         var res = e.results[e.results.length - 1], list = [];
         for (var i = 0; i < res.length; i++) list.push(res[i].transcript);
         sp.heard = list[0] || '';
@@ -3171,7 +3176,7 @@
   function speedEnd(sp, ok, heard) {
     if (state.sp !== sp || sp.phase !== 'run') return;
     var q = sp.items[sp.i];
-    clearTimeout(spTimer); spTimer = null;
+    clearTimeout(spTimer); spTimer = null; VFX.stop();
     if (spRec) { var r = spRec; spRec = null; try { r.onend = null; r.abort(); } catch (e) { /* 이미 멈춤 */ } }
     sp.phase = 'result'; sp.ok = ok; sp.marks[sp.i] = !!ok; if (heard) sp.heard = heard;
     if (ok) { sp.right++; sp.combo++; sp.best = Math.max(sp.best, sp.combo); sfx('right', sp.combo); } else { sp.combo = 0; sfx('wrong'); }
@@ -4849,7 +4854,7 @@
       var msg = speaking ? '좋아요!' : '듣고 있어요…';
       if (msg !== lastMsg && performance.now() - msgT > 250) {
         lastMsg = msg; msgT = performance.now();
-        var lv = document.getElementById('live'); if (lv && document.body.classList.contains('vfx-on')) lv.textContent = msg;
+        var lv = document.getElementById('live') || document.getElementById('ac-live'); if (lv && document.body.classList.contains('vfx-on')) lv.textContent = msg;
       }
       raf = requestAnimationFrame(draw);
     }
