@@ -3018,3 +3018,6 @@ html, body, * { scrollbar-width: none; -ms-overflow-style: none; }
 .sc-lvb.on { background: var(--ink); color: var(--card); }
 .sc-card .sc-lv { order: 0; align-self: start; justify-self: start; margin: 0 0 var(--sp-1); }
 .sc-card .sc-ci { margin-bottom: 2px; }
+
+/* v241 키보드가 올라오면 하단 탭은 숨겨요(키보드 위로 떠오르지 않게) */
+body.kb .nav { display: none; }
