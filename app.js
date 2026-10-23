@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v204';
+  var APP_VERSION = 'v205';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -2725,9 +2725,24 @@
   }
   function glvSet(v) { try { localStorage.setItem('pangpang.gamelvs', JSON.stringify(v)); } catch (e) { /* 무시 */ } }
   function glvKey(v) { return parseInt(v.slice().sort().join(''), 10); }
+  function gsNote(sel) {
+    if (!sel.length) return '급을 하나 이상 골라 주세요';
+    var m = Math.round(wkMult(glvKey(sel)) * 100) / 100;
+    return sel.length > 1 ? '여러 급은 평균 배율 ×' + m + '로 계산해요' : '점수 배율 ×' + m;
+  }
+  // 창을 다시 그리지 않고 칩·문구·버튼만 바꿔요 (창이 새로 뜨는 듯한 깜빡임 방지)
+  function gsRefresh() {
+    var g = state.gs; if (!g) return;
+    Array.prototype.forEach.call(document.querySelectorAll('.gs-chip'), function (b) {
+      var on = g.sel.indexOf(parseInt(b.getAttribute('data-id'), 10)) >= 0;
+      b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+    var n = document.querySelector('.gs-note'); if (n) n.textContent = gsNote(g.sel);
+    var go = document.querySelector('[data-act="gs-go"]'); if (go) go.disabled = !g.sel.length;
+  }
   function gsheetHtml() {
     var g = state.gs; if (!g) return '';
-    var o = wkAll(), mult = wkMult(glvKey(g.sel));
+    var o = wkAll();
     var chips = [1, 2, 3, 4].map(function (l) {
       var on = g.sel.indexOf(l) >= 0, lk = hskLocked(l), w = o.r[g.game + l] || 0;
       return '<button class="gs-chip' + (on ? ' on' : '') + (lk ? ' lk' : '') + '" data-act="gs-toggle" data-id="' + l + '" aria-pressed="' + on + '">' +
@@ -2736,7 +2751,7 @@
     return '<div class="scrim modal" data-act="gs-close" aria-hidden="true"></div>' +
       '<div class="dialog gsheet" role="dialog" aria-modal="true" aria-label="급 고르기"><h3>' + GAME_NAME[g.game] + '</h3>' +
       '<p class="gs-sub">함께 풀 급을 골라요. 여러 개도 괜찮아요.</p><div class="gs-chips">' + chips + '</div>' +
-      '<p class="gs-note">' + (g.sel.length > 1 ? '여러 급을 고르면 점수 배율은 평균 ×' + (Math.round(mult * 100) / 100) + '이에요.' : '점수 배율은 ×' + (Math.round(mult * 100) / 100) + '이에요.') + '</p>' +
+      '<p class="gs-note">' + gsNote(g.sel) + '</p>' +
       '<button class="btn" data-act="gs-go"' + (g.sel.length ? '' : ' disabled') + '>시작하기</button></div>';
   }
   function modalHtml() {
@@ -5599,7 +5614,7 @@
           var gl = parseInt(id, 10), gi = state.gs.sel.indexOf(gl);
           if (hskLocked(gl)) { state.gs = null; go('pay', { payWhy: 'HSK ' + gl + '급은 멤버십이 필요해요. 1급은 무료예요.' }); break; }
           if (gi >= 0) state.gs.sel.splice(gi, 1); else state.gs.sel.push(gl);
-          state.gs.sel.sort(); glvSet(state.gs.sel); sfx('tap'); render();
+          state.gs.sel.sort(); glvSet(state.gs.sel); sfx('tap'); gsRefresh();
         } break;
       case 'gs-go':
         if (state.gs && state.gs.sel.length) {
