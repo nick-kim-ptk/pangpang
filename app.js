@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v219';
+  var APP_VERSION = 'v220';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -2797,7 +2797,8 @@
     var rules = '<ul class="gs-rules">' + info.rules.map(function (r) { return '<li><span class="gs-ri">' + (r[0] === 'spk' ? I.spk : icn(r[0])) + '</span>' + r[1] + '</li>'; }).join('') + '</ul>';
     var run = runGet(g.game), ri = run ? runInfo(g.game, run) : null;
     var resume = ri && !hskLocked(ri.key) ? '<div class="gs-resume"><div><b>이어서 하기</b><span>' + ri.text + '</span></div><button class="btn sm" data-act="gs-resume">이어서</button></div>' : '';
-    var py = g.game === 'rain' ? '<button class="rn-pytog gs-py' + (rnPyOn() ? ' on' : '') + '" data-act="gs-py" aria-pressed="' + (rnPyOn() ? 'true' : 'false') + '"><i></i> 병음 힌트 ' + (rnPyOn() ? '켜짐' : '꺼짐') + '</button>' : '';
+    var pyOn0 = gsPyOn(g.game);
+    var py = (g.game === 'rain' || g.game === 'chain') ? '<button class="rn-pytog gs-py' + (pyOn0 ? ' on' : '') + '" data-act="gs-py" aria-pressed="' + (pyOn0 ? 'true' : 'false') + '"><i></i> ' + (g.game === 'chain' ? '병음·뜻 힌트 ' : '병음 힌트 ') + (pyOn0 ? '켜짐' : '꺼짐') + '</button>' : '';
     var chips = hskAvail().map(function (l) {
       var on = g.sel.indexOf(l) >= 0, lk = hskLocked(l), w = o.r[g.game + l] || 0;
       return '<button class="gs-chip' + (on ? ' on' : '') + (lk ? ' lk' : '') + '" data-act="gs-toggle" data-id="' + l + '" aria-pressed="' + on + '">' +
@@ -5012,10 +5013,11 @@
         '<button class="btn" style="margin-top:20px;max-width:260px" data-act="ch-retry">다시 도전</button></div></div>';
     }
     var ti = c.qs[c.qi], t = list[ti], fb = c.phase === 'fb';
+    var hint = chPyOn();
     var tiles = c.grid.map(function (i, pos) {
-      var w = list[i], cls = 'ch-tile';
+      var w = list[i], cls = 'ch-tile' + (hint ? ' hint' : '');
       if (fb) cls += i === ti ? ' ok' : (pos === c.pick ? ' no' : ' dim');
-      return '<button class="' + cls + '" data-act="ch-pick" data-id="' + pos + '"' + (fb ? ' disabled' : '') + ' style="font-size:' + chFit(w[0], false) + '"><span>' + esc(w[0]) + '</span>' + (fb && i === ti ? '<i class="mk" aria-hidden="true">✓</i><span class="sr"> (정답)</span>' : fb && pos === c.pick ? '<i class="mk" aria-hidden="true">✗</i><span class="sr"> (오답)</span>' : '') + '</button>';
+      return '<button class="' + cls + '" data-act="ch-pick" data-id="' + pos + '"' + (fb ? ' disabled' : '') + ' style="font-size:' + chFit(w[0], false) + '"><span>' + esc(w[0]) + '</span>' + (hint ? '<small class="ch-h"><b>' + esc(w[1]) + '</b><em>' + esc(String(w[2]).split(/[,;]/)[0]) + '</em></small>' : '') + (fb && i === ti ? '<i class="mk" aria-hidden="true">✓</i><span class="sr"> (정답)</span>' : fb && pos === c.pick ? '<i class="mk" aria-hidden="true">✗</i><span class="sr"> (오답)</span>' : '') + '</button>';
     }).join('');
     var fbHtml = fb ? '<div class="ch-fb ' + (c.ok ? 'ok' : 'no') + '">' + chImg(!c.ok ? 'sad' : c.grad ? 'grad' : c.combo >= 3 ? 'fire' : 'cheer', 'chr-fb') + '<b class="zh">' + esc(t[0]) + '</b><span>' + esc(t[1]) + ' · ' + esc(t[2].split(',')[0]) + '</span>' +
       (c.ok ? '<em>' + (c.grad ? icn('grad-cap') + ' 졸업! ' : '') + '+' + c.lastPts + '</em>' : '<em>' + (c.timeout ? pick(['시간 초과', '달팽이보다 느렸어요']) : pick(['성조가 도망갔어요', '거의 맞았어요, 거의', '한자가 장난쳤어요', '아깝다! 다음엔 될 거예요'])) + '</em>') + '</div>' : '<div class="ch-fb ghost"></div>';
@@ -5037,6 +5039,8 @@
     try { localStorage.setItem(rnKey(), JSON.stringify(all)); } catch (e) { /* 무시 */ }
     return nb;
   }
+  function chPyOn() { try { return localStorage.getItem('pangpang.chain.py') === '1'; } catch (e) { return false; } }
+  function gsPyOn(game) { return game === 'rain' ? rnPyOn() : game === 'chain' ? chPyOn() : false; }
   function rnPyOn() { try { return localStorage.getItem('pangpang.rain.py') === '1'; } catch (e) { return false; } }
   function rnStop() { var r = state.rn; if (r) { r.tok++; cancelAnimationFrame(r.raf); clearTimeout(r.tm); } stopSpeak(); }
   function rnAlive(r, tok) { return state.screen === 'rain' && state.rn === r && r.tok === tok; }
@@ -5884,9 +5888,10 @@
           if (rg === 'quiz') resumeQuiz(rs); else if (rg === 'tone') resumeTone(rs); else if (rg === 'rain') resumeRain(rs); else resumeChain(rs);
         } break;
       case 'gs-py':
-        var pyOn = !rnPyOn(); try { localStorage.setItem('pangpang.rain.py', pyOn ? '1' : '0'); } catch (e) { /* 무시 */ }
+        var pyGame = state.gs && state.gs.game === 'chain' ? 'chain' : 'rain';
+        var pyOn = !gsPyOn(pyGame); try { localStorage.setItem('pangpang.' + pyGame + '.py', pyOn ? '1' : '0'); } catch (e) { /* 무시 */ }
         el.classList.toggle('on', pyOn); el.setAttribute('aria-pressed', pyOn ? 'true' : 'false');
-        el.lastChild.textContent = ' 병음 힌트 ' + (pyOn ? '켜짐' : '꺼짐'); sfx('tap'); break;
+        el.lastChild.textContent = ' ' + (pyGame === 'chain' ? '병음·뜻 힌트 ' : '병음 힌트 ') + (pyOn ? '켜짐' : '꺼짐'); sfx('tap'); break;
       case 'gs-toggle':
         if (state.gs) {
           var gl = parseInt(id, 10), gi = state.gs.sel.indexOf(gl);
