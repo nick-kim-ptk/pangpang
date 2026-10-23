@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v202';
+  var APP_VERSION = 'v203';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -3700,6 +3700,39 @@
       '<p class="rk-sub">월요일 0시에 새로 시작해요 · 마감까지 ' + wkLeft() + '일</p>' + list +
       '<p class="rk-foot">토탈 = 4개 게임의 이번 주 최고 점수 합계예요. 어려운 급일수록 점수에 배율이 붙어요 (1급 ×0.9 · 2급 ×1.0 · 3급 ×1.1 · 4급 ×1.2).</p><div style="height:32px"></div></div></div>';
   }
+  /* ---------- 지난주 결과: 새 주의 첫 접속 때 한 번 보여 줘요 ---------- */
+  function wkPrevMonday() {
+    var d = wkNow(); d.setUTCDate(d.getUTCDate() - wkDow() - 7);
+    return d.getUTCFullYear() + '-' + ('0' + (d.getUTCMonth() + 1)).slice(-2) + '-' + ('0' + d.getUTCDate()).slice(-2);
+  }
+  function wkSeenKey() { return 'pangpang.wkseen.' + (state.user ? state.user.id : 'x'); }
+  function wkLastLoad() {
+    if (state.wkLast !== undefined) return;
+    if (!sb || isGuest() || !state.user) { state.wkLast = 'none'; return; }
+    var pm = wkPrevMonday(), seen = '';
+    try { seen = localStorage.getItem(wkSeenKey()) || ''; } catch (e) { /* 무시 */ }
+    if (seen === pm) { state.wkLast = 'none'; return; }
+    state.wkLast = 'wait';
+    function fin(v) { state.wkLast = v; if (state.screen === 'tab' && state.tab === 'words') renderKeep(); }
+    Promise.resolve(sb.rpc('weekly_rank', { p_week: pm })).then(function (res) {
+      if (res && res.error) { fin('none'); return; }   // 표가 없거나 오류면 표시하지 않고 다음에 다시 시도해요
+      var rows = (res && res.data) || [], me = rows.filter(function (r) { return r.me; })[0];
+      if (!me) { try { localStorage.setItem(wkSeenKey(), pm); } catch (e) { /* 무시 */ } fin('none'); return; }
+      fin({ pm: pm, me: me, top: rows.filter(function (r) { return +r.rnk <= 3; }).slice(0, 3) });
+    }, function () { fin('none'); });
+  }
+  function wkLastCard() {
+    var L = state.wkLast;
+    if (!L || L === 'wait' || L === 'none') return '';
+    var a = new Date(L.pm + 'T00:00:00Z'), b = new Date(a.getTime() + 6 * 86400000);
+    function md(d) { return (d.getUTCMonth() + 1) + '/' + d.getUTCDate(); }
+    var n = +L.me.rnk, win = n <= 3;
+    var msg = win ? '축하해요! 트로피를 받았어요' : '이번 주엔 더 높이 올라가 봐요';
+    return '<div class="wl-card"><div class="wl-top"><b>지난주 결과</b><span>' + md(a) + ' ~ ' + md(b) + '</span></div>' +
+      '<div class="wl-me">' + (win ? '<span class="rk-medal m' + n + '">' + icn('trophy') + '</span>' : '') + '<div><b>' + n + '위</b><span>' + (+L.me.total) + '점 · ' + msg + '</span></div></div>' +
+      (L.top.length ? '<ul class="wl-top3">' + L.top.map(function (r) { return '<li><span class="rk-medal m' + (+r.rnk) + '">' + icn('trophy') + '</span><em>' + esc(r.nick) + (r.me ? ' (나)' : '') + '</em><b>' + (+r.total) + '점</b></li>'; }).join('') + '</ul>' : '') +
+      '<button class="btn sm" data-act="wk-last-ok">이번 주도 도전!</button></div>';
+  }
   function hskSection() {
     if (!Object.keys(HSKW).length) return '';
     var lv = hskLvSel(), n = hskList(lv).length, k = hskCount(lv), pct = n ? Math.round(k / n * 100) : 0;
@@ -3726,7 +3759,8 @@
       '<div class="wk-card"><div class="wk-top"><span class="wk-l">이번 주 내 토탈 점수</span><span class="wk-d">마감 D-' + wkLeft() + '</span></div>' +
       '<b class="wk-n">' + tot + '<small>점</small></b>' +
       '<button class="wk-rank" data-act="rank-open">' + icn('trophy') + ' 전체 순위 보기<span class="hr-chev">' + chev + '</span></button></div>';
-    return '<div class="hsk-main">' + chips +
+    wkLastLoad();
+    return '<div class="hsk-main">' + wkLastCard() + chips +
       (locked ? '<p class="hsk-lock-note">' + I.lock + ' ' + lv + '급은 멤버십이 필요해요. 1급은 무료예요.</p>' : '') +
       study + gameHead +
       '<div class="hsk-modes">' +
@@ -5499,6 +5533,9 @@
         go('tab', { tab: 'words' });
         var ge = document.getElementById('hsk-games'); if (ge && ge.scrollIntoView) ge.scrollIntoView({ block: 'start' });
         break;
+      case 'wk-last-ok':
+        try { localStorage.setItem(wkSeenKey(), wkPrevMonday()); } catch (e) { /* 무시 */ }
+        state.wkLast = 'none'; sfx('tap'); renderKeep(); break;
       case 'rank-open': openRank(); break;
       case 'sc-open': state.scFrom = state.screen === 'scenes' ? 'scenes' : ''; startScene(id); break;
       case 'sc-all': go('scenes'); break;
