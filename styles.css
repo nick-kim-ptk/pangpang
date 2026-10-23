@@ -2867,3 +2867,13 @@ html, body, * { scrollbar-width: none; -ms-overflow-style: none; }
 .mw-pt .rk-medal { width: 28px; height: 28px; }
 .mw-pt .rk-medal .ic { width: 18px; height: 18px; }
 .mw-sub { margin-top: 4px; font-size: 12px; color: var(--ink-3); }
+
+/* v208: 급 고르기 시트에 게임 설명·캐릭터 */
+.gsheet .gs-mascot { position: absolute; right: 16px; top: -64px; width: 104px; height: auto; pointer-events: none; }
+.gs-rules { list-style: none; margin: var(--sp-2) 0 var(--sp-3); padding: 0; display: grid; gap: 6px; }
+.gs-rules li { display: flex; align-items: center; gap: var(--sp-2); font-size: 14px; line-height: 1.4; color: var(--ink-2); }
+.gs-ri { flex: none; display: inline-flex; width: 22px; height: 22px; align-items: center; justify-content: center; color: var(--navy); }
+.gs-ri .ic, .gs-ri svg { width: 20px; height: 20px; }
+.gsheet .gs-py { margin: 0 0 var(--sp-3); }
+.gsheet .gs-sub { margin-bottom: var(--sp-3); font-weight: 700; color: var(--ink); }
+@media (max-height: 640px) { .gsheet { max-height: 92dvh; overflow-y: auto; } .gsheet .gs-mascot { display: none; } }

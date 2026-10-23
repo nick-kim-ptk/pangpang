@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v207';
+  var APP_VERSION = 'v208';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -2750,16 +2750,24 @@
     var n = document.querySelector('.gs-note'); if (n) n.textContent = gsNote(g.sel);
     var go = document.querySelector('[data-act="gs-go"]'); if (go) go.disabled = !g.sel.length;
   }
+  var GAME_INFO = {
+    quiz: { img: 'focus', rules: [['spk', '소리를 듣고 알맞은 뜻을 골라요'], ['heart', '하트 3개 · 틀리면 하나씩 줄어요'], ['trophy', '빨리, 연속으로 맞힐수록 점수가 높아요']] },
+    chain: { img: 'fire', rules: [['chain', '새 단어를 보고 외워요'], ['flame', '소리를 듣고 같은 한자를 찾아 눌러요'], ['heart', '하트 3개 · 단계마다 단어가 늘어요']] },
+    tone: { img: 'love', rules: [['spk', '소리를 듣고 글자마다 성조를 골라요'], ['heart', '하트 5개 · 틀리면 하나씩 줄어요'], ['trophy', '빨리, 연속으로 맞힐수록 점수가 높아요']] },
+    rain: { img: 'cheer', rules: [['flame', '소리를 듣고 떨어지는 한자 중 맞는 걸 눌러요'], ['heart', '하트 3개 · 틀리거나 놓치면 줄어요'], ['trophy', '빨리 잡을수록, 연속일수록 점수가 높아요']] }
+  };
   function gsheetHtml() {
     var g = state.gs; if (!g) return '';
-    var o = wkAll();
+    var o = wkAll(), info = GAME_INFO[g.game];
+    var rules = '<ul class="gs-rules">' + info.rules.map(function (r) { return '<li><span class="gs-ri">' + (r[0] === 'spk' ? I.spk : icn(r[0])) + '</span>' + r[1] + '</li>'; }).join('') + '</ul>';
+    var py = g.game === 'rain' ? '<button class="rn-pytog gs-py' + (rnPyOn() ? ' on' : '') + '" data-act="gs-py" aria-pressed="' + (rnPyOn() ? 'true' : 'false') + '"><i></i> 병음 힌트 ' + (rnPyOn() ? '켜짐' : '꺼짐') + '</button>' : '';
     var chips = [1, 2, 3, 4].map(function (l) {
       var on = g.sel.indexOf(l) >= 0, lk = hskLocked(l), w = o.r[g.game + l] || 0;
       return '<button class="gs-chip' + (on ? ' on' : '') + (lk ? ' lk' : '') + '" data-act="gs-toggle" data-id="' + l + '" aria-pressed="' + on + '">' +
         '<b>' + (lk ? '<i class="hc-lock">' + I.lock + '</i>' : '') + l + '급</b><span>' + (w ? '이번 주 ' + w + '점' : '아직 기록 없음') + '</span></button>';
     }).join('');
     return '<div class="scrim modal" data-act="gs-close" aria-hidden="true"></div>' +
-      '<div class="dialog gsheet" role="dialog" aria-modal="true" aria-label="급 고르기"><h3>' + GAME_NAME[g.game] + '</h3>' +
+      '<div class="dialog gsheet" role="dialog" aria-modal="true" aria-label="' + GAME_NAME[g.game] + '">' + chImg(info.img, 'gs-mascot') + '<h3>' + GAME_NAME[g.game] + '</h3>' + rules + py +
       '<p class="gs-sub">함께 풀 급을 골라요. 여러 개도 괜찮아요.</p><div class="gs-chips">' + chips + '</div>' +
       '<p class="gs-note">' + gsNote(g.sel) + '</p>' +
       '<button class="btn" data-act="gs-go"' + (g.sel.length ? '' : ' disabled') + '>시작하기</button></div>';
@@ -5652,7 +5660,7 @@
       case 'chat-all': go('aichats'); break;
       case 'chat-del': askConfirm({ title: '이 기록을 지울까요?', body: '지운 대화는 되돌릴 수 없어요.', ok: '지우기', cancel: '취소', danger: true }, function () { chatDel(id); goBack(); toast('기록을 지웠어요'); }); break;
       case 'ch-start': startChain(parseInt(id, 10)); break;
-      case 'rain-start': if (hskGate(id)) break; startRain(parseInt(id, 10)); break;
+      case 'rain-start': if (hskGate(id)) break; startRain(parseInt(id, 10)); rnBegin(); break;
       case 'rn-go': rnBegin(); break;
       case 'rn-quit': leaveGame('rain', function () { rnStop(); go('tab'); }); break;
       case 'rn-py': if (state.rn) { state.rn.py = !state.rn.py; try { localStorage.setItem('pangpang.rain.py', state.rn.py ? '1' : '0'); } catch (e) { /* 무시 */ } sfx('tap'); render(); } break;
@@ -5678,6 +5686,10 @@
         state.wkLast = 'none'; sfx('tap'); renderKeep(); break;
       case 'game-pick': state.gs = { game: id, sel: glvGet() }; sfx('tap'); render(); break;
       case 'gs-close': state.gs = null; render(); break;
+      case 'gs-py':
+        var pyOn = !rnPyOn(); try { localStorage.setItem('pangpang.rain.py', pyOn ? '1' : '0'); } catch (e) { /* 무시 */ }
+        el.classList.toggle('on', pyOn); el.setAttribute('aria-pressed', pyOn ? 'true' : 'false');
+        el.lastChild.textContent = ' 병음 힌트 ' + (pyOn ? '켜짐' : '꺼짐'); sfx('tap'); break;
       case 'gs-toggle':
         if (state.gs) {
           var gl = parseInt(id, 10), gi = state.gs.sel.indexOf(gl);
@@ -5691,7 +5703,7 @@
           if (gg.game === 'quiz') startHskQuiz(gkey);
           else if (gg.game === 'chain') startChain(gkey);
           else if (gg.game === 'tone') startTone(gkey);
-          else startRain(gkey);
+          else { startRain(gkey); rnBegin(); }
         } break;
       case 'rank-open': openRank(); break;
       case 'myweeks-open': openMyWeeks(); break;
