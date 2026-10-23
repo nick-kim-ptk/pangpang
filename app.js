@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v242';
+  var APP_VERSION = 'v243';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -1352,7 +1352,7 @@
       return '<div class="gm-ex"><div class="gm-row"><span class="gm-lab">한국어</span>' + e.ko.map(function (k, i) { return '<span class="gm-b c' + (i % 4) + '">' + esc(k) + '</span>'; }).join('') + '</div>' +
         '<div class="gm-row"><span class="gm-lab">중국어</span>' + e.zh.map(function (z, i) { return '<button class="gm-b zh c' + (e.link[i] % 4) + '" data-act="say" data-text="' + esc(z) + '" aria-label="듣기">' + esc(z) + '</button>'; }).join('') + '<button class="gm-spk" data-act="say" data-text="' + esc(e.zh.join('')) + '" aria-label="문장 듣기">' + I.spk + '</button></div></div>';
     }).join('');
-    return '<div class="gm-rule"><div class="gm-rt">핵심 규칙</div><div class="gm-rl">' + esc(r.line) + '</div>' + ex +
+    return '<div class="gm-rule"><div class="gm-rt">핵심 규칙</div><div class="gm-rl">' + esc(r.line.split(' — ')[0]) + '</div>' + (r.line.indexOf(' — ') > 0 ? '<div class="gm-rd">' + esc(r.line.split(' — ').slice(1).join(' — ')) + '</div>' : '') + ex +
       '<ul class="gm-notes">' + r.notes.map(function (n) { return '<li>' + esc(n) + '</li>'; }).join('') + '</ul></div>' +
 '';
   }
@@ -1471,7 +1471,7 @@
       '<div class="topbar"><button class="icon-btn" data-act="back" aria-label="뒤로">' + I.back + '</button></div>' +
       '<div class="scroll" style="padding-bottom:8px">' +
         '<div class="intro-head"><div><span class="chip y lesson-no">' + (l.kind === 'grammar' ? '문법 ' + (GRAMMAR.indexOf(l) + 1) + ' · HSK 1급' : (LESSONS.indexOf(l) + 1) + '번째 레슨') + '</span><h1 class="big-title" style="margin-top:8px">' + esc(l.title) + '</h1>' +
-        '<p class="sub-title" style="margin-bottom:0">' + esc(l.intro) + '</p></div></div>' +
+        '<p class="sub-title" style="margin-bottom:0">' + esc(l.intro).replace(/\s*예\)\s*/, '<br>예) ') + '</p></div></div>' +
         (l.kind === 'grammar' ? '' : '<div class="pattern" style="margin-top:16px"><div class="zh">' + esc(l.pattern.zh) + '</div><div class="py" style="margin-top:2px">' + esc(l.pattern.py) + '</div><div class="kr">' + esc(kr(l.pattern.py)) + '</div><div class="ko" style="margin-top:2px">' + esc(l.pattern.ko) + '</div></div>') +
         (l.kind === 'grammar' ? gmRuleCard(l) : introPractice(l, learned)) +
         '<div class="seg-row intro-seg" role="tablist" style="margin-top:24px">' +
