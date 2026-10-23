@@ -2849,3 +2849,21 @@ html, body, * { scrollbar-width: none; -ms-overflow-style: none; }
 
 /* v206: HSK 기준 문구는 급 영역 아래 */
 .hsk-main .hsk-grp-note { margin: calc(var(--sp-3) * -1) 0 var(--sp-5); text-align: center; }
+
+/* v207: 결과 화면 토탈 변화, 내 주간 기록 */
+.rd-wk { margin-top: var(--sp-2); font-size: 13px; font-weight: 700; color: var(--ink-3); text-align: center; }
+.rd-wk b { color: var(--ink); font-weight: 900; }
+.rd-wk em { margin-left: 6px; font-style: normal; font-weight: 900; color: var(--green); }
+.rd-wk span { margin-left: 6px; font-weight: 600; }
+.mw-link { margin-top: var(--sp-4); border-radius: 20px; background: var(--card); box-shadow: inset 0 0 0 1.5px var(--line); }
+.mw-row { padding: 12px 14px; border-radius: 16px; background: var(--card); box-shadow: inset 0 0 0 1.5px var(--line); }
+.mw-row.best { box-shadow: inset 0 0 0 2px var(--yellow); }
+.mw-top { display: flex; justify-content: space-between; align-items: center; gap: var(--sp-3); }
+.mw-top b { font-weight: 800; }
+.mw-top b i { margin-left: 6px; padding: 2px 7px; border-radius: 999px; font-style: normal; font-size: 11px; font-weight: 800; background: var(--soft); color: var(--ink-2); }
+.mw-top b i.bst { background: var(--y); color: #1a2139; }
+.mw-pt { display: inline-flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; font-weight: 900; font-size: 18px; }
+.mw-pt small { font-size: 12px; font-weight: 700; color: var(--ink-3); }
+.mw-pt .rk-medal { width: 28px; height: 28px; }
+.mw-pt .rk-medal .ic { width: 18px; height: 18px; }
+.mw-sub { margin-top: 4px; font-size: 12px; color: var(--ink-3); }

@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v206';
+  var APP_VERSION = 'v207';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -61,6 +61,8 @@
     var g = parseInt(p.goal, 10);
     return {
       nickname: p.nickname || '',
+      rankPub: p.rankPub !== false,
+      rankAnon: /^\d{5}$/.test(String(p.rankAnon || '')) ? String(p.rankAnon) : '',
       goal: GOALS.indexOf(g) >= 0 ? g : 50,
       theme: (p.theme === 'light' || p.theme === 'dark') ? p.theme : 'auto',
       remind: /^\d\d:\d\d$/.test(p.remind || '') ? p.remind : '20:00',
@@ -248,7 +250,7 @@
     state.progress = {}; state.done = {}; state.daily = {};
     if (!keepProfile) {
       var meta = (state.user && state.user.user_metadata) || {};
-      state.profile = normProfile({ nickname: meta.nickname, goal: meta.goal, theme: meta.theme, remind: meta.remind, remindOn: meta.remindOn, minuteOn: meta.minuteOn, speedUsed: meta.speedUsed, sound: meta.sound, kr: meta.kr, input: meta.input, favs: meta.favs, dlg: meta.dlg, hsk3: meta.hsk3 });
+      state.profile = normProfile({ nickname: meta.nickname, rankPub: meta.rankPub, rankAnon: meta.rankAnon, goal: meta.goal, theme: meta.theme, remind: meta.remind, remindOn: meta.remindOn, minuteOn: meta.minuteOn, speedUsed: meta.speedUsed, sound: meta.sound, kr: meta.kr, input: meta.input, favs: meta.favs, dlg: meta.dlg, hsk3: meta.hsk3 });
       applyTheme();
     }
     (res[0].data || []).forEach(function (r) { state.progress[r.qid] = r; });
@@ -322,7 +324,7 @@
       persistLocal();
       if (!sb || isGuest()) return;
       var p = state.profile;
-      var res = await sb.auth.updateUser({ data: { nickname: p.nickname, goal: p.goal, theme: p.theme, remind: p.remind, remindOn: p.remindOn, minuteOn: p.minuteOn, speedUsed: p.speedUsed, sound: p.sound, kr: p.kr, input: p.input, favs: p.favs, dlg: p.dlg, hsk3: p.hsk3 } });
+      var res = await sb.auth.updateUser({ data: { nickname: p.nickname, rankPub: p.rankPub, rankAnon: p.rankAnon, goal: p.goal, theme: p.theme, remind: p.remind, remindOn: p.remindOn, minuteOn: p.minuteOn, speedUsed: p.speedUsed, sound: p.sound, kr: p.kr, input: p.input, favs: p.favs, dlg: p.dlg, hsk3: p.hsk3 } });
       if (res.error) saveFailed(res.error); else if (res.data && res.data.user) state.user = res.data.user;
     }),
     saveDaily: tracked(async function (row) {
@@ -604,7 +606,7 @@
 
   /* ---------- 화면 이동 ---------- */
   // 뒤로 가기: 폰의 뒤로 제스처·버튼(기록)과 화면 왼쪽 가장자리에서 오른쪽으로 미는 동작을 같이 처리해요
-  var SUBSCREEN = { pay: 1, privacy: 1, login: 1, intro: 1, practice: 1, quiz: 1, stats: 1, done: 1, hsk: 1, hskstudy: 1, tone: 1, feedback: 1, speed: 1, account: 1, coupon: 1, aicharge: 1, aichat: 1, aiall: 1, aichats: 1, aichatlog: 1, scene: 1, gram: 1, grams: 1, lsall: 1, rank: 1, chain: 1, rain: 1, scenes: 1, phrases: 1, prefs: 1, about: 1, advisor: 1 };
+  var SUBSCREEN = { pay: 1, privacy: 1, login: 1, intro: 1, practice: 1, quiz: 1, stats: 1, done: 1, hsk: 1, hskstudy: 1, tone: 1, feedback: 1, speed: 1, account: 1, coupon: 1, aicharge: 1, aichat: 1, aiall: 1, aichats: 1, aichatlog: 1, scene: 1, gram: 1, grams: 1, lsall: 1, rank: 1, myweeks: 1, chain: 1, rain: 1, scenes: 1, phrases: 1, prefs: 1, about: 1, advisor: 1 };
   var inSub = false, ignorePop = 0, backAnim = false;
   function syncHistory(screen) {
     try {
@@ -629,9 +631,9 @@
       acStop(); go('tab');
     }
     else if (sc === 'practice') quitPractice();
-    else if (sc === 'quiz') { stopSpeak(); go('tab'); }
+    else if (sc === 'quiz') leaveGame('quiz', function () { stopSpeak(); go('tab'); });
     else if (sc === 'hskstudy') { stopSpeak(); clearTimeout(hskTimer); store.saveProfile(); go('tab'); }
-    else if (sc === 'tone') { stopSpeak(); go('tab'); }
+    else if (sc === 'tone') leaveGame('tone', function () { stopSpeak(); go('tab'); });
     else if (sc === 'aichats') go('tab');
     else if (sc === 'aichatlog') go(state.chatFrom === 'all' ? 'aichats' : 'tab');
     else if (sc === 'hsk') go('tab');
@@ -639,12 +641,13 @@
     else if (sc === 'pay') go('tab');
     else if (sc === 'privacy') go(state.privFrom === 'login' ? 'login' : 'tab');
     else if (sc === 'speed') { stopSpeed(); go('tab'); }
-    else if (sc === 'chain') { chStop(); go('tab'); }
-    else if (sc === 'rain') { rnStop(); go('tab'); }
+    else if (sc === 'chain') leaveGame('chain', function () { chStop(); go('tab'); });
+    else if (sc === 'rain') leaveGame('rain', function () { rnStop(); go('tab'); });
     else if (sc === 'scene') { stopSpeak(); scStopRec(); state.sc = null; go(state.scFrom === 'scenes' ? 'scenes' : 'tab'); }
     else if (sc === 'gram') { stopSpeak(); go('intro', { lessonId: state.gm.l.id }); }
     else if (sc === 'scenes' || sc === 'grams' || sc === 'lsall') go('tab', { tab: 'lessons' });
     else if (sc === 'rank') go('tab', { tab: 'words' });
+    else if (sc === 'myweeks') go('rank');
     else if (sc === 'done') go('tab', { tab: 'home' });
     else if (sc === 'feedback' || sc === 'account' || sc === 'coupon') go('prefs');
     else if (sc === 'intro' && (state.lsFrom === 'grams' || state.lsFrom === 'lsall')) go(state.lsFrom);
@@ -1856,6 +1859,11 @@
     return (r.milestone ? '<div class="gd-cele"><b>' + r.milestone + '일 연속 학습!</b><span>꾸준함이 실력이 돼요</span></div>' : '') +
       (r.goalHit ? '<div class="gd-cele"><b>오늘 목표 달성!</b><span>오늘 푼 문제 ' + r.goal + '개 · 천천히, 그래도 끝까지 왔어요</span></div>' : '');
   }
+  function rdWk(r) {
+    if (!r.wk) return '';
+    var d = r.wk.to - r.wk.from;
+    return '<div class="rd-wk">이번 주 토탈 <b>' + r.wk.to + '점</b>' + (d > 0 ? '<em>+' + d + '</em>' : '<span>(그대로)</span>') + '</div>';
+  }
   function gdStars(n) {
     return '<div class="rd-stars">' + [0, 1, 2].map(function (i) { return '<i class="rd-star' + (i < n ? ' on' : '') + '" style="animation-delay:' + (0.5 + i * 0.25).toFixed(2) + 's">★</i>'; }).join('') + '</div>';
   }
@@ -1905,7 +1913,8 @@
     else if (r.newBest) { vs = '최고 기록을 <b>' + diff + '점</b> 올렸어요!'; cls = 'up'; }
     else if (diff === 0) { vs = '최고 기록과 똑같아요. 한 끗만 더!'; cls = 'same'; }
     else { vs = '최고 기록까지 <b>' + (-diff) + '점</b> 남았어요'; cls = 'down'; }
-    var msg = pct >= .9 ? '귀가 활짝 열렸어요! 거의 다 잡았어요'
+    var msg = r.cleared ? '더 이상 풀 문제가 없어요! 소나기가 그쳤어요'
+      : pct >= .9 ? '귀가 활짝 열렸어요! 거의 다 잡았어요'
       : pct >= .7 ? '점점 눈에 익어 가시는군요!'
       : pct >= .4 ? '조금씩 익숙해지고 있어요. 한 번만 더 해 볼까요?'
       : '처음엔 다 그래요. 소리에 귀를 기울여 봐요';
@@ -1921,7 +1930,7 @@
       '<span>웨이브 ' + w + (r.combo >= 2 ? ' · 최고 ' + r.combo + '연속' : '') + '</span></div>' +
       '<div class="rd-vs ' + cls + '"><div class="rd-line">' + gdLines(vs) + '</div>' +
       (r.first ? '' : '<div class="rd-bars"><div class="rd-bar"><span>최고</span><em class="trk"><i style="width:' + Math.round(r.prev / top * 100) + '%"></i></em><b>' + r.prev + '</b></div>' +
-        '<div class="rd-bar now"><span>이번</span><em class="trk"><i style="width:' + Math.round(r.score / top * 100) + '%"></i></em><b>' + r.score + '</b></div></div>') + '</div>' +
+        '<div class="rd-bar now"><span>이번</span><em class="trk"><i style="width:' + Math.round(r.score / top * 100) + '%"></i></em><b>' + r.score + '</b></div></div>') + rdWk(r) + '</div>' +
       gdCele(r) +
       '<div class="rd-msgbox"><p class="rd-msg">“' + gdLines(esc(msg)) + '”</p></div>' +
       '</div><div class="footer" style="padding-left:0;padding-right:0">' +
@@ -2607,6 +2616,7 @@
         '<div class="set-row"><div class="set-t">효과음·진동</div>' + seg('set-sound', p.sound ? 'on' : 'off', [['on', '켜짐'], ['off', '꺼짐']]) + '</div>' +
         '<div class="set-row"><div class="set-t">중국어 음성' + (function () { var z = zhVoiceState(); return '<div class="set-sub">' + (z === 'yes' ? '사용할 수 있어요' : z === 'no' ? '이 폰에 없어요' : '확인 중이에요') + '</div>'; })() + '</div><button class="pill-sm" data-act="zh-guide">설치 방법</button></div>' +
         '<div class="set-row"><div class="set-t">화면</div>' + seg('set-theme', p.theme, [['auto', '자동'], ['light', '라이트'], ['dark', '다크']]) + '</div></div>' +
+      ((sb && !isGuest()) ? '<div class="section-title" style="margin-top:24px">순위</div><div class="set-card"><div class="set-row"><div class="set-t">순위에 닉네임 공개<div class="set-sub">' + (p.rankPub ? '끄면 \'비공개\'와 숫자로 바꿔 보여요' : '지금은 \'' + rankNick() + '\'로 보여요') + '</div></div>' + seg('set-rank', p.rankPub ? 'on' : 'off', [['on', '공개'], ['off', '비공개']]) + '</div></div>' : '') +
       (extra ? '<div class="section-title" style="margin-top:24px">알림 · 앱 설치</div><div class="set-card">' + extra + '</div>' : '') +
       ((sb ? 1 : 0) ? '<div class="section-title" style="margin-top:24px">이용권 · 계정</div><div class="set-card">' +
         '<div class="set-row"><div class="set-t">쿠폰 등록</div><button class="pill-sm" data-act="open-coupon">입력</button></div>' +
@@ -2827,6 +2837,7 @@
     else if (state.screen === 'grams') html = viewGrams();
     else if (state.screen === 'lsall') html = viewLessonsAll();
     else if (state.screen === 'rank') html = viewRank();
+    else if (state.screen === 'myweeks') html = viewMyWeeks();
     else if (state.screen === 'stats') html = viewStats();
     else if (state.screen === 'hsk') html = viewHsk();
     else if (state.screen === 'feedback') html = viewFeedback();
@@ -3580,13 +3591,26 @@
       '<div class="ch-hearts">' + ptHearts(hearts, total) + '</div><span class="chip y">' + score + '점</span></div>' +
       '<div class="pt-time">' + (live ? '<i style="animation-duration:' + win.toFixed(1) + 's;animation-delay:-' + Math.min(el, win).toFixed(2) + 's"></i>' : '') + '</div>';
   }
+  // 점수가 쌓인 판에서 나갈 때는 한 번 물어봐요
+  function gameAtStake(kind) {
+    if (kind === 'quiz') { var z = state.z; return !!(z && z.hsk && (z.score > 0 || z.hearts < QZ_HEARTS)); }
+    if (kind === 'tone') { var tn = state.tn; return !!(tn && (tn.score > 0 || tn.hearts < TN_HEARTS)); }
+    if (kind === 'rain') { var r = state.rn; return !!(r && r.phase === 'play' && (r.score > 0 || r.lives < RN_LIVES)); }
+    if (kind === 'chain') { var c = state.ch; return !!(c && c.score > 0); }
+    return false;
+  }
+  function leaveGame(kind, fn) {
+    if (!gameAtStake(kind)) { fn(); return; }
+    askConfirm({ title: '지금 나갈까요?', body: '지금 나가면 이번 판 점수는 기록되지 않아요.', ok: '계속하기', cancel: '나가기' }, null, fn);
+  }
   function ptFinish(game, lv, s, again) {
     var goal = state.profile.goal, now = todayAnswers(), hit = s.before < goal && now >= goal;
     var prev = ptBest(game, lv), nb = s.score > prev && prev > 0, first = prev === 0;
+    var wk0 = wkTotal();
     ptSave(game, lv, s.score); wkSubmit(game === 'hskquiz' ? 'quiz' : 'tone', lv, s.score);
     stopSpeak(); sfx(hit || nb ? 'goal' : 'done');
     go('done', { result: { kind: 'score', game: game, lv: lv, score: s.score, prev: prev, newBest: nb, first: first, right: s.right, answered: s.answered, combo: s.maxCombo, all: !!s.all,
-      answers: now, goal: goal, goalHit: hit, milestone: 0, again: again } });
+      answers: now, goal: goal, goalHit: hit, milestone: 0, again: again, wk: { from: wk0, to: wkTotal() } } });
   }
   // 퀴즈·성조 결과: 점수를 크게, 최고 기록과 견줘요 (소나기·기억 사슬 결과와 같은 모양)
   function ptDone(r) {
@@ -3596,7 +3620,7 @@
     else if (r.newBest) { vs = '최고 기록을 <b>' + diff + '점</b> 올렸어요!'; cls = 'up'; }
     else if (diff === 0) { vs = '최고 기록과 똑같아요. 한 끗만 더!'; cls = 'same'; }
     else { vs = '최고 기록까지 <b>' + (-diff) + '점</b> 남았어요'; cls = 'down'; }
-    var msg = r.all ? '이 급의 단어를 모두 풀었어요!'
+    var msg = r.all ? '더 이상 풀 문제가 없어요! 단어를 모두 풀었어요'
       : acc >= .9 ? (tone ? '귀가 활짝 열렸어요! 성조가 쏙쏙 들려요' : '거의 완벽해요! 눈에 쏙 들어오죠?')
       : acc >= .7 ? '점점 눈에 익어 가시는군요!'
       : acc >= .4 ? '조금씩 익숙해지고 있어요. 한 번만 더 해 볼까요?'
@@ -3611,7 +3635,7 @@
       '<div class="rd-rank">' + gdStars(stars) + '<b>' + rank + '</b><span>정답 ' + r.right + '개 · ' + Math.round(acc * 100) + '%' + (r.combo >= 2 ? ' · 최고 ' + r.combo + '연속' : '') + '</span></div>' +
       '<div class="rd-vs ' + cls + '"><div class="rd-line">' + gdLines(vs) + '</div>' +
       (r.first ? '' : '<div class="rd-bars"><div class="rd-bar"><span>최고</span><em class="trk"><i style="width:' + Math.round(r.prev / top * 100) + '%"></i></em><b>' + r.prev + '</b></div>' +
-        '<div class="rd-bar now"><span>이번</span><em class="trk"><i style="width:' + Math.round(r.score / top * 100) + '%"></i></em><b>' + r.score + '</b></div></div>') + '</div>' +
+        '<div class="rd-bar now"><span>이번</span><em class="trk"><i style="width:' + Math.round(r.score / top * 100) + '%"></i></em><b>' + r.score + '</b></div></div>') + rdWk(r) + '</div>' +
       gdCele(r) +
       '<div class="rd-msgbox"><p class="rd-msg">“' + gdLines(esc(msg)) + '”</p></div>' +
       '</div><div class="footer" style="padding-left:0;padding-right:0">' +
@@ -3725,9 +3749,15 @@
     return m;
   }
   function wkTotal() { var o = wkAll(); return WK_GAMES.reduce(function (a, g) { return a + wkGame(o, g); }, 0); }
+  function rankNick() { var p = state.profile; return p.rankPub ? nickname() : '비공개' + (p.rankAnon || ''); }
+  // 닉네임 공개 설정이나 닉네임이 바뀌면 지난 기록의 이름도 같이 바꿔요
+  function wkNickSync() {
+    if (!sb || isGuest() || !state.user) return;
+    try { Promise.resolve(sb.from('weekly_scores').update({ nick: rankNick() }).eq('user_id', state.user.id)).then(function () {}, function () {}); } catch (e) { /* 무시 */ }
+  }
   function wkPush(o, games) {
     if (!sb || isGuest() || !state.user) return;
-    var rows = games.map(function (g) { return { user_id: state.user.id, week: o.w, game: g, score: wkGame(o, g), nick: nickname(), updated_at: new Date().toISOString() }; }).filter(function (r) { return r.score > 0; });
+    var rows = games.map(function (g) { return { user_id: state.user.id, week: o.w, game: g, score: wkGame(o, g), nick: rankNick(), updated_at: new Date().toISOString() }; }).filter(function (r) { return r.score > 0; });
     if (!rows.length) return;
     try { Promise.resolve(sb.from('weekly_scores').upsert(rows, { onConflict: 'user_id,week,game' })).then(function () {}, function () {}); } catch (e) { /* 표가 없어도 이 기기에는 저장돼요 */ }
   }
@@ -3750,6 +3780,45 @@
       if (state.screen === 'rank') render();
     }, function () { if (state.rk === rk) { rk.err = 'fail'; if (state.screen === 'rank') render(); } });
   }
+  /* ---------- 내 주간 기록 ---------- */
+  function openMyWeeks() {
+    state.mw = { rows: null, err: false };
+    go('myweeks');
+    var mw = state.mw;
+    function fin(rows, err) { if (state.mw !== mw) return; mw.rows = rows; mw.err = err; if (state.screen === 'myweeks') render(); }
+    var o = wkAll(), cur = { week: o.w, total: wkTotal(), g: {} };
+    WK_GAMES.forEach(function (g) { cur.g[g] = wkGame(o, g); });
+    if (!sb || isGuest() || !state.user) { fin([cur], 'guest'); return; }
+    Promise.resolve(sb.from('weekly_scores').select('week,game,score').order('week', { ascending: false }).limit(200)).then(function (res) {
+      if (res && res.error) { fin([cur], 'fail'); return; }
+      var by = {};
+      ((res && res.data) || []).forEach(function (r) { var w = by[r.week] = by[r.week] || { week: r.week, total: 0, g: {} }; w.g[r.game] = r.score; w.total += r.score; });
+      by[cur.week] = cur;   // 이번 주는 이 기기의 값이 가장 최신이에요
+      var list = Object.keys(by).sort().reverse().filter(function (k) { return by[k].total > 0; }).slice(0, 8).map(function (k) { return by[k]; });
+      Promise.all(list.map(function (w) {
+        return Promise.resolve(sb.rpc('weekly_rank', { p_week: w.week })).then(function (rr) {
+          var me = ((rr && rr.data) || []).filter(function (x) { return x.me; })[0]; w.rank = me ? +me.rnk : 0;
+        }, function () { w.rank = 0; });
+      })).then(function () { fin(list, false); }, function () { fin(list, false); });
+    }, function () { fin([cur], 'fail'); });
+  }
+  function viewMyWeeks() {
+    var mw = state.mw || { rows: null }, rows = mw.rows, best = 0;
+    (rows || []).forEach(function (w) { best = Math.max(best, w.total); });
+    function md(d) { return (+d.slice(5, 7)) + '/' + (+d.slice(8, 10)); }
+    function endOf(w) { var e = new Date(w + 'T00:00:00Z'); e.setUTCDate(e.getUTCDate() + 6); return e.getUTCFullYear() + '-' + ('0' + (e.getUTCMonth() + 1)).slice(-2) + '-' + ('0' + e.getUTCDate()).slice(-2); }
+    var list = !rows ? '<p class="rk-note">불러오는 중…</p>'
+      : !rows.length || !rows[0].total ? '<p class="rk-note">아직 기록이 없어요. 게임을 하면 여기에 쌓여요.</p>'
+      : '<ul class="rk-list mw-list">' + rows.map(function (w, i) {
+        var rk = w.rank, medal = rk && rk <= 3 ? '<span class="rk-medal m' + rk + '">' + icn('trophy') + '</span>' : '';
+        return '<li class="mw-row' + (w.total === best ? ' best' : '') + '"><div class="mw-top"><b>' + md(w.week) + ' ~ ' + md(endOf(w.week)) + (i === 0 ? '<i>이번 주</i>' : '') + (w.total === best && rows.length > 1 ? '<i class="bst">최고</i>' : '') + '</b>' +
+          '<span class="mw-pt">' + medal + (w.total) + '<small>점</small></span></div>' +
+          '<div class="mw-sub">' + (rk ? rk + '위 · ' : '') + WK_GAMES.map(function (g) { return GAME_NAME[g] + ' ' + (w.g[g] || 0); }).join(' · ') + '</div></li>';
+      }).join('') + '</ul>';
+    return '<div class="screen"><div class="topbar"><button class="icon-btn" data-act="back" aria-label="뒤로">' + I.back + '</button></div>' +
+      '<div class="scroll" style="padding-top:4px"><h1 class="big-title" style="margin-top:0">내 주간 기록</h1>' +
+      '<p class="rk-sub">최근 8주의 토탈 점수와 순위예요.</p>' + (mw.err === 'fail' ? '<p class="rk-note">지난 기록을 불러오지 못했어요. 이번 주 점수만 보여요.</p>' : '') + list + '<div style="height:32px"></div></div></div>';
+  }
   function viewRank() {
     var rk = state.rk || { rows: null, err: false }, tot = wkTotal(), o = wkAll();
     var list;
@@ -3766,7 +3835,8 @@
       '<div class="scroll" style="padding-top:4px"><h1 class="big-title" style="margin-top:0">이번 주 순위</h1>' +
       '<div class="wk-card"><span class="wk-l">내 토탈 점수</span><b class="wk-n">' + tot + '<small>점</small></b><span class="wk-s">' + games + '</span></div>' +
       '<p class="rk-sub">월요일 0시에 새로 시작해요 · 마감까지 ' + wkLeft() + '일</p>' + list +
-      '<p class="rk-foot">토탈 = 4개 게임의 이번 주 최고 점수 합계예요. 어려운 급일수록 점수에 배율이 붙어요 (1급 ×0.9 · 2급 ×1.0 · 3급 ×1.1 · 4급 ×1.2). 여러 급을 함께 고르면 평균 배율이에요.</p><div style="height:32px"></div></div></div>';
+      '<button class="hsk-row mw-link" data-act="myweeks-open"><span class="hr-t">내 주간 기록</span><span class="hr-s">지난주들의 점수와 순위</span><span class="hr-chev">' + '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg>' + '</span></button>' +
+      '<p class="rk-foot">닉네임 공개는 환경 설정에서 바꿀 수 있어요. 토탈 = 4개 게임의 이번 주 최고 점수 합계예요. 어려운 급일수록 점수에 배율이 붙어요 (1급 ×0.9 · 2급 ×1.0 · 3급 ×1.1 · 4급 ×1.2). 여러 급을 함께 고르면 평균 배율이에요.</p><div style="height:32px"></div></div></div>';
   }
   /* ---------- 지난주 결과: 새 주의 첫 접속 때 한 번 보여 줘요 ---------- */
   function wkPrevMonday() {
@@ -4692,9 +4762,9 @@
     var c = state.ch;
     tdMark('ch-start');
     chStop();
-    wkSubmit('chain', c.lv, c.score);
+    var wk0 = wkTotal(); wkSubmit('chain', c.lv, c.score);
     var rec0 = chRec(c.lv), best0 = rec0.best, prevScore = rec0.bestScore, isBest = chSaveRec(c), newBest = c.score > prevScore && prevScore > 0;
-    var result = { kind: 'chain', score: c.score, prevScore: prevScore, newBest: newBest, lv: c.lv, stage: c.stage, grads: c.grads.length, right: c.right, maxCombo: c.maxCombo, isBest: isBest && c.stage > 1, best: Math.max(best0, c.stage), prevBest: best0 || 0, all: !!all };
+    var result = { kind: 'chain', score: c.score, prevScore: prevScore, newBest: newBest, lv: c.lv, stage: c.stage, grads: c.grads.length, right: c.right, maxCombo: c.maxCombo, wk: { from: wk0, to: wkTotal() }, isBest: isBest && c.stage > 1, best: Math.max(best0, c.stage), prevBest: best0 || 0, all: !!all };
     sfx(newBest ? 'goal' : 'done');
     go('done', { result: result });
   }
@@ -4705,7 +4775,7 @@
     else if (r.newBest) { vs = '최고 기록을 <b>' + diff + '점</b> 올렸어요!'; cls = 'up'; }
     else if (diff === 0) { vs = '최고 기록과 똑같아요. 한 끗만 더!'; cls = 'same'; }
     else { vs = '최고 기록까지 <b>' + (-diff) + '점</b> 남았어요'; cls = 'down'; }
-    var msg = r.all ? '이 급의 단어를 모두 만났어요!'
+    var msg = r.all ? '더 이상 풀 문제가 없어요! 단어를 모두 만났어요'
       : st >= 10 ? '기억력이 대단해요! 사슬이 끝없이 이어졌어요'
       : st >= 7 ? '점점 눈에 익어 가시는군요!'
       : st >= 4 ? '사슬이 튼튼해지고 있어요. 한 번만 더 해 볼까요?'
@@ -4722,7 +4792,7 @@
       '<span>STAGE ' + st + (r.grads ? ' · 졸업 ' + r.grads + '장' : '') + (r.maxCombo >= 2 ? ' · 최고 ' + r.maxCombo + '연속' : '') + '</span></div>' +
       '<div class="rd-vs ' + cls + '"><div class="rd-line">' + gdLines(vs) + '</div>' +
       (prev ? '<div class="rd-bars"><div class="rd-bar"><span>최고</span><em class="trk"><i style="width:' + Math.round(prev / top * 100) + '%"></i></em><b>' + prev + '</b></div>' +
-        '<div class="rd-bar now"><span>이번</span><em class="trk"><i style="width:' + Math.round(sc / top * 100) + '%"></i></em><b>' + sc + '</b></div></div>' : '') + '</div>' +
+        '<div class="rd-bar now"><span>이번</span><em class="trk"><i style="width:' + Math.round(sc / top * 100) + '%"></i></em><b>' + sc + '</b></div></div>' : '') + rdWk(r) + '</div>' +
       gdCele(r) +
       '<div class="rd-msgbox"><p class="rd-msg">“' + gdLines(esc(msg)) + '”</p></div>' +
       '</div><div class="footer" style="padding-left:0;padding-right:0">' +
@@ -4952,7 +5022,7 @@
     var r = state.rn; if (!r) return;
     tdMark('rain-start');
     var lv = r.lv, goal = state.profile.goal, now = todayAnswers(), hit = r.before < goal && now >= goal;
-    wkSubmit('rain', lv, r.score);
+    var wk0 = wkTotal(); wkSubmit('rain', lv, r.score);
     var prev = rnBest(lv), nb = rnSaveBest(lv, r.score) && prev > 0, first = prev === 0, cleared = r.lives > 0;
     rnStop();
     sfx(hit ? 'goal' : 'done');
@@ -4960,7 +5030,7 @@
       kind: 'rain', title: cleared ? '소나기가 그쳤어요!' : '소나기 퀴즈 끝!',
       line: r.wave + '웨이브까지 갔어요. ' + r.score + '점' + (nb ? ' (최고 기록!)' : '') + '.',
       score: r.score, prev: prev, newBest: nb, first: first, right: r.right, total: Math.max(1, r.wave), waves: r.wave, combo: r.maxCombo, lives: r.lives, cleared: cleared, lv: lv,
-      answers: now, goal: goal, goalHit: hit, milestone: 0,
+      answers: now, goal: goal, goalHit: hit, milestone: 0, wk: { from: wk0, to: wkTotal() },
       again: { act: 'rain-start', id: String(lv), label: '한 번 더 하기' }
     } });
   }
@@ -5584,14 +5654,14 @@
       case 'ch-start': startChain(parseInt(id, 10)); break;
       case 'rain-start': if (hskGate(id)) break; startRain(parseInt(id, 10)); break;
       case 'rn-go': rnBegin(); break;
-      case 'rn-quit': rnStop(); go('tab'); break;
+      case 'rn-quit': leaveGame('rain', function () { rnStop(); go('tab'); }); break;
       case 'rn-py': if (state.rn) { state.rn.py = !state.rn.py; try { localStorage.setItem('pangpang.rain.py', state.rn.py ? '1' : '0'); } catch (e) { /* 무시 */ } sfx('tap'); render(); } break;
       case 'rn-hear': if (state.rn && state.rn.cur && !state.rn.cur.done) speak(hskList(state.rn.lv)[state.rn.cur.ti][0], 0.85); break;
       case 'ch-skip': chSkip(); break;
       case 'ch-pick': chAnswer(+id); break;
       case 'ch-hear': if (state.ch && state.ch.phase === 'ask') speak(hskList(state.ch.lv)[state.ch.qs[state.ch.qi]][0], 0.85); break;
       case 'td-bonus-go': if (!state.tdMoved) tdBonusGo(); break;
-      case 'ch-quit': if (state.ch && state.ch.stage > 1) { chSaveRec(state.ch); tdMark('ch-start'); } chStop(); go('tab'); break;
+      case 'ch-quit': leaveGame('chain', function () { if (state.ch && state.ch.stage > 1) { chSaveRec(Object.assign({}, state.ch, { score: 0 })); tdMark('ch-start'); } chStop(); go('tab'); }); break;
       case 'ch-back': go('tab'); break;
       case 'tone-start': if (hskGate(id)) break; startTone(parseInt(id, 10)); break;
       case 'tone-pick': tonePick(parseInt(id, 10)); break;
@@ -5624,6 +5694,7 @@
           else startRain(gkey);
         } break;
       case 'rank-open': openRank(); break;
+      case 'myweeks-open': openMyWeeks(); break;
       case 'sc-open': state.scFrom = state.screen === 'scenes' ? 'scenes' : ''; startScene(id); break;
       case 'sc-all': go('scenes'); break;
       case 'sc-cat': state.scCat = id; sfx('tap'); render(); break;
@@ -5638,7 +5709,7 @@
       case 'sc-quit': stopSpeak(); scStopRec(); state.sc = null; go(state.scFrom === 'scenes' ? 'scenes' : 'tab'); break;
       case 'sc-mission': scFinish(true); break;
       case 'sc-finish': scFinish(false); break;
-      case 'tone-quit': stopSpeak(); go('tab'); break;
+      case 'tone-quit': leaveGame('tone', function () { stopSpeak(); go('tab'); }); break;
       case 'hsk-flip': if (state.hc) { state.hc.flip = !state.hc.flip; sfx('tap'); render(); } break;
       case 'hsk-mark': window.flyCard(el.getAttribute('data-v') === 'yes'); break;
       case 'hsk-filter': state.hsk.unknownOnly = el.getAttribute('data-v') === 'unknown'; render(); break;
@@ -5656,15 +5727,19 @@
       case 'quiz-pick': quizPick(parseInt(id, 10)); break;
       case 'qz-peek': if (state.z) { state.z.peek = !state.z.peek; render(); } break;
       case 'quiz-next': quizNext(); break;
-      case 'quiz-quit': stopSpeak(); go('tab'); break;
+      case 'quiz-quit': leaveGame('quiz', function () { stopSpeak(); go('tab'); }); break;
       case 'fav': toggleFav(el.getAttribute('data-text')); break;
       case 'set-kr': setProfile({ kr: el.getAttribute('data-v') === 'on' }); break;
+      case 'set-rank':
+        var rpub = el.getAttribute('data-v') === 'on', ranon = state.profile.rankAnon;
+        if (!rpub && !ranon) ranon = String(Math.floor(10000 + Math.random() * 90000));
+        setProfile({ rankPub: rpub, rankAnon: ranon }); wkNickSync(); break;
       case 'set-sound': setProfile({ sound: el.getAttribute('data-v') === 'on' }); sfx('pop'); break;
       case 'set-goal': setProfile({ goal: parseInt(el.getAttribute('data-v'), 10) }); break;
       case 'set-theme': setProfile({ theme: el.getAttribute('data-v') }); break;
       case 'nick-edit': state.editNick = true; render(); break;
       case 'nick-cancel': state.editNick = false; render(); break;
-      case 'nick-save': saveNick(); break;
+      case 'nick-save': saveNick(); wkNickSync(); break;
       case 'ko': s.showKo = !s.showKo; render(); break;
       case 'hear-q': speak(s.cur.zh); break;
       case 'hear-a': speak(s.cur.a.zh); break;
