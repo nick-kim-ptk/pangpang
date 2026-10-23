@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v218';
+  var APP_VERSION = 'v219';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -2590,7 +2590,7 @@
 
   // 켜고 끄는 스위치 (data-v 는 눌렀을 때 바뀔 값)
   function tgl(act, on, label, extra) {
-    return '<button class="tg' + (on ? ' on' : '') + '" role="switch" aria-checked="' + (on ? 'true' : 'false') + '" aria-label="' + esc(label) + '" data-act="' + act + '" data-v="' + (on ? 'off' : 'on') + '"' + (extra || '') + '><i></i></button>';
+    return '<button class="sw' + (on ? ' on' : '') + '" role="switch" aria-checked="' + (on ? 'true' : 'false') + '" aria-label="' + esc(label) + '" data-act="' + act + '" data-v="' + (on ? 'off' : 'on') + '"' + (extra || '') + '><i></i></button>';
   }
   var CHEV = '<svg class="set-chev" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg>';
   // 줄 전체를 누르면 들어가고 오른쪽엔 화살표만 있는 메뉴 줄
