@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v220';
+  var APP_VERSION = 'v221';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -2805,7 +2805,7 @@
         '<b>' + (lk ? '<i class="hc-lock">' + I.lock + '</i>' : '') + l + '급</b><span>' + (w ? '이번 주 ' + w + '점' : '아직 기록 없음') + '</span></button>';
     }).join('');
     return '<div class="scrim modal" data-act="gs-close" aria-hidden="true"></div>' +
-      '<div class="dialog gsheet" role="dialog" aria-modal="true" aria-label="' + GAME_NAME[g.game] + '">' + chImg(info.img, 'gs-mascot') + '<h3>' + GAME_NAME[g.game] + '</h3>' + rules + py + resume +
+      '<div class="dialog gsheet" role="dialog" aria-modal="true" aria-label="' + GAME_NAME[g.game] + '">' + '<img class="gs-mascot" src="img/gs-' + g.game + '.webp" alt="" draggable="false"><h3>' + GAME_NAME[g.game] + '</h3>' + rules + py + resume +
       '<p class="gs-sub">함께 풀 급을 골라요. 여러 개도 괜찮아요.</p><div class="gs-chips">' + chips + '</div>' +
       '<p class="gs-note">' + gsNote(g.sel) + '</p>' +
       '<button class="btn" data-act="gs-go"' + (g.sel.length ? '' : ' disabled') + '>시작하기</button></div>';

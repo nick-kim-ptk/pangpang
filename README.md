@@ -796,3 +796,6 @@ select kind, count(*) n, round(avg(in_tokens)) avg_in, round(avg(cache_read)) av
 
 ## v220b
 - AI 대화 상대 프롬프트(ai-coach 서버 함수): 질문 나열 대신 리액션 + 내 이야기 + 이어지는 질문(두 번에 한 번)으로 사람과 수다 떠는 느낌. 서버 함수 재배포 필요.
+
+## v221
+- 게임 시작 창(급 고르기) 캐릭터 4종 교체(img/gs-quiz·chain·tone·rain.webp, 여백 잘라 400px·장당 약 30KB), 조금 더 크게(132px), 살짝 둥실거리는 모션(움직임 줄이기 설정이면 멈춤).
