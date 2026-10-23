@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v197';
+  var APP_VERSION = 'v198';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -4258,10 +4258,11 @@
   function chImg(n, cls) { return '<img class="chr ' + (cls || '') + '" src="img/ch-' + n + '.webp" alt="" draggable="false">'; }
   function chKey() { return 'pangpang.chain.' + (state.user ? state.user.id : 'x'); }
   function chRecAll() { try { return JSON.parse(localStorage.getItem(chKey()) || '{}'); } catch (e) { return {}; } }
-  function chRec(lv) { var r = chRecAll()[lv] || {}; return { best: r.best || 0, grads: r.grads || 0, plays: r.plays || 0 }; }
+  function chRec(lv) { var r = chRecAll()[lv] || {}; return { best: r.best || 0, grads: r.grads || 0, plays: r.plays || 0, bestScore: r.bestScore || 0 }; }
   function chSaveRec(c) {
     var all = chRecAll(), r = all[c.lv] || { best: 0, grads: 0, plays: 0 };
     var isBest = c.stage > r.best;
+    r.bestScore = Math.max(r.bestScore || 0, c.score || 0);
     r.best = Math.max(r.best, c.stage); r.grads = Math.max(r.grads, c.grads.length); r.plays = (r.plays || 0) + 1;
     all[c.lv] = r;
     try { localStorage.setItem(chKey(), JSON.stringify(all)); } catch (e) { /* 무시 */ }
@@ -4275,7 +4276,7 @@
     if (!list.length) return;
     if (hskLocked(lv)) { go('pay', { payWhy: 'HSK ' + lv + '급은 멤버십이 필요해요. 1급은 무료예요.' }); return; }
     var idx = list.map(function (_, i) { return i; }), unk = shuffle(idx.filter(function (i) { return !hskKnown(lv, i); })), kn = shuffle(idx.filter(function (i) { return hskKnown(lv, i); }));
-    state.ch = { lv: lv, order: unk.concat(kn), next: 0, stage: 0, active: [], grads: [], lives: CH_LIVES, combo: 0, maxCombo: 0, right: 0, tok: 0, phase: 'intro', seq: [], si: 0, qs: [], qi: 0, grid: [], pick: -1, stageGrads: 0 };
+    state.ch = { lv: lv, order: unk.concat(kn), next: 0, stage: 0, active: [], grads: [], lives: CH_LIVES, combo: 0, maxCombo: 0, right: 0, tok: 0, phase: 'intro', seq: [], si: 0, qs: [], qi: 0, grid: [], pick: -1, stageGrads: 0, stageRight: 0, score: 0, lastPts: 0, t0: 0 };
     go('chain');
     chNextStage();
   }
@@ -4286,7 +4287,7 @@
     while (fresh.length < want && c.next < c.order.length) fresh.push({ i: c.order[c.next++], streak: 0 });
     if (!fresh.length && !c.active.length) { c.stage--; chOver(true); return; }
     c.active = c.active.concat(fresh);
-    c.stageGrads = 0;
+    c.stageGrads = 0; c.stageRight = 0;
     var oldMs = CH_OLD_MS;
     c.seq = shuffle(oldList.slice()).map(function (a) { return { i: a.i, kind: 'old', ms: oldMs }; })
       .concat(fresh.map(function (a) { return { i: a.i, kind: 'new', ms: 3200 }; }));
@@ -4357,6 +4358,7 @@
     var c = state.ch, tok = ++c.tok, ti = c.qs[c.qi];
     c.phase = 'ask'; c.pick = -1; c.grid = chGridFor(c, ti); c.secs = chSecs(c);
     render();
+    c.t0 = performance.now();
     setTimeout(function () { if (chAlive(c, tok) && c.phase === 'ask') speak(hskList(c.lv)[ti][0], 0.85); }, 250);
     clearTimeout(c.qt);
     c.qt = setTimeout(function () { if (chAlive(c, tok) && c.phase === 'ask') chAnswer(-1); }, c.secs * 1000 + 300);
@@ -4368,7 +4370,11 @@
     var ti = c.qs[c.qi], tok = ++c.tok, ok = pos >= 0 && c.grid[pos] === ti, a = c.active.filter(function (x) { return x.i === ti; })[0], grad = false;
     c.phase = 'fb'; c.pick = pos; c.ok = ok; c.timeout = pos < 0;
     if (ok) {
-      c.right++; c.combo++; c.maxCombo = Math.max(c.maxCombo, c.combo); a.streak++;
+      c.right++; c.stageRight++; c.combo++; c.maxCombo = Math.max(c.maxCombo, c.combo); a.streak++;
+      // 빨리 누를수록 높은 점수: 기본 100 + 남은 시간 비율 × 100 + 연속 보너스
+      var left = Math.max(0, 1 - (performance.now() - c.t0) / 1000 / c.secs);
+      c.lastPts = 100 + Math.round(left * 100) + Math.min(c.combo, 5) * 10;
+      c.score += c.lastPts;
       sfx('right', c.combo);
       if (c.stage >= CH_ACTIVE && a.streak >= CH_GRAD) {
         grad = true; c.active = c.active.filter(function (x) { return x !== a; });
@@ -4390,8 +4396,24 @@
       if (!chAlive(c, tok)) return;
       if (c.lives <= 0) { chOver(false); return; }
       c.qi++;
-      if (c.qi >= c.qs.length) chClear(); else chAsk();
+      if (c.qi >= c.qs.length) { if (c.stageRight === 0) chRetry(); else chClear(); } else chAsk();
     }, ok ? 1000 : 1700);
+  }
+  // 한 단계에서 하나도 못 맞히면 그 단계를 다시 해요
+  function chRetry() {
+    var c = state.ch, tok = ++c.tok;
+    c.phase = 'retry';
+    sfx('wrong');
+    render();
+    clearTimeout(c.timer);
+    c.timer = setTimeout(function () { if (chAlive(c, tok)) chRetryGo(); }, 2600);
+  }
+  function chRetryGo() {
+    var c = state.ch;
+    if (!c || c.phase !== 'retry') return;
+    clearTimeout(c.timer);
+    c.si = 0; c.stageRight = 0; c.stageGrads = 0; c.combo = 0; c.tok++;
+    chShowSeq();
   }
   function chClear() {
     var c = state.ch, tok = ++c.tok;
@@ -4405,18 +4427,18 @@
     var c = state.ch;
     tdMark('ch-start');
     chStop();
-    var best0 = chRec(c.lv).best, isBest = chSaveRec(c);
-    var result = { kind: 'chain', lv: c.lv, stage: c.stage, grads: c.grads.length, right: c.right, maxCombo: c.maxCombo, isBest: isBest && c.stage > 1, best: Math.max(best0, c.stage), prevBest: best0 || 0, all: !!all };
-    sfx(isBest ? 'goal' : 'done');
+    var rec0 = chRec(c.lv), best0 = rec0.best, prevScore = rec0.bestScore, isBest = chSaveRec(c), newBest = c.score > prevScore && prevScore > 0;
+    var result = { kind: 'chain', score: c.score, prevScore: prevScore, newBest: newBest, lv: c.lv, stage: c.stage, grads: c.grads.length, right: c.right, maxCombo: c.maxCombo, isBest: isBest && c.stage > 1, best: Math.max(best0, c.stage), prevBest: best0 || 0, all: !!all };
+    sfx(newBest ? 'goal' : 'done');
     go('done', { result: result });
   }
   function chainDone(r) {
-    var st = r.stage, prev = r.prevBest || 0, diff = st - prev;
+    var st = r.stage, sc = r.score || 0, prev = r.prevScore || 0, diff = sc - prev;
     var vs, cls;
-    if (!prev) { vs = '첫 기록이에요! 다음엔 이 단계를 넘어 볼까요?'; cls = 'first'; }
-    else if (r.isBest) { vs = '최고 기록을 <b>' + diff + '단계</b> 올렸어요!'; cls = 'up'; }
-    else if (diff === 0) { vs = '최고 기록과 똑같아요. 한 단계만 더!'; cls = 'same'; }
-    else { vs = '최고 기록까지 <b>' + (-diff) + '단계</b> 남았어요'; cls = 'down'; }
+    if (!prev) { vs = '첫 기록이에요! 다음엔 이 점수를 넘어 볼까요?'; cls = 'first'; }
+    else if (r.newBest) { vs = '최고 기록을 <b>' + diff + '점</b> 올렸어요!'; cls = 'up'; }
+    else if (diff === 0) { vs = '최고 기록과 똑같아요. 한 끗만 더!'; cls = 'same'; }
+    else { vs = '최고 기록까지 <b>' + (-diff) + '점</b> 남았어요'; cls = 'down'; }
     var msg = r.all ? '이 급의 단어를 모두 만났어요!'
       : st >= 10 ? '기억력이 대단해요! 사슬이 끝없이 이어졌어요'
       : st >= 7 ? '점점 눈에 익어 가시는군요!'
@@ -4425,17 +4447,16 @@
     var rank = r.all ? '기억의 신' : st >= 10 ? '기억의 달인' : st >= 7 ? '사슬 장인' : st >= 4 ? '사슬 견습생' : '기억 새싹';
     var stars = r.all ? 3 : st >= 10 ? 3 : st >= 7 ? 2 : st >= 4 ? 1 : 0;
     var starHtml = [0, 1, 2].map(function (i) { return '<i class="rd-star' + (i < stars ? ' on' : '') + '" style="animation-delay:' + (0.5 + i * 0.25).toFixed(2) + 's">★</i>'; }).join('');
-    var top = Math.max(st, prev, 1);
-    return '<div class="screen done-screen rd gd">' + gdFx() + (st > 1 || r.all ? confetti() + (r.isBest || r.all ? confetti() : '') : '') + '<div class="hero">' +
-      '<div class="stage rd-stage">' + chImg(r.isBest || r.all ? 'trophy' : st >= 5 ? 'love' : st >= 3 ? 'cheer' : 'focus', 'chr-done') + '</div>' +
-      '<div class="rd-ttl">' + (r.all ? 'ALL CLEAR!' : '기억 사슬 끝!') + '</div>' +
-      '<div class="rd-score"><span class="rd-num" data-to="' + st + '">' + st + '</span><em>단계</em></div>' +
-      (r.isBest && prev ? '<div class="rd-badge">NEW 최고 기록</div>' : '') +
-      '<div class="rd-rank"><div class="rd-stars">' + starHtml + '</div><b>' + rank + '</b>' +
-      '<span>졸업 ' + r.grads + '장' + (r.maxCombo >= 2 ? ' · 최고 ' + r.maxCombo + '연속' : '') + '</span></div>' +
+    var top = Math.max(sc, prev, 1);
+    return '<div class="screen done-screen rd gd rd-big">' + gdFx() + (sc > 0 ? confetti() + (r.newBest || r.all ? confetti() : '') : '') + '<div class="hero">' +
+      '<div class="stage rd-stage">' + chImg(r.newBest || r.all ? 'trophy' : st >= 5 ? 'love' : st >= 3 ? 'cheer' : 'focus', 'chr-done') + '</div>' +
+      '<div class="rd-score"><span class="rd-num" data-to="' + sc + '">' + sc + '</span><em>점</em></div>' +
+      (r.newBest ? '<div class="rd-badge">NEW 최고 기록</div>' : '') +
+      '<div class="rd-rank">' + '<div class="rd-stars">' + starHtml + '</div><b>' + rank + '</b>' +
+      '<span>STAGE ' + st + ' · 졸업 ' + r.grads + '장' + (r.maxCombo >= 2 ? ' · 최고 ' + r.maxCombo + '연속' : '') + '</span></div>' +
       '<div class="rd-vs ' + cls + '"><div class="rd-line">' + gdLines(vs) + '</div>' +
       (prev ? '<div class="rd-bars"><div class="rd-bar"><span>최고</span><em class="trk"><i style="width:' + Math.round(prev / top * 100) + '%"></i></em><b>' + prev + '</b></div>' +
-        '<div class="rd-bar now"><span>이번</span><em class="trk"><i style="width:' + Math.round(st / top * 100) + '%"></i></em><b>' + st + '</b></div></div>' : '') + '</div>' +
+        '<div class="rd-bar now"><span>이번</span><em class="trk"><i style="width:' + Math.round(sc / top * 100) + '%"></i></em><b>' + sc + '</b></div></div>' : '') + '</div>' +
       gdCele(r) +
       '<div class="rd-msgbox"><p class="rd-msg">“' + gdLines(esc(msg)) + '”</p></div>' +
       '</div><div class="footer" style="padding-left:0;padding-right:0">' +
@@ -4451,7 +4472,7 @@
   }
   function chStrip(c) {
     return '<div class="ch-strip"><span>' + icn('chain') + ' 기억 중 <b>' + c.active.length + '</b></span><span>' + icn('grad-cap') + ' 졸업 <b>' + c.grads.length + '</b></span>' +
-      (c.combo >= 2 ? '<span class="ch-combo">' + icn('flame') + ' ' + c.combo + '연속</span>' : '') + '</div>';
+      '<span>점수 <b>' + c.score + '</b></span>' + (c.combo >= 2 ? '<span class="ch-combo">' + icn('flame') + ' ' + c.combo + '연속</span>' : '') + '</div>';
   }
   function chFit(zh, big) {
     var n = Array.from(zh).length;
@@ -4476,6 +4497,11 @@
         '<p>' + (c.stageGrads ? icn('grad-cap') + ' 카드 ' + c.stageGrads + '장 졸업' : '다음 단계로 가요') + '</p>' +
         '<div class="ch-clear-sum"><span>' + icn('chain') + ' 기억 중 <b>' + c.active.length + '</b></span><span>' + icn('grad-cap') + ' 졸업 <b>' + c.grads.length + '</b></span></div></div></div>';
     }
+    if (c.phase === 'retry') {
+      return '<div class="screen">' + top + '<div class="ch-clear"><div class="ch-clear-ico">' + chImg('sad', 'chr-clear') + '</div><h1>다시 한 번<br>시도해볼까요?</h1>' +
+        '<p>STAGE ' + c.stage + '</p><div class="ch-clear-sum"><span>목숨 <b>' + Math.max(0, c.lives) + '</b>개 남았어요</span></div>' +
+        '<button class="btn" style="margin-top:20px;max-width:260px" data-act="ch-retry">다시 도전</button></div></div>';
+    }
     var ti = c.qs[c.qi], t = list[ti], fb = c.phase === 'fb';
     var tiles = c.grid.map(function (i, pos) {
       var w = list[i], cls = 'ch-tile';
@@ -4483,7 +4509,7 @@
       return '<button class="' + cls + '" data-act="ch-pick" data-id="' + pos + '"' + (fb ? ' disabled' : '') + ' style="font-size:' + chFit(w[0], false) + '"><span>' + esc(w[0]) + '</span></button>';
     }).join('');
     var fbHtml = fb ? '<div class="ch-fb ' + (c.ok ? 'ok' : 'no') + '">' + chImg(!c.ok ? 'sad' : c.grad ? 'grad' : c.combo >= 3 ? 'fire' : 'cheer', 'chr-fb') + '<b class="zh">' + esc(t[0]) + '</b><span>' + esc(t[1]) + ' · ' + esc(t[2].split(',')[0]) + '</span>' +
-      (c.ok ? '<em>' + (c.grad ? icn('grad-cap') + ' 졸업!' : '+1') + '</em>' : '<em>' + (c.timeout ? '시간 초과' : '아쉬워요') + '</em>') + '</div>' : '<div class="ch-fb ghost"></div>';
+      (c.ok ? '<em>' + (c.grad ? icn('grad-cap') + ' 졸업! ' : '') + '+' + c.lastPts + '</em>' : '<em>' + (c.timeout ? '시간 초과' : '아쉬워요') + '</em>') + '</div>' : '<div class="ch-fb ghost"></div>';
     var bar = fb ? '<div class="ch-timer"><i style="width:0"></i></div>' : '<div class="ch-timer run"><i style="animation-duration:' + c.secs + 's"></i></div>';
     return '<div class="screen qz-fit">' + top + '<div class="qz-wrap ch-wrap ch-ask">' + chStrip(c) +
       '<div class="ch-q"><button class="listen-btn' + (fb ? '' : ' ping') + '" data-act="ch-hear" aria-label="다시 듣기">' + I.spk + '</button>' +
@@ -5304,6 +5330,7 @@
       case 'tone-pick': tonePick(parseInt(id, 10)); break;
       case 'tone-slot': if (state.tn && !state.tn.res) { state.tn.cur = state.tn.cur.slice(0, parseInt(id, 10)); sfx('tap'); render(); } break;
       case 'tone-next': toneNext(); break;
+      case 'ch-retry': chRetryGo(); break;
       case 'hsk-home': go('tab', { tab: 'words' }); break;
       case 'sc-open': state.scFrom = state.screen === 'scenes' ? 'scenes' : ''; startScene(id); break;
       case 'sc-all': go('scenes'); break;
