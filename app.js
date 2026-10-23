@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v232';
+  var APP_VERSION = 'v233';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -1060,7 +1060,7 @@
     if (o.rev0 > 0) {
       var rem = Math.max(0, Math.min(o.rev0, REV_CAP) - (o.revDone || 0)), left = due + wdue;
       var dueS = Math.min(due, rem), dueW = Math.min(wdue, rem - dueS);
-      items.push({ req: 1, done: left === 0 || rem === 0, title: '오늘의 복습', sub: (dueS ? '문장 ' + dueS + '개' : '') + (dueS && dueW ? ' · ' : '') + (dueW ? '단어 ' + dueW + '개' : '') + (left > rem && rem ? ' (나머지는 내일)' : ''), doneSub: left > 0 ? '오늘 분량 끝! 남은 ' + left + '개는 내일 이어서 해요' : '복습을 모두 마쳤어요', act: 'today-review', btn: '복습 시작' });
+      items.push({ req: 1, done: left === 0 || rem === 0, title: '오늘의 복습', sub: (dueS ? '문장 ' + dueS + '개' : '') + (dueS && dueW ? ' · ' : '') + (dueW ? '단어 ' + dueW + '개' : '') + (left > rem && rem ? ' · 헷갈린 것부터' : ''), doneSub: left > 0 ? '오늘 분량 끝! 남은 ' + left + '개는 내일 이어서 해요' : '복습을 모두 마쳤어요', act: 'today-review', btn: '복습 시작' });
     }
     if (next || o.lessonQ > 0) {
       var q = Math.min(o.lessonQ, TD_LESSON_Q);
@@ -5584,7 +5584,9 @@
 
   /* ---------- 시작 함수 ---------- */
   function startReview() {
-    var qs = mixLessons(dueRows().map(function (r) { return QMAP[r.qid]; }), REVIEW_SIZE);
+    // 밀렸을 땐 많이 틀리고 아직 익숙하지 않은 문제부터 고르고(같은 조건이면 오래 미룬 것), 레슨은 골고루 섞어요
+    var dr = dueRows().sort(function (a, b) { return (a.box || 0) - (b.box || 0) || (b.wrong || 0) - (a.wrong || 0) || new Date(a.due_at) - new Date(b.due_at); });
+    var qs = mixLessons(dr.map(function (r) { return QMAP[r.qid]; }), REVIEW_SIZE);
     if (!qs.length) { toast('지금 복습할 문제가 없어요'); return; }
     beginSession('review', shuffle(qs));
   }
