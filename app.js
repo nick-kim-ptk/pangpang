@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v198';
+  var APP_VERSION = 'v199';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -4453,7 +4453,7 @@
       '<div class="rd-score"><span class="rd-num" data-to="' + sc + '">' + sc + '</span><em>점</em></div>' +
       (r.newBest ? '<div class="rd-badge">NEW 최고 기록</div>' : '') +
       '<div class="rd-rank">' + '<div class="rd-stars">' + starHtml + '</div><b>' + rank + '</b>' +
-      '<span>STAGE ' + st + ' · 졸업 ' + r.grads + '장' + (r.maxCombo >= 2 ? ' · 최고 ' + r.maxCombo + '연속' : '') + '</span></div>' +
+      '<span>STAGE ' + st + (r.grads ? ' · 졸업 ' + r.grads + '장' : '') + (r.maxCombo >= 2 ? ' · 최고 ' + r.maxCombo + '연속' : '') + '</span></div>' +
       '<div class="rd-vs ' + cls + '"><div class="rd-line">' + gdLines(vs) + '</div>' +
       (prev ? '<div class="rd-bars"><div class="rd-bar"><span>최고</span><em class="trk"><i style="width:' + Math.round(prev / top * 100) + '%"></i></em><b>' + prev + '</b></div>' +
         '<div class="rd-bar now"><span>이번</span><em class="trk"><i style="width:' + Math.round(sc / top * 100) + '%"></i></em><b>' + sc + '</b></div></div>' : '') + '</div>' +
@@ -4471,7 +4471,7 @@
       '<span class="chip y ch-stage">' + icn('stage-flag') + 'STAGE ' + c.stage + '</span></div>';
   }
   function chStrip(c) {
-    return '<div class="ch-strip"><span>' + icn('chain') + ' 기억 중 <b>' + c.active.length + '</b></span><span>' + icn('grad-cap') + ' 졸업 <b>' + c.grads.length + '</b></span>' +
+    return '<div class="ch-strip"><span>' + icn('chain') + ' 기억 중 <b>' + c.active.length + '</b></span>' + (c.stage >= CH_ACTIVE || c.grads.length ? '<span>' + icn('grad-cap') + ' 졸업 <b>' + c.grads.length + '</b></span>' : '') +
       '<span>점수 <b>' + c.score + '</b></span>' + (c.combo >= 2 ? '<span class="ch-combo">' + icn('flame') + ' ' + c.combo + '연속</span>' : '') + '</div>';
   }
   function chFit(zh, big) {
@@ -4495,7 +4495,7 @@
       var nx = Math.min(CH_NEW_MAX, Math.max(1, CH_ACTIVE - c.active.length));
       return '<div class="screen">' + top + '<div class="ch-clear">' + confetti() + '<div class="ch-clear-ico">' + chImg(c.stageGrads ? 'grad' : c.combo >= 5 ? 'fire' : 'clear', 'chr-clear') + '</div><h1>STAGE ' + c.stage + ' CLEAR!</h1>' +
         '<p>' + (c.stageGrads ? icn('grad-cap') + ' 카드 ' + c.stageGrads + '장 졸업' : '다음 단계로 가요') + '</p>' +
-        '<div class="ch-clear-sum"><span>' + icn('chain') + ' 기억 중 <b>' + c.active.length + '</b></span><span>' + icn('grad-cap') + ' 졸업 <b>' + c.grads.length + '</b></span></div></div></div>';
+        '<div class="ch-clear-sum"><span>' + icn('chain') + ' 기억 중 <b>' + c.active.length + '</b></span>' + (c.stage >= CH_ACTIVE || c.grads.length ? '<span>' + icn('grad-cap') + ' 졸업 <b>' + c.grads.length + '</b></span>' : '') + '</div></div></div>';
     }
     if (c.phase === 'retry') {
       return '<div class="screen">' + top + '<div class="ch-clear"><div class="ch-clear-ico">' + chImg('sad', 'chr-clear') + '</div><h1>다시 한 번<br>시도해볼까요?</h1>' +
