@@ -3006,3 +3006,6 @@ html, body, * { scrollbar-width: none; -ms-overflow-style: none; }
 .done-screen .stage .sc-done-img { width: auto; height: 100%; max-width: 100%; object-fit: contain; transform-origin: 50% 90%; animation: scdone 1.6s ease-in-out infinite; }
 @keyframes scdone { 0%, 100% { transform: translateY(0) rotate(0); } 25% { transform: translateY(-9px) rotate(-2.5deg); } 50% { transform: translateY(0) rotate(0); } 75% { transform: translateY(-6px) rotate(2.5deg); } }
 @media (prefers-reduced-motion: reduce) { .done-screen .stage .sc-done-img { animation: none; } }
+
+/* v237 크레딧 차감 뱃지: 어떤 버튼 색에서도 보이도록 진한 빨강 바탕 + 흰 글씨 */
+.sc-paid, .btn.gray .sc-paid { background: #e5484d; color: #fff; box-shadow: 0 0 0 1.5px rgba(255,255,255,.85); padding: 3px 8px; font-size: 11.5px; }

@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v236';
+  var APP_VERSION = 'v237';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -4733,7 +4733,7 @@
       '<p class="sub-title" style="margin:0 0 16px">방금 익힌 문장을 AI 선생님과 실제처럼 써 보는 미션이에요.</p>' +
       '<div class="sc-mis-card"><span>오늘의 미션</span><b>' + esc(sc.mission) + '</b></div>' +
       (note ? '<p class="hsk-note" style="text-align:center">' + note + '</p>' : '') + '</div>' +
-      '<div class="footer"><button class="btn" data-act="sc-mission"' + (enough ? '' : ' disabled') + '>AI 선생님과 대화 나누기<span class="sc-paid">유료</span></button>' +
+      '<div class="footer"><button class="btn" data-act="sc-mission"' + (enough ? '' : ' disabled') + '>AI 선생님과 대화 나누기<span class="sc-paid">크레딧 차감</span></button>' +
       '<button class="btn gray" data-act="sc-finish">다음에 할게요</button></div></div>';
   }
   function scFinish(withMission) {
