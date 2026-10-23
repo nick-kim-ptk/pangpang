@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v241';
+  var APP_VERSION = 'v242';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -3464,9 +3464,17 @@
   // 키보드가 올라오면 화면 높이를 '보이는 영역'에 맞춰요 (안 그러면 위쪽 내용이 화면 밖으로 밀려요)
   (function () {
     var vv = window.visualViewport; if (!vv) return;
+    var base = vv.height, shrunk = false;
     function fit() {
       document.documentElement.style.setProperty('--vvh', Math.round(vv.height) + 'px');
-      if (document.body.classList.contains('kb')) { window.scrollTo(0, 0); }
+      if (document.body.classList.contains('kb')) {
+        window.scrollTo(0, 0);
+        if (vv.height < base - 100) shrunk = true;
+        else if (shrunk && vv.height > base - 60) {   // 키보드만 내려갔고 입력창은 그대로인 경우(뒤로가기 등) → 하단 탭을 되돌려요
+          shrunk = false; document.body.classList.remove('kb');
+          var ae = document.activeElement; if (ae && KB_IDS[ae.id] && ae.blur) ae.blur();
+        }
+      } else { shrunk = false; base = Math.max(base, vv.height); }
     }
     vv.addEventListener('resize', fit); vv.addEventListener('scroll', function () { if (document.body.classList.contains('kb') && vv.offsetTop > 0) window.scrollTo(0, 0); });
     fit();
