@@ -4817,7 +4817,7 @@
 
   /* ---------- 음성 물결 (v254): 마이크를 누르고 있는 동안 화면 아래를 살짝 어둡게 하고 목소리에 맞춰 물결이 일어요 ---------- */
   var VFX = (function () {
-    var el, cv, cx, ac, an, stream, raf, buf, hist = [], floor = 0, amp = 0, ph = 0, hue = 48, hzS = 0, lastVoice = 0, tok = 0, safe, lastMsg = '', on = false;
+    var disabled = false, el, cv, cx, ac, an, stream, raf, buf, hist = [], floor = 0, amp = 0, ph = 0, hue = 48, hzS = 0, lastVoice = 0, tok = 0, safe, lastMsg = '', on = false;
     function ensure() {
       if (el) return;
       el = document.createElement('div'); el.className = 'vfx'; el.setAttribute('aria-hidden', 'true');
@@ -4869,7 +4869,7 @@
     // 마이크는 물결용을 먼저 열고, 그 다음에 음성 인식을 시작해야 둘이 부딪히지 않아요. 준비가 되면(또는 1.2초가 지나면) 알려 줘요
     function start(soft) {
       return new Promise(function (resolve) {
-        if (on) { resolve(); return; }
+        if (on || disabled) { resolve(); return; }
         on = true; var my = ++tok, done = false; ensure();
         function fin() { if (!done) { done = true; resolve(); } }
         document.body.classList.toggle('vfx-soft', !!soft);
@@ -4896,7 +4896,10 @@
       an = null;
       setTimeout(function () { if (!on && cx) cx.clearRect(0, 0, cv.width, cv.height); }, 300);
     }
-    return { start: start, stop: stop };
+    // 이 기기에서 물결 때문에 음성 인식이 막히면(마이크 충돌) 물결을 끄고 인식을 우선해요
+    try { disabled = localStorage.getItem('pangpang.vfxoff') === '1'; } catch (e) { /* noop */ }
+    function disable() { disabled = true; try { localStorage.setItem('pangpang.vfxoff', '1'); } catch (e) { /* noop */ } stop(); }
+    return { start: start, stop: stop, disable: disable, active: function () { return on; } };
   })();
   function scListen(prev) {
     prev = prev || '';
@@ -4922,7 +4925,7 @@
       lastInterim = res[0].transcript;
       if (res.isFinal) { finals = []; for (var i = 0; i < res.length; i++) finals.push(res[i].transcript); }
     };
-    r.onerror = function (e) { err = e.error || 'error'; };
+    r.onerror = function (e) { err = e.error || 'error'; if (VFX.active() && (err === 'audio-capture' || err === 'aborted')) VFX.disable(); };
     r.onend = function () {
       if (scRec === r) scRec = null;
       if (state.sc !== c || state.screen !== 'scene' || c.stage !== 'speak' || c.pass) return;
@@ -5563,7 +5566,7 @@
         for (var i = 0; i < res.length; i++) finals.push(res[i].transcript);
       }
     };
-    r.onerror = function (e) { errCode = e.error || 'error'; };
+    r.onerror = function (e) { errCode = e.error || 'error'; if (VFX.active() && (errCode === 'audio-capture' || errCode === 'aborted')) VFX.disable(); };
     r.onend = function () {
       if (rec === r) rec = null;
       if (state.s !== s || state.screen !== 'practice' || s.phase !== 'ask') return;
