@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v215';
+  var APP_VERSION = 'v216';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -325,6 +325,7 @@
       if (d.err) saveFailed(d.err);
       applyRemote(d);
       await srsLoadRemote();
+      await hskLoadRemote();
     },
     saveProgress: tracked(async function (rows) {
       persistLocal();
@@ -343,7 +344,7 @@
       persistLocal();
       if (!sb || isGuest()) return;
       var p = state.profile;
-      var res = await sb.auth.updateUser({ data: { nickname: p.nickname, rankPub: p.rankPub, rankAnon: p.rankAnon, goal: p.goal, theme: p.theme, remind: p.remind, remindOn: p.remindOn, pn: p.pn, wordLv: p.wordLv, speedUsed: p.speedUsed, sound: p.sound, kr: p.kr, input: p.input, favs: p.favs, dlg: p.dlg, hsk3: p.hsk3 } });
+      var res = await sb.auth.updateUser({ data: { nickname: p.nickname, rankPub: p.rankPub, rankAnon: p.rankAnon, goal: p.goal, theme: p.theme, remind: p.remind, remindOn: p.remindOn, pn: p.pn, wordLv: p.wordLv, speedUsed: p.speedUsed, sound: p.sound, kr: p.kr, input: p.input, favs: p.favs, dlg: p.dlg, hsk3: state.hskSynced ? null : p.hsk3 } });
       if (res.error) saveFailed(res.error); else if (res.data && res.data.user) state.user = res.data.user;
     }),
     saveDaily: tracked(async function (row) {
@@ -3508,7 +3509,28 @@
     while (s.length < hskList(lv).length) s += '0';
     state.profile.hsk3[lv] = s.slice(0, i) + (on ? '1' : '0') + s.slice(i + 1);
     clearTimeout(hskTimer);
-    hskTimer = setTimeout(function () { store.saveProfile(); }, 900);   // 연달아 누를 땐 한 번만 저장
+    hskTimer = setTimeout(function () {   // 연달아 누를 땐 한 번만 저장
+      if (state.hskSynced) { persistLocal(); hskRemoteSave(); } else store.saveProfile();
+    }, 900);
+  }
+  // '알아요' 표시는 로그인 정보 대신 전용 표(user_hsk)에 저장해요. 표가 아직 없으면 예전 방식(로그인 정보)을 그대로 써요.
+  async function hskRemoteSave() {
+    try {
+      var res = await sb.from('user_hsk').upsert({ user_id: state.user.id, data: state.profile.hsk3, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+      if (res && res.error) { state.hskSynced = false; return false; }
+      state.hskSynced = true; return true;
+    } catch (e) { state.hskSynced = false; return false; }
+  }
+  async function hskLoadRemote() {
+    if (!sb || isGuest() || !state.user) return;
+    try {
+      var res = await sb.from('user_hsk').select('data').maybeSingle();
+      if (!res || res.error) return;
+      var rd = res.data && res.data.data;
+      if (rd && typeof rd === 'object') { state.profile.hsk3 = normHsk(rd); state.hskSynced = true; return; }
+      var has = Object.keys(state.profile.hsk3).some(function (l) { return /1/.test(state.profile.hsk3[l]); });
+      if (has) { if (await hskRemoteSave()) store.saveProfile(); } else state.hskSynced = true;   // 옮긴 뒤엔 로그인 정보에서 지워요
+    } catch (e) { /* 예전 방식 유지 */ }
   }
 
   /* ---------- HSK 단어 복습 주기 (간격 반복) ---------- */

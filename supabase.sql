@@ -754,3 +754,19 @@ create table if not exists public.push_sent (
 );
 alter table public.push_sent enable row level security;   -- 정책을 만들지 않아서 앱에서는 못 읽고, 서비스 키를 쓰는 함수만 써요
 notify pgrst, 'reload schema';
+
+-- v215: HSK 단어 "알아요" 표시를 로그인 정보 대신 전용 표에 저장 (5·6급이 들어와도 로그인 정보가 커지지 않게).
+-- 안 만들어도 앱은 예전 방식으로 잘 동작해요. 만든 뒤 처음 로그인하면 기존 표시가 자동으로 옮겨져요.
+create table if not exists public.user_hsk (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  data jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now()
+);
+alter table public.user_hsk enable row level security;
+drop policy if exists "user_hsk own select" on public.user_hsk;
+drop policy if exists "user_hsk own insert" on public.user_hsk;
+drop policy if exists "user_hsk own update" on public.user_hsk;
+create policy "user_hsk own select" on public.user_hsk for select using (auth.uid() = user_id);
+create policy "user_hsk own insert" on public.user_hsk for insert with check (auth.uid() = user_id);
+create policy "user_hsk own update" on public.user_hsk for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+notify pgrst, 'reload schema';
