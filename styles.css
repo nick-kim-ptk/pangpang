@@ -3047,3 +3047,14 @@ body.kb .nav { display: none; }
 
 /* v247 로그인 화면: 위 버튼과 '나중에 할게요/둘러보기' 사이, 아래쪽에도 여유 */
 .lg-later { height: 48px; margin-top: 10px; margin-bottom: 6px; }
+
+/* v248 홈 '오늘 할 일' 카드 안쪽 여유 */
+.td-card { padding: 22px 20px 10px; }
+.td-card .td-bar { margin: 16px 0 10px; height: 12px; }
+.td-card .td-item { padding: 18px 0; min-height: 76px; gap: 16px; }
+.td-card .td-t { gap: 8px; }
+.td-card .td-s { margin-top: 4px; }
+.td-card .td-why { margin-top: 4px; }
+.td-card .td-group .td-item { padding-bottom: 12px; }
+.td-card .td-group .phrase-card { margin: 0 0 18px; padding: 16px 18px; }
+.td-head2 .td-sub { margin-top: 6px; }

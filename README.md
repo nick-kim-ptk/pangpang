@@ -886,3 +886,6 @@ select kind, count(*) n, round(avg(in_tokens)) avg_in, round(avg(cache_read)) av
 
 ## v247
 - 로그인 화면 "나중에 할게요/둘러보기" 버튼 위·아래 간격 확대.
+
+## v248
+- 홈 "오늘 할 일" 카드 안쪽 여백 확대 (카드 패딩, 항목 높이·간격, 진행바 위아래).
