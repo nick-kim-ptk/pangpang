@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v223';
+  var APP_VERSION = 'v224';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -3876,6 +3876,24 @@
     return d.getUTCFullYear() + '-' + ('0' + (d.getUTCMonth() + 1)).slice(-2) + '-' + ('0' + d.getUTCDate()).slice(-2);
   }
   function wkLeft() { return 7 - wkDow(); }
+  // 이번 주 마감(월요일 0시, 한국 시간)까지 남은 시간
+  function wkRemain() {
+    var n = wkNow(), into = ((n.getUTCHours() * 60 + n.getUTCMinutes()) * 60 + n.getUTCSeconds()) * 1000 + n.getUTCMilliseconds();
+    var week = 7 * 86400000, left = (7 - wkDow()) * 86400000 - into;
+    return { ms: left, frac: Math.max(0, Math.min(1, left / week)) };
+  }
+  function wkCdText(ms) {
+    var t = Math.max(0, Math.floor(ms / 1000)), d = Math.floor(t / 86400), h = Math.floor(t % 86400 / 3600), m = Math.floor(t % 3600 / 60), sc = t % 60;
+    function z(x) { return ('0' + x).slice(-2); }
+    return (d ? d + '일 ' : '') + z(h) + ':' + z(m) + ':' + z(sc);
+  }
+  setInterval(function () {
+    var el = document.getElementById('rkCd'); if (!el) return;
+    var r = wkRemain(), bar = document.getElementById('rkBar');
+    el.textContent = wkCdText(r.ms);
+    if (bar) bar.style.width = (r.frac * 100).toFixed(2) + '%';
+    var box = el.closest('.rk-cd'); if (box) box.classList.toggle('hot', r.ms < 86400000);
+  }, 1000);
   function wkKey() { return 'pangpang.week.' + (state.user ? state.user.id : 'x'); }
   function wkAll() {
     var o = null;
@@ -3987,19 +4005,28 @@
     else if (rk.err) list = '<p class="rk-note">순위를 불러오지 못했어요. 잠시 뒤에 다시 열어 주세요.</p>';
     else if (!rk.rows) list = '<p class="rk-note">불러오는 중…</p>';
     else if (!rk.rows.length) list = '<p class="rk-note">아직 이번 주 기록이 없어요. 첫 번째 주인공이 되어 보세요!</p>';
-    else list = '<ul class="rk-list">' + rk.rows.map(function (r, ri) {
-      var n = +r.rnk, gap = ri && (+r.pos) - (+rk.rows[ri - 1].pos) > 1 ? '<li class="rk-gap" aria-hidden="true">⋮</li>' : '', medal = n <= 3 ? '<span class="rk-medal m' + n + '">' + icn('trophy') + '</span>' : '<span class="rk-no">' + n + '</span>';
-      return gap + '<li class="rk-row' + (r.me ? ' me' : '') + (n <= 3 ? ' top' : '') + '">' + medal + '<span class="rk-nick">' + esc(r.nick) + (r.me ? ' <i>나</i>' : '') + '</span><b class="rk-pt">' + (+r.total) + '<small>점</small></b></li>';
-    }).join('') + '</ul>';
+    else {
+      var pdN = Math.min(3, rk.rows.length), pd = rk.rows.slice(0, pdN);
+      var pdCol = function (n) {
+        var r = pd.filter(function (x) { return +x.rnk === n; })[0] || (pd[n - 1] && +pd[n - 1].rnk <= 3 ? pd[n - 1] : null);
+        return r ? '<div class="pd-col m' + n + (r.me ? ' me' : '') + '"><span class="pd-nick">' + esc(r.nick) + (r.me ? ' <i>나</i>' : '') + '</span><b class="pd-pt">' + (+r.total) + '<small>점</small></b><div class="pd-block"><span class="pd-ic">' + icn('trophy') + '</span><em>' + n + '</em></div></div>'
+          : '<div class="pd-col m' + n + ' empty"><span class="pd-nick">–</span><b class="pd-pt">&nbsp;</b><div class="pd-block"><em>' + n + '</em></div></div>';
+      };
+      var rest = rk.rows.map(function (r, ri) { return { r: r, ri: ri }; }).filter(function (x) { return x.ri >= pdN || +x.r.rnk > 3; }).filter(function (x) { return x.ri >= pdN; });
+      list = '<div class="pd">' + pdCol(2) + pdCol(1) + pdCol(3) + '</div>' + (rest.length ? '<ul class="rk-list">' + rest.map(function (x) {
+        var r = x.r, ri = x.ri, n = +r.rnk, gap = ri && (+r.pos) - (+rk.rows[ri - 1].pos) > 1 ? '<li class="rk-gap" aria-hidden="true">⋮</li>' : '';
+        return gap + '<li class="rk-row' + (r.me ? ' me' : '') + '"><span class="rk-no">' + n + '</span><span class="rk-nick">' + esc(r.nick) + (r.me ? ' <i>나</i>' : '') + '</span><b class="rk-pt">' + (+r.total) + '<small>점</small></b></li>';
+      }).join('') + '</ul>' : '');
+    }
     var meRow = (rk.rows || []).filter(function (r) { return r.me; })[0], nme = meRow ? +meRow.rnk : 0;
     var quip = !nme ? '' : nme === 1 ? pick(['1위예요! 지금부터는 잠도 못 자는 자리예요', '1위! 뒤에서 다들 눈을 빛내고 있어요']) : nme <= 3 ? pick(['트로피권이에요. 방심하면 달팽이한테도 밀려요', '3위 안이에요. 이 자리 오래 앉으면 의자가 따뜻해져요']) : nme <= 10 ? 'TOP 10이에요. 하루 20분이면 트로피권이에요' : '달팽이왕 따라잡으려면 하루 20분만 더요';
     var games = WK_GAMES.map(function (g) { return { quiz: '퀴즈', chain: '기억 사슬', tone: '성조 연습', rain: '소나기 퀴즈' }[g] + ' ' + wkGame(o, g); }).join(' · ');
     return '<div class="screen"><div class="topbar"><button class="icon-btn" data-act="back" aria-label="뒤로">' + I.back + '</button></div>' +
       '<div class="scroll" style="padding-top:4px"><h1 class="big-title" style="margin-top:0">이번 주 순위</h1>' +
       '<div class="wk-card"><span class="wk-l">내 토탈 점수</span><b class="wk-n">' + tot + '<small>점</small></b><span class="wk-s">' + games + '</span></div>' +
-      '<p class="rk-sub">월요일 0시에 새로 시작해요 · 마감까지 ' + wkLeft() + '일' + (rk.rows && rk.rows.length ? ' · 참가 ' + (+rk.rows[0].cnt || rk.rows.length) + '명' : '') + '</p>' + (quip ? '<p class="rk-quip">' + esc(quip) + '</p>' : '') + list +
+      (function () { var r = wkRemain(); return '<div class="rk-cd' + (r.ms < 86400000 ? ' hot' : '') + '"><div class="rk-cd-top"><span>⏳ 마감까지</span><b id="rkCd">' + wkCdText(r.ms) + '</b></div><div class="rk-cd-bar"><i id="rkBar" style="width:' + (r.frac * 100).toFixed(2) + '%"></i></div>' + (rk.rows && rk.rows.length ? '<span class="rk-cd-n">참가 ' + (+rk.rows[0].cnt || rk.rows.length) + '명 · 월요일 0시에 새로 시작</span>' : '<span class="rk-cd-n">월요일 0시에 새로 시작</span>') + '</div>'; })() + (quip ? '<p class="rk-quip">' + esc(quip) + '</p>' : '') + list +
       '<button class="hsk-row mw-link" data-act="myweeks-open"><span class="hr-t">내 주간 기록</span><span class="hr-s">지난주들의 점수와 순위</span><span class="hr-chev">' + '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg>' + '</span></button>' +
-      '<p class="rk-foot">닉네임 공개는 환경 설정에서 바꿀 수 있어요. 토탈 = 4개 게임의 이번 주 최고 점수 합계예요. 어려운 급일수록 점수에 배율이 붙어요 (1급 ×0.9 · 2급 ×1.0 · 3급 ×1.1 · 4급 ×1.2). 여러 급을 함께 고르면 평균 배율이에요.</p><div style="height:32px"></div></div></div>';
+      '<details class="rk-how"><summary>점수는 어떻게 계산해요?</summary><p>토탈 = 4개 게임의 이번 주 최고 점수 합계예요. 어려운 급일수록 배율이 붙어요 (1급 ×0.9 · 2급 ×1.0 · 3급 ×1.1 · 4급 ×1.2). 여러 급을 함께 고르면 평균 배율이에요.</p></details><div style="height:32px"></div></div></div>';
   }
   /* ---------- 지난주 결과: 새 주의 첫 접속 때 한 번 보여 줘요 ---------- */
   function wkPrevMonday() {
