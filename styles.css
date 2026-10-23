@@ -2828,3 +2828,17 @@ html, body, * { scrollbar-width: none; -ms-overflow-style: none; }
 .wl-top3 em { font-style: normal; font-weight: 700; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .wl-top3 b { font-variant-numeric: tabular-nums; }
 .wl-card .btn { width: 100%; }
+
+/* v204: 게임 급 고르기 시트 */
+.gsheet { z-index: 41; }
+.gsheet h3 { padding-right: 0; }
+.gs-sub { margin: 0 0 var(--sp-3); font-size: 14px; color: var(--ink-3); }
+.gs-chips { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2); }
+.gs-chip { display: grid; gap: 2px; padding: 12px 14px; border: 0; border-radius: 16px; background: var(--card); box-shadow: inset 0 0 0 1.5px var(--line); color: var(--navy); font: inherit; text-align: left; cursor: pointer; }
+.gs-chip b { font-size: 17px; font-weight: 800; }
+.gs-chip span { font-size: 12px; color: var(--ink-3); }
+.gs-chip.on { background: var(--y); box-shadow: inset 0 0 0 2px var(--y-press); color: #1a2139; }
+.gs-chip.on span { color: #2f3a63; }
+.gs-chip.lk { opacity: .7; }
+.gs-note { margin: var(--sp-3) 0; font-size: 13px; color: var(--ink-3); }
+.gsheet .btn { width: 100%; }
