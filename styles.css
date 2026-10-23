@@ -2811,3 +2811,6 @@ html, body, * { scrollbar-width: none; -ms-overflow-style: none; }
 .rk-nick i { margin-left: 4px; padding: 2px 7px; border-radius: 999px; font-style: normal; font-size: 11px; font-weight: 800; background: var(--y); color: #1a2139; }
 .rk-pt { font-variant-numeric: tabular-nums; font-weight: 900; }
 .rk-pt small { margin-left: 2px; font-size: 12px; color: var(--ink-3); font-weight: 700; }
+
+/* v202: 게임 제목은 레슨 제목과 같은 크기, 결과에서 돌아오면 이 제목이 맨 위 */
+.hsk-main .hsk-gt { margin: var(--sp-2) 0 var(--sp-3); font-size: 18px; letter-spacing: -0.02em; color: var(--ink); scroll-margin-top: var(--sp-3); }

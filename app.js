@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v201';
+  var APP_VERSION = 'v202';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -1925,7 +1925,7 @@
       '<div class="rd-msgbox"><p class="rd-msg">“' + gdLines(esc(msg)) + '”</p></div>' +
       '</div><div class="footer" style="padding-left:0;padding-right:0">' +
       '<button class="btn" data-act="rain-start" data-id="' + r.lv + '">한 번 더 하기</button>' +
-      '<button class="gd-link" data-act="hsk-home">홈으로</button></div></div>';
+      '<button class="gd-link" data-act="hsk-games">홈으로</button></div></div>';
   }
   // 점수 숫자가 0에서 올라가요 (움직임 줄이기면 바로 보여요)
   function rdCount() {
@@ -3551,7 +3551,7 @@
       '<div class="rd-msgbox"><p class="rd-msg">“' + gdLines(esc(msg)) + '”</p></div>' +
       '</div><div class="footer" style="padding-left:0;padding-right:0">' +
       '<button class="btn" data-act="' + r.again.act + '" data-id="' + r.again.id + '">한 번 더 하기</button>' +
-      '<button class="gd-link" data-act="hsk-home">홈으로</button></div></div>';
+      '<button class="gd-link" data-act="hsk-games">홈으로</button></div></div>';
   }
   function toneWin(it) { return 4 + 2 * it.tones.length; }
   function startTone(lv) {
@@ -3722,7 +3722,7 @@
       row('hsk-study', '카드 학습', '밀어서 외우기') + '</div>';
     function wbest(g) { return wkBest(g, lv); }
     var tot = wkTotal();
-    var gameHead = '<div class="hsk-gt">게임</div>' +
+    var gameHead = '<div class="section-title hsk-gt" id="hsk-games">게임</div>' +
       '<div class="wk-card"><div class="wk-top"><span class="wk-l">이번 주 내 토탈 점수</span><span class="wk-d">마감 D-' + wkLeft() + '</span></div>' +
       '<b class="wk-n">' + tot + '<small>점</small></b>' +
       '<button class="wk-rank" data-act="rank-open">' + icn('trophy') + ' 전체 순위 보기<span class="hr-chev">' + chev + '</span></button></div>';
@@ -4623,7 +4623,7 @@
       '<div class="rd-msgbox"><p class="rd-msg">“' + gdLines(esc(msg)) + '”</p></div>' +
       '</div><div class="footer" style="padding-left:0;padding-right:0">' +
       '<button class="btn" data-act="ch-start" data-id="' + r.lv + '">다시 도전</button>' +
-      '<button class="gd-link" data-act="hsk-home">홈으로</button></div></div>';
+      '<button class="gd-link" data-act="hsk-games">홈으로</button></div></div>';
   }
   function chTop(c) {
     var hearts = '';
@@ -5495,6 +5495,10 @@
       case 'tone-next': toneNext(); break;
       case 'ch-retry': chRetryGo(); break;
       case 'hsk-home': go('tab', { tab: 'words' }); break;
+      case 'hsk-games':
+        go('tab', { tab: 'words' });
+        var ge = document.getElementById('hsk-games'); if (ge && ge.scrollIntoView) ge.scrollIntoView({ block: 'start' });
+        break;
       case 'rank-open': openRank(); break;
       case 'sc-open': state.scFrom = state.screen === 'scenes' ? 'scenes' : ''; startScene(id); break;
       case 'sc-all': go('scenes'); break;
