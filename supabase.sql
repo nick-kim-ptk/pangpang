@@ -640,3 +640,37 @@ create policy "ai_chats own select" on public.ai_chats for select using (auth.ui
 create policy "ai_chats own insert" on public.ai_chats for insert with check (auth.uid() = user_id);
 create policy "ai_chats own update" on public.ai_chats for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "ai_chats own delete" on public.ai_chats for delete using (auth.uid() = user_id);
+
+-- v201: 이번 주 게임 점수와 전체 순위. 안 만들어도 앱은 이 기기에서 잘 동작해요(순위 화면만 비어요).
+create table if not exists public.weekly_scores (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  week date not null,
+  game text not null,
+  score int not null default 0,
+  nick text not null default '',
+  updated_at timestamptz not null default now(),
+  primary key (user_id, week, game)
+);
+alter table public.weekly_scores enable row level security;
+drop policy if exists "weekly_scores own select" on public.weekly_scores;
+drop policy if exists "weekly_scores own insert" on public.weekly_scores;
+drop policy if exists "weekly_scores own update" on public.weekly_scores;
+create policy "weekly_scores own select" on public.weekly_scores for select using (auth.uid() = user_id);
+create policy "weekly_scores own insert" on public.weekly_scores for insert with check (auth.uid() = user_id);
+create policy "weekly_scores own update" on public.weekly_scores for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- 남의 원본 기록은 못 보고, 합계 순위(닉네임·토탈)만 이 함수로 보여요.
+create or replace function public.weekly_rank(p_week date)
+returns table(rnk bigint, nick text, total bigint, me boolean)
+language sql security definer set search_path = public as $$
+  with t as (
+    select user_id, max(nick) as nick, sum(score)::bigint as total
+    from public.weekly_scores where week = p_week group by user_id
+  ), r as (
+    select user_id, nick, total, rank() over (order by total desc) as rnk from t
+  )
+  select rnk, coalesce(nullif(nick, ''), '익명 달팽이'), total, (user_id = auth.uid())
+  from r where rnk <= 50 or user_id = auth.uid() order by rnk, 2;
+$$;
+revoke all on function public.weekly_rank(date) from public;
+grant execute on function public.weekly_rank(date) to authenticated;

@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v200';
+  var APP_VERSION = 'v201';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -604,7 +604,7 @@
 
   /* ---------- 화면 이동 ---------- */
   // 뒤로 가기: 폰의 뒤로 제스처·버튼(기록)과 화면 왼쪽 가장자리에서 오른쪽으로 미는 동작을 같이 처리해요
-  var SUBSCREEN = { pay: 1, privacy: 1, login: 1, intro: 1, practice: 1, quiz: 1, stats: 1, done: 1, hsk: 1, hskstudy: 1, tone: 1, feedback: 1, speed: 1, account: 1, coupon: 1, aicharge: 1, aichat: 1, aiall: 1, aichats: 1, aichatlog: 1, scene: 1, gram: 1, grams: 1, lsall: 1, chain: 1, rain: 1, scenes: 1, phrases: 1, prefs: 1, about: 1, advisor: 1 };
+  var SUBSCREEN = { pay: 1, privacy: 1, login: 1, intro: 1, practice: 1, quiz: 1, stats: 1, done: 1, hsk: 1, hskstudy: 1, tone: 1, feedback: 1, speed: 1, account: 1, coupon: 1, aicharge: 1, aichat: 1, aiall: 1, aichats: 1, aichatlog: 1, scene: 1, gram: 1, grams: 1, lsall: 1, rank: 1, chain: 1, rain: 1, scenes: 1, phrases: 1, prefs: 1, about: 1, advisor: 1 };
   var inSub = false, ignorePop = 0, backAnim = false;
   function syncHistory(screen) {
     try {
@@ -643,6 +643,7 @@
     else if (sc === 'scene') { stopSpeak(); scStopRec(); state.sc = null; go(state.scFrom === 'scenes' ? 'scenes' : 'tab'); }
     else if (sc === 'gram') { stopSpeak(); go('intro', { lessonId: state.gm.l.id }); }
     else if (sc === 'scenes' || sc === 'grams' || sc === 'lsall') go('tab', { tab: 'lessons' });
+    else if (sc === 'rank') go('tab', { tab: 'words' });
     else if (sc === 'done') go('tab', { tab: 'home' });
     else if (sc === 'feedback' || sc === 'account' || sc === 'coupon') go('prefs');
     else if (sc === 'intro' && (state.lsFrom === 'grams' || state.lsFrom === 'lsall')) go(state.lsFrom);
@@ -2784,6 +2785,7 @@
     else if (state.screen === 'gram') html = viewGram();
     else if (state.screen === 'grams') html = viewGrams();
     else if (state.screen === 'lsall') html = viewLessonsAll();
+    else if (state.screen === 'rank') html = viewRank();
     else if (state.screen === 'stats') html = viewStats();
     else if (state.screen === 'hsk') html = viewHsk();
     else if (state.screen === 'feedback') html = viewFeedback();
@@ -3516,7 +3518,7 @@
   function ptFinish(game, lv, s, again) {
     var goal = state.profile.goal, now = todayAnswers(), hit = s.before < goal && now >= goal;
     var prev = ptBest(game, lv), nb = s.score > prev && prev > 0, first = prev === 0;
-    ptSave(game, lv, s.score);
+    ptSave(game, lv, s.score); wkSubmit(game === 'hskquiz' ? 'quiz' : 'tone', lv, s.score);
     stopSpeak(); sfx(hit || nb ? 'goal' : 'done');
     go('done', { result: { kind: 'score', game: game, lv: lv, score: s.score, prev: prev, newBest: nb, first: first, right: s.right, answered: s.answered, combo: s.maxCombo, all: !!s.all,
       answers: now, goal: goal, goalHit: hit, milestone: 0, again: again } });
@@ -3632,11 +3634,76 @@
     return [1, 2, 3, 4].indexOf(v) >= 0 && !hskLocked(v) ? v : 1;
   }
   function hmi(n) { return '<img class="hm-img" src="img/hm-' + n + '.webp" alt="" draggable="false">'; }
+  /* ---------- 이번 주 점수와 순위: 4개 게임의 이번 주 최고 점수를 급별 배율로 더해요 ---------- */
+  var WK_MULT = { 1: 0.9, 2: 1, 3: 1.1, 4: 1.2 }, WK_GAMES = ['quiz', 'chain', 'tone', 'rain'];
+  function wkNow() { return new Date(Date.now() + 9 * 3600 * 1000); }
+  function wkDow() { return (wkNow().getUTCDay() + 6) % 7; }   // 월요일=0 (한국 시간)
+  function wkMonday() {
+    var d = wkNow(); d.setUTCDate(d.getUTCDate() - wkDow());
+    return d.getUTCFullYear() + '-' + ('0' + (d.getUTCMonth() + 1)).slice(-2) + '-' + ('0' + d.getUTCDate()).slice(-2);
+  }
+  function wkLeft() { return 7 - wkDow(); }
+  function wkKey() { return 'pangpang.week.' + (state.user ? state.user.id : 'x'); }
+  function wkAll() {
+    var o = null;
+    try { o = JSON.parse(localStorage.getItem(wkKey()) || 'null'); } catch (e) { o = null; }
+    if (!o || o.w !== wkMonday()) o = { w: wkMonday(), r: {} };
+    return o;
+  }
+  function wkBest(g, lv) { return wkAll().r[g + lv] || 0; }
+  function wkGame(o, g) {
+    var m = 0;
+    for (var lv = 1; lv <= 4; lv++) m = Math.max(m, Math.round((o.r[g + lv] || 0) * WK_MULT[lv]));
+    return m;
+  }
+  function wkTotal() { var o = wkAll(); return WK_GAMES.reduce(function (a, g) { return a + wkGame(o, g); }, 0); }
+  function wkPush(o, games) {
+    if (!sb || isGuest() || !state.user) return;
+    var rows = games.map(function (g) { return { user_id: state.user.id, week: o.w, game: g, score: wkGame(o, g), nick: nickname(), updated_at: new Date().toISOString() }; }).filter(function (r) { return r.score > 0; });
+    if (!rows.length) return;
+    try { Promise.resolve(sb.from('weekly_scores').upsert(rows, { onConflict: 'user_id,week,game' })).then(function () {}, function () {}); } catch (e) { /* 표가 없어도 이 기기에는 저장돼요 */ }
+  }
+  function wkSubmit(g, lv, score) {
+    var o = wkAll();
+    if (!(score > (o.r[g + lv] || 0))) return;
+    o.r[g + lv] = score;
+    try { localStorage.setItem(wkKey(), JSON.stringify(o)); } catch (e) { /* 무시 */ }
+    wkPush(o, [g]);
+  }
+  function openRank() {
+    state.rk = { rows: null, err: false };
+    go('rank');
+    wkPush(wkAll(), WK_GAMES);
+    if (!sb || isGuest() || !state.user) { state.rk.err = 'guest'; render(); return; }
+    var rk = state.rk;
+    Promise.resolve(sb.rpc('weekly_rank', { p_week: wkMonday() })).then(function (res) {
+      if (state.rk !== rk) return;
+      if (res && res.error) rk.err = 'fail'; else rk.rows = (res && res.data) || [];
+      if (state.screen === 'rank') render();
+    }, function () { if (state.rk === rk) { rk.err = 'fail'; if (state.screen === 'rank') render(); } });
+  }
+  function viewRank() {
+    var rk = state.rk || { rows: null, err: false }, tot = wkTotal(), o = wkAll();
+    var list;
+    if (rk.err === 'guest') list = '<p class="rk-note">로그인하면 다른 사람들과 순위를 겨룰 수 있어요.</p>';
+    else if (rk.err) list = '<p class="rk-note">순위를 불러오지 못했어요. 잠시 뒤에 다시 열어 주세요.</p>';
+    else if (!rk.rows) list = '<p class="rk-note">불러오는 중…</p>';
+    else if (!rk.rows.length) list = '<p class="rk-note">아직 이번 주 기록이 없어요. 첫 번째 주인공이 되어 보세요!</p>';
+    else list = '<ul class="rk-list">' + rk.rows.map(function (r) {
+      var n = +r.rnk, medal = n <= 3 ? '<span class="rk-medal m' + n + '">' + icn('trophy') + '</span>' : '<span class="rk-no">' + n + '</span>';
+      return '<li class="rk-row' + (r.me ? ' me' : '') + (n <= 3 ? ' top' : '') + '">' + medal + '<span class="rk-nick">' + esc(r.nick) + (r.me ? ' <i>나</i>' : '') + '</span><b class="rk-pt">' + (+r.total) + '<small>점</small></b></li>';
+    }).join('') + '</ul>';
+    var games = WK_GAMES.map(function (g) { return { quiz: '퀴즈', chain: '기억 사슬', tone: '성조 연습', rain: '소나기 퀴즈' }[g] + ' ' + wkGame(o, g); }).join(' · ');
+    return '<div class="screen"><div class="topbar"><button class="icon-btn" data-act="back" aria-label="뒤로">' + I.back + '</button></div>' +
+      '<div class="scroll" style="padding-top:4px"><h1 class="big-title" style="margin-top:0">이번 주 순위</h1>' +
+      '<div class="wk-card"><span class="wk-l">내 토탈 점수</span><b class="wk-n">' + tot + '<small>점</small></b><span class="wk-s">' + games + '</span></div>' +
+      '<p class="rk-sub">월요일 0시에 새로 시작해요 · 마감까지 ' + wkLeft() + '일</p>' + list +
+      '<p class="rk-foot">토탈 = 4개 게임의 이번 주 최고 점수 합계예요. 어려운 급일수록 점수에 배율이 붙어요 (1급 ×0.9 · 2급 ×1.0 · 3급 ×1.1 · 4급 ×1.2).</p><div style="height:32px"></div></div></div>';
+  }
   function hskSection() {
     if (!Object.keys(HSKW).length) return '';
     var lv = hskLvSel(), n = hskList(lv).length, k = hskCount(lv), pct = n ? Math.round(k / n * 100) : 0;
     var wd = hskDue(0).length, rec = chRec(lv), locked = hskLocked(lv);
-    var dueCard = wd ? '<button class="hsk-due" data-act="hsk-due"><span class="hd-t">오늘 복습할 단어 <b>' + wd + '개</b></span><span class="chip y">복습</span></button>' : '';
     var chips = '<div class="hsk-chips" role="tablist" aria-label="HSK 급 선택">' + [1, 2, 3, 4].map(function (l) {
       return '<button role="tab" class="hsk-chip' + (l === lv ? ' on' : '') + '" data-act="hsk-lv" data-id="' + l + '" aria-selected="' + (l === lv) + '"' + (hskLocked(l) ? ' disabled aria-disabled="true"' : '') + '>' + (hskLocked(l) ? '<i class="hc-lock">' + I.lock + '</i>' : '') + l + '급</button>';
     }).join('') + '</div>';
@@ -3644,18 +3711,29 @@
       return '<button class="hsk-mode' + (locked ? ' lk' : '') + (cls ? ' ' + cls : '') + '" data-act="' + act + '" data-id="' + lv + '"><span class="hm-ico">' + ico + '</span>' +
         '<b>' + title + '</b><span class="hm-sub">' + sub + '</span>' + (tag ? '<em class="hm-tag">' + tag + '</em>' : '') + '</button>';
     }
-    var listCard = '<button class="hsk-list-link" data-act="hsk-open" data-id="' + lv + '"><span class="hl-t">' + lv + '급 단어 목록</span>' +
-      '<span class="hl-s">' + n + '개 중 ' + k + '개 익혔어요</span><span class="hl-chev"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg></span>' +
-      '<span class="meter g hl-m"><i style="width:' + pct + '%"></i></span></button>';
-    return '<div class="hsk-main">' + dueCard + chips +
+    var chev = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg>';
+    function row(act, t, sub, extra) {
+      return '<button class="hsk-row" data-act="' + act + '" data-id="' + lv + '"' + (extra && extra.off ? ' disabled' : '') + '><span class="hr-t">' + t + '</span><span class="hr-s">' + sub + '</span>' +
+        (extra && extra.chip ? '<span class="chip y">' + extra.chip + '</span>' : '<span class="hr-chev">' + chev + '</span>') + (extra && extra.meter != null ? '<span class="meter g hr-m"><i style="width:' + extra.meter + '%"></i></span>' : '') + '</button>';
+    }
+    var study = '<div class="hsk-grp">' +
+      row('hsk-open', lv + '급 단어 목록', n + '개 중 ' + k + '개 익혔어요', { meter: pct }) +
+      (wd ? row('hsk-due', '오늘 복습할 단어', '<b>' + wd + '개</b>가 기다리고 있어요', { chip: '복습' }) : row('hsk-due', '오늘 복습할 단어', '오늘은 복습할 단어가 없어요', { off: true })) +
+      row('hsk-study', '카드 학습', '밀어서 외우기') + '</div>';
+    function wbest(g) { return wkBest(g, lv); }
+    var tot = wkTotal();
+    var gameHead = '<div class="hsk-gt">게임</div>' +
+      '<div class="wk-card"><div class="wk-top"><span class="wk-l">이번 주 내 토탈 점수</span><span class="wk-d">마감 D-' + wkLeft() + '</span></div>' +
+      '<b class="wk-n">' + tot + '<small>점</small></b>' +
+      '<button class="wk-rank" data-act="rank-open">' + icn('trophy') + ' 전체 순위 보기<span class="hr-chev">' + chev + '</span></button></div>';
+    return '<div class="hsk-main">' + chips +
       (locked ? '<p class="hsk-lock-note">' + I.lock + ' ' + lv + '급은 멤버십이 필요해요. 1급은 무료예요.</p>' : '') +
-      listCard +
+      study + gameHead +
       '<div class="hsk-modes">' +
-      mode('hsk-study', hmi('game'), '카드 학습', '밀어서 외우기', '') +
-      mode('hsk-quiz', hmi('quiz'), '퀴즈', ptBest('hskquiz', lv) ? '최고 ' + ptBest('hskquiz', lv) + '점' : '하트 3개로 도전', ptBest('hskquiz', lv) ? '' : 'NEW') +
-      mode('ch-start', hmi('kisa'), '기억 사슬', rec.best ? '최고 ' + rec.best + '단계' : '몇 단계까지 갈까?', rec.plays ? '' : 'NEW') +
-      mode('tone-start', hmi('sungjo'), '성조 연습', ptBest('tone', lv) ? '최고 ' + ptBest('tone', lv) + '점' : '하트 5개로 도전', ptBest('tone', lv) ? '' : 'NEW') +
-      mode('rain-start', hmi('sonagi'), '소나기 퀴즈', '떨어지는 한자를 잡아요', rnBest(lv) ? '' : 'NEW', 'wide') + '</div>' +
+      mode('hsk-quiz', hmi('quiz'), '퀴즈', wbest('quiz') ? '이번 주 ' + wbest('quiz') + '점' : '하트 3개로 도전', ptBest('hskquiz', lv) ? '' : 'NEW') +
+      mode('ch-start', hmi('kisa'), '기억 사슬', wbest('chain') ? '이번 주 ' + wbest('chain') + '점' : '몇 단계까지 갈까?', rec.plays ? '' : 'NEW') +
+      mode('tone-start', hmi('sungjo'), '성조 연습', wbest('tone') ? '이번 주 ' + wbest('tone') + '점' : '하트 5개로 도전', ptBest('tone', lv) ? '' : 'NEW') +
+      mode('rain-start', hmi('sonagi'), '소나기 퀴즈', wbest('rain') ? '이번 주 ' + wbest('rain') + '점' : '떨어지는 한자를 잡아요', rnBest(lv) ? '' : 'NEW') + '</div>' +
       '<p class="hsk-note hsk-foot">' + HSK_NOTE + '</p></div>';
   }
   function hskRow(lv, w, i) {
@@ -4510,6 +4588,7 @@
     var c = state.ch;
     tdMark('ch-start');
     chStop();
+    wkSubmit('chain', c.lv, c.score);
     var rec0 = chRec(c.lv), best0 = rec0.best, prevScore = rec0.bestScore, isBest = chSaveRec(c), newBest = c.score > prevScore && prevScore > 0;
     var result = { kind: 'chain', score: c.score, prevScore: prevScore, newBest: newBest, lv: c.lv, stage: c.stage, grads: c.grads.length, right: c.right, maxCombo: c.maxCombo, isBest: isBest && c.stage > 1, best: Math.max(best0, c.stage), prevBest: best0 || 0, all: !!all };
     sfx(newBest ? 'goal' : 'done');
@@ -4769,6 +4848,7 @@
     var r = state.rn; if (!r) return;
     tdMark('rain-start');
     var lv = r.lv, goal = state.profile.goal, now = todayAnswers(), hit = r.before < goal && now >= goal;
+    wkSubmit('rain', lv, r.score);
     var prev = rnBest(lv), nb = rnSaveBest(lv, r.score) && prev > 0, first = prev === 0, cleared = r.lives > 0;
     rnStop();
     sfx(hit ? 'goal' : 'done');
@@ -5415,6 +5495,7 @@
       case 'tone-next': toneNext(); break;
       case 'ch-retry': chRetryGo(); break;
       case 'hsk-home': go('tab', { tab: 'words' }); break;
+      case 'rank-open': openRank(); break;
       case 'sc-open': state.scFrom = state.screen === 'scenes' ? 'scenes' : ''; startScene(id); break;
       case 'sc-all': go('scenes'); break;
       case 'sc-cat': state.scCat = id; sfx('tap'); render(); break;
