@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v216';
+  var APP_VERSION = 'v217';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -766,7 +766,7 @@
     return '<img class="mascot' + (cls ? ' ' + cls : '') + '" src="' + ms(name) + '" alt="" draggable="false">';
   }
   // 스플래시 문구: 앱을 켤 때마다 하나를 무작위로 골라요 (로딩 중 다시 그려도 바뀌지 않아요)
-  var SPLASH_TAGS = ["오늘도 한 걸음, 잘하고 있어", "서두르지 않아도, 조금씩 자라고 있어", "천천히 배워도 매일은 쌓이니까", "어제보다 한마디 더 알게 되는 기쁨", "작은 한마디부터 시작하는 새로운 세상", "너의 속도로, 너의 중국어를", "오늘은 한마디, 내일은 더 넓은 세상", "한마디씩 배우며 더 넓은 세상으로", "중국어로 만나는 새로운 나", "낯선 말이 익숙한 세상이 될 때까지", "오늘 배운 한마디가 세상을 넓혀줄 거야", "작은 시작이 새로운 가능성이 되도록", "한 걸음씩, 더 많은 세상과 연결되도록", "중국어를 배우는 만큼 세상이 가까워져", "느릿느릿, 그래도 앞으로!", "팽팽이와 함께라면 천천히도 좋아", "오늘도 한 뼘 자라는 중", "느려도 매일, 팽팽하게!", "서두르지 마, 재미있게 가자", "한마디씩 차곡차곡, 팽팽!", "조금 느려도 도착할 거야"];
+  var SPLASH_TAGS = ["오늘도 한 걸음, 잘하고 있어", "서두르지 않아도, 조금씩 자라고 있어", "천천히 배워도 매일은 쌓이니까", "어제보다 한마디 더 알게 되는 기쁨", "작은 한마디부터 시작하는 새로운 세상", "너의 속도로, 너의 중국어를", "오늘은 한마디, 내일은 더 넓은 세상", "한마디씩 배우며 더 넓은 세상으로", "중국어로 만나는 새로운 나", "낯선 말이 익숙한 세상이 될 때까지", "오늘 배운 한마디가 세상을 넓혀줄 거야", "작은 시작이 새로운 가능성이 되도록", "한 걸음씩, 더 많은 세상과 연결되도록", "중국어를 배우는 만큼 세상이 가까워져", "느릿느릿, 그래도 앞으로!", "팽팽이와 함께라면 천천히도 좋아", "오늘도 한 뼘 자라는 중", "느려도 매일, 팽팽하게!", "서두르지 마, 재미있게 가자", "한마디씩 차곡차곡, 팽팽!", "조금 느려도 도착할 거야", "느려도 도착은 해. 달팽이도 중국까지 갔대", "한자 못 외워도 괜찮아. 어차피 나도 몰라", "오늘의 중국어 한마디, 내일의 허세 한마디", "니하오부터 시작해서 짜이찌엔까지 가는 거야", "성조는 4개, 걱정은 0개", "이제 중국집 주문은 성공할 수 있어요", "외운 건 사라져도 달팽이는 남아요", "하루 한마디면 1년 뒤엔 365마디야. 계산은 맞아", "중국어는 어렵지 않아요. 아직 안 외웠을 뿐이에요", "달팽이도 매일 출근해요. 너도 잠깐만 와"];
   var splashTag = SPLASH_TAGS[Math.floor(Math.random() * SPLASH_TAGS.length)];
   function pick(list) { return list[Math.floor(Math.random() * list.length)]; }
 
@@ -1939,11 +1939,11 @@
     else if (r.newBest) { vs = '최고 기록을 <b>' + diff + '점</b> 올렸어요!'; cls = 'up'; }
     else if (diff === 0) { vs = '최고 기록과 똑같아요. 한 끗만 더!'; cls = 'same'; }
     else { vs = '최고 기록까지 <b>' + (-diff) + '점</b> 남았어요'; cls = 'down'; }
-    var msg = r.cleared ? '더 이상 풀 문제가 없어요! 소나기가 그쳤어요'
-      : pct >= .9 ? '귀가 활짝 열렸어요! 거의 다 잡았어요'
-      : pct >= .7 ? '점점 눈에 익어 가시는군요!'
-      : pct >= .4 ? '조금씩 익숙해지고 있어요. 한 번만 더 해 볼까요?'
-      : '처음엔 다 그래요. 소리에 귀를 기울여 봐요';
+    var msg = r.cleared ? pick(['더 이상 풀 문제가 없어요! 소나기가 항복하고 그쳤어요', '더 이상 풀 문제가 없어요! 하늘에 빗방울이 안 남았어요'])
+      : pct >= .9 ? pick(['빗소리를 다 알아듣는 수준이에요', '우산 없이도 안 젖겠어요', '귀가 활짝 열렸어요! 거의 다 잡았어요', '혹시 하늘에서 내려오셨어요?'])
+      : pct >= .7 ? pick(['꽤 잘 막았어요. 달팽이가 우산을 빌려줬나 봐요', '한두 방울만 맞았어요. 나쁘지 않아요', '비 맞은 것치고는 의연했어요'])
+      : pct >= .4 ? pick(['반쯤 젖었어요. 반쯤은 선방했다는 뜻이에요', '조금씩 익숙해지고 있어요. 한 번만 더 해 볼까요?', '비는 원래 피할 수 없어요. 대신 맞는 법은 늘고 있어요'])
+      : pick(['소나기를 정통으로 맞았어요. 괜찮아요, 마르면 돼요', '오늘은 비가 이겼어요. 내일은 모르죠', '괜찮아요. 우산은 원래 두고 오는 거예요']);
     var w = r.waves, rank = w >= 20 ? '하늘의 지배자' : w >= 10 ? '소나기 마스터' : w >= 5 ? '우산 든 달팽이' : '빗방울 새싹';
     var stars = w >= 20 ? 3 : w >= 10 ? 2 : w >= 5 ? 1 : 0;
     var starHtml = [0, 1, 2].map(function (i) { return '<i class="rd-star' + (i < stars ? ' on' : '') + '" style="animation-delay:' + (0.5 + i * 0.25).toFixed(2) + 's">★</i>'; }).join('');
@@ -3201,7 +3201,7 @@
         ? '<div class="sheet ok" role="status">' + mascot('love', 'm') + '<div class="head"><span class="badge">' + I.check + '</span>' + SPEED_SEC + '초 안에 성공!' + (sp.combo >= 2 ? '<span class="combo">연속 ' + sp.combo + '번</span>' : '') + '</div>' +
           (sp.heard ? '<div class="heard">내가 한 말 <span class="zh">' + esc(sp.heard) + '</span></div>' : '') + ans +
           '<div class="btns"><button class="btn green" data-act="speed-next">' + (last ? '결과 보기' : '다음 문제') + '</button></div></div>'
-        : '<div class="sheet no" role="status">' + mascot('cheer', 'm') + '<div class="head"><span class="badge">' + I.x + '</span>아쉬워요, 시간 끝!</div>' +
+        : '<div class="sheet no" role="status">' + mascot('cheer', 'm') + '<div class="head"><span class="badge">' + I.x + '</span>' + pick(['시간 끝! 달팽이가 먼저 도착했어요', '시간 끝! 입이 느렸어요', '시간 끝! 괜찮아요, 달팽이도 느려요']) + '</div>' +
           '<div class="heard">' + (sp.heard ? '들린 말 <span class="zh">' + esc(sp.heard) + '</span>' : '대답이 들리지 않았어요') + '</div>' + ans +
           '<div class="btns"><button class="btn" data-act="speed-next">' + (last ? '결과 보기' : '다음 문제') + '</button></div></div>';
     }
@@ -3748,11 +3748,13 @@
     else if (r.newBest) { vs = '최고 기록을 <b>' + diff + '점</b> 올렸어요!'; cls = 'up'; }
     else if (diff === 0) { vs = '최고 기록과 똑같아요. 한 끗만 더!'; cls = 'same'; }
     else { vs = '최고 기록까지 <b>' + (-diff) + '점</b> 남았어요'; cls = 'down'; }
-    var msg = r.all ? '더 이상 풀 문제가 없어요! 단어를 모두 풀었어요'
-      : acc >= .9 ? (tone ? '귀가 활짝 열렸어요! 성조가 쏙쏙 들려요' : '거의 완벽해요! 눈에 쏙 들어오죠?')
-      : acc >= .7 ? '점점 눈에 익어 가시는군요!'
-      : acc >= .4 ? '조금씩 익숙해지고 있어요. 한 번만 더 해 볼까요?'
-      : '처음엔 다 그래요. 틀린 건 내일 복습에 나와요';
+    var msg = r.all ? pick(['더 이상 풀 문제가 없어요! 출제자가 도망갔어요', '더 이상 풀 문제가 없어요! 단어를 다 털어 버렸어요'])
+      : acc >= .9 ? pick(tone
+          ? ['귀가 활짝 열렸어요! 성조가 쏙쏙 들려요', '성조가 도망가려다 잡혔어요', '귀에 성조 탐지기라도 달았어요?', '4성이 당신 앞에서는 얌전해요']
+          : ['원어민이세요? 아니라고요? 수상한데요', '이 정도면 중국에서 살다 오셨죠', '한자가 당신을 무서워해요', '혹시 몰래 공부했어요? 다 보여요'])
+      : acc >= .7 ? pick(['거의 다 맞췄어요. 달팽이가 인정했어요', '한 문제만 더 맞췄으면 반칙급이었어요', '실력이 의심스러울 정도로 좋아요', '이 속도면 중국집 주문은 성공이에요'])
+      : acc >= .4 ? pick(['나쁘지 않아요. 달팽이 속도로는 빨라요', '반은 맞았어요. 반은 성조가 도망갔어요', '가능성이 보여요. 아직 숨어 있을 뿐이에요', '한 번만 더 하면 확실히 달라져요'])
+      : pick(['괜찮아요. 중국인도 한자 틀려요 (진짜예요)', '오늘은 워밍업이었던 걸로 해요', '틀린 건 내일 복습에 나와요. 도망 못 가요', '실력은 거짓말 안 해요. 근데 내일은 달라요']);
     var t = tone ? [25, 12, 5] : [30, 15, 6], stars = r.right >= t[0] ? 3 : r.right >= t[1] ? 2 : r.right >= t[2] ? 1 : 0;
     var rank = tone ? ['성조 새싹', '귀 트이는 달팽이', '귀 밝은 달팽이', '성조 마스터'][stars] : ['도전하는 달팽이', '꾸준한 달팽이', '쑥쑥 크는 달팽이', '단어 박사 달팽이'][stars];
     var top = Math.max(r.score, r.prev, 1);
@@ -3979,11 +3981,13 @@
       var n = +r.rnk, gap = ri && (+r.pos) - (+rk.rows[ri - 1].pos) > 1 ? '<li class="rk-gap" aria-hidden="true">⋮</li>' : '', medal = n <= 3 ? '<span class="rk-medal m' + n + '">' + icn('trophy') + '</span>' : '<span class="rk-no">' + n + '</span>';
       return gap + '<li class="rk-row' + (r.me ? ' me' : '') + (n <= 3 ? ' top' : '') + '">' + medal + '<span class="rk-nick">' + esc(r.nick) + (r.me ? ' <i>나</i>' : '') + '</span><b class="rk-pt">' + (+r.total) + '<small>점</small></b></li>';
     }).join('') + '</ul>';
+    var meRow = (rk.rows || []).filter(function (r) { return r.me; })[0], nme = meRow ? +meRow.rnk : 0;
+    var quip = !nme ? '' : nme === 1 ? pick(['1위예요! 지금부터는 잠도 못 자는 자리예요', '1위! 뒤에서 다들 눈을 빛내고 있어요']) : nme <= 3 ? pick(['트로피권이에요. 방심하면 달팽이한테도 밀려요', '3위 안이에요. 이 자리 오래 앉으면 의자가 따뜻해져요']) : nme <= 10 ? 'TOP 10이에요. 하루 20분이면 트로피권이에요' : '달팽이왕 따라잡으려면 하루 20분만 더요';
     var games = WK_GAMES.map(function (g) { return { quiz: '퀴즈', chain: '기억 사슬', tone: '성조 연습', rain: '소나기 퀴즈' }[g] + ' ' + wkGame(o, g); }).join(' · ');
     return '<div class="screen"><div class="topbar"><button class="icon-btn" data-act="back" aria-label="뒤로">' + I.back + '</button></div>' +
       '<div class="scroll" style="padding-top:4px"><h1 class="big-title" style="margin-top:0">이번 주 순위</h1>' +
       '<div class="wk-card"><span class="wk-l">내 토탈 점수</span><b class="wk-n">' + tot + '<small>점</small></b><span class="wk-s">' + games + '</span></div>' +
-      '<p class="rk-sub">월요일 0시에 새로 시작해요 · 마감까지 ' + wkLeft() + '일' + (rk.rows && rk.rows.length ? ' · 참가 ' + (+rk.rows[0].cnt || rk.rows.length) + '명' : '') + '</p>' + list +
+      '<p class="rk-sub">월요일 0시에 새로 시작해요 · 마감까지 ' + wkLeft() + '일' + (rk.rows && rk.rows.length ? ' · 참가 ' + (+rk.rows[0].cnt || rk.rows.length) + '명' : '') + '</p>' + (quip ? '<p class="rk-quip">' + esc(quip) + '</p>' : '') + list +
       '<button class="hsk-row mw-link" data-act="myweeks-open"><span class="hr-t">내 주간 기록</span><span class="hr-s">지난주들의 점수와 순위</span><span class="hr-chev">' + '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg>' + '</span></button>' +
       '<p class="rk-foot">닉네임 공개는 환경 설정에서 바꿀 수 있어요. 토탈 = 4개 게임의 이번 주 최고 점수 합계예요. 어려운 급일수록 점수에 배율이 붙어요 (1급 ×0.9 · 2급 ×1.0 · 3급 ×1.1 · 4급 ×1.2). 여러 급을 함께 고르면 평균 배율이에요.</p><div style="height:32px"></div></div></div>';
   }
@@ -4014,7 +4018,7 @@
     var a = new Date(L.pm + 'T00:00:00Z'), b = new Date(a.getTime() + 6 * 86400000);
     function md(d) { return (d.getUTCMonth() + 1) + '/' + d.getUTCDate(); }
     var n = +L.me.rnk, win = n <= 3;
-    var msg = win ? '축하해요! 트로피를 받았어요' : '이번 주엔 더 높이 올라가 봐요';
+    var msg = win ? pick(['트로피 획득! 달팽이가 이렇게 빠르다니 반칙 아닌가요', '축하해요! 트로피를 받았어요. 자랑해도 돼요']) : n <= 10 ? pick(['TOP 10! 조금만 더 가면 트로피예요', '트로피가 코앞이에요. 달팽이도 느낌이 와요']) : pick(['이번 주엔 더 높이 올라가 봐요', '순위는 달팽이처럼 천천히 올라가요. 올라가긴 해요', '상위권은 쉬지도 않아요. 그래서 상위권이에요']);
     return '<div class="wl-card"><div class="wl-top"><b>지난주 결과</b><span>' + md(a) + ' ~ ' + md(b) + '</span></div>' +
       '<div class="wl-me">' + (win ? '<span class="rk-medal m' + n + '">' + icn('trophy') + '</span>' : '') + '<div><b>' + n + '위</b><span>' + (+L.me.total) + '점 · ' + msg + '</span></div></div>' +
       (L.top.length ? '<ul class="wl-top3">' + L.top.map(function (r) { return '<li><span class="rk-medal m' + (+r.rnk) + '">' + icn('trophy') + '</span><em>' + esc(r.nick) + (r.me ? ' (나)' : '') + '</em><b>' + (+r.total) + '점</b></li>'; }).join('') + '</ul>' : '') +
@@ -4936,10 +4940,10 @@
     else if (diff === 0) { vs = '최고 기록과 똑같아요. 한 끗만 더!'; cls = 'same'; }
     else { vs = '최고 기록까지 <b>' + (-diff) + '점</b> 남았어요'; cls = 'down'; }
     var msg = r.all ? '더 이상 풀 문제가 없어요! 단어를 모두 만났어요'
-      : st >= 10 ? '기억력이 대단해요! 사슬이 끝없이 이어졌어요'
-      : st >= 7 ? '점점 눈에 익어 가시는군요!'
-      : st >= 4 ? '사슬이 튼튼해지고 있어요. 한 번만 더 해 볼까요?'
-      : '처음엔 다 그래요. 천천히 이어 봐요';
+      : st >= 10 ? pick(['기억력이 의심돼요. 혹시 컨닝했어요?', '사슬이 끝없이 이어졌어요. 뇌에 SSD 달았어요?', '이 정도면 기억력도 실력이에요'])
+      : st >= 7 ? pick(['사슬 장인 등장! 눈에 쏙쏙 들어오죠?', '기억력이 슬슬 무섭네요', '이 정도면 어제 먹은 점심도 기억하겠어요'])
+      : st >= 4 ? pick(['사슬이 단단해지고 있어요. 달팽이 집만큼요', '한 번만 더 하면 신기록도 보여요', '기억이 슬슬 붙고 있어요. 접착제처럼요'])
+      : pick(['기억은 원래 도망가요. 다시 잡으면 돼요', '처음엔 다 그래요. 금붕어도 이 정도는 해요', '천천히 이어 봐요. 달팽이의 특기잖아요']);
     var rank = r.all ? '기억의 신' : st >= 10 ? '기억의 달인' : st >= 7 ? '사슬 장인' : st >= 4 ? '사슬 견습생' : '기억 새싹';
     var stars = r.all ? 3 : st >= 10 ? 3 : st >= 7 ? 2 : st >= 4 ? 1 : 0;
     var starHtml = [0, 1, 2].map(function (i) { return '<i class="rd-star' + (i < stars ? ' on' : '') + '" style="animation-delay:' + (0.5 + i * 0.25).toFixed(2) + 's">★</i>'; }).join('');
@@ -5005,7 +5009,7 @@
       return '<button class="' + cls + '" data-act="ch-pick" data-id="' + pos + '"' + (fb ? ' disabled' : '') + ' style="font-size:' + chFit(w[0], false) + '"><span>' + esc(w[0]) + '</span>' + (fb && i === ti ? '<i class="mk" aria-hidden="true">✓</i><span class="sr"> (정답)</span>' : fb && pos === c.pick ? '<i class="mk" aria-hidden="true">✗</i><span class="sr"> (오답)</span>' : '') + '</button>';
     }).join('');
     var fbHtml = fb ? '<div class="ch-fb ' + (c.ok ? 'ok' : 'no') + '">' + chImg(!c.ok ? 'sad' : c.grad ? 'grad' : c.combo >= 3 ? 'fire' : 'cheer', 'chr-fb') + '<b class="zh">' + esc(t[0]) + '</b><span>' + esc(t[1]) + ' · ' + esc(t[2].split(',')[0]) + '</span>' +
-      (c.ok ? '<em>' + (c.grad ? icn('grad-cap') + ' 졸업! ' : '') + '+' + c.lastPts + '</em>' : '<em>' + (c.timeout ? '시간 초과' : '아쉬워요') + '</em>') + '</div>' : '<div class="ch-fb ghost"></div>';
+      (c.ok ? '<em>' + (c.grad ? icn('grad-cap') + ' 졸업! ' : '') + '+' + c.lastPts + '</em>' : '<em>' + (c.timeout ? pick(['시간 초과', '달팽이보다 느렸어요']) : pick(['성조가 도망갔어요', '거의 맞았어요, 거의', '한자가 장난쳤어요', '아깝다! 다음엔 될 거예요'])) + '</em>') + '</div>' : '<div class="ch-fb ghost"></div>';
     var bar = fb ? '<div class="ch-timer" aria-hidden="true"><i style="width:0"></i></div>' : '<div class="ch-timer run" aria-hidden="true"><i style="animation-duration:' + c.secs + 's"></i></div>';
     return '<div class="screen qz-fit">' + top + '<div class="qz-wrap ch-wrap ch-ask">' + chStrip(c) +
       '<div class="ch-q"><button class="listen-btn' + (fb ? '' : ' ping') + '" data-act="ch-hear" aria-label="다시 듣기">' + I.spk + '</button>' +
@@ -5167,7 +5171,7 @@
       sfx('wrong');
       d.dead = true;
       if (d.el) { var el = d.el; el.classList.add('no'); setTimeout(function () { el.remove(); }, 350); d.el = null; }
-      if (r.lives <= 0) { rnShowFb(r, false, '아쉬워요'); rnEndWave(r, false); }
+      if (r.lives <= 0) { rnShowFb(r, false, pick(['하늘이 이겼어요', '비가 이겼어요', '우산이 뒤집어졌어요'])); rnEndWave(r, false); }
       else rnUpdateHud();
     }
   }

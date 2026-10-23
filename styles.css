@@ -2908,3 +2908,4 @@ html, body, * { scrollbar-width: none; -ms-overflow-style: none; }
 .lg-later { height: 38px; }
 @media (max-height: 760px) { .lg-lede { display: none; } .lg-copy { margin-top: 20px; } }
 .hsk-soon + .hsk-grp-note { margin: 12px 0 var(--sp-5); }
+.rk-quip { margin: calc(var(--sp-2) * -1) 0 var(--sp-3); font-size: 14px; font-weight: 700; color: var(--ink-2); }

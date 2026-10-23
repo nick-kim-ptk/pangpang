@@ -51,6 +51,7 @@ const numDay = (n: number) => new Date(n * 864e5).toISOString().slice(0, 10);
 const weekday = (day: string) => new Date(day + 'T00:00:00Z').getUTCDay();   // 0=일
 const mondayOf = (day: string) => numDay(dayNum(day) - ((weekday(day) + 6) % 7));
 const inWin = (minutes: number, h: number, m = 0) => { const d = minutes - (h * 60 + m); return d >= 0 && d < WINDOW_MIN; };
+const pick = <T,>(a: T[]): T => a[Math.floor(Math.random() * a.length)];
 function hash(s: string) { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return h; }
 
 Deno.serve(async (req) => {
@@ -173,7 +174,11 @@ Deno.serve(async (req) => {
       if (!((log.get(now.day) ?? 0) > 0)) {
         let n = 0, d = dayNum(now.day) - 1;
         while ((log.get(numDay(d)) ?? 0) > 0) { n++; d--; }
-        if (n >= 3) await push(s, 'streak', now.day, now.day, { title: `🔥 ${n}일 연속 중이에요!`, body: '오늘 한 문제만 풀면 이어져요' });
+        if (n >= 3) await push(s, 'streak', now.day, now.day, pick([
+          { title: `🔥 ${n}일 연속 중이에요!`, body: `여기서 끊으면 ${n}일이 아까워서 잠이 안 올 걸요` },
+          { title: `🔥 ${n}일 연속이에요`, body: '오늘 건너뛰면 어제의 내가 서운해해요. 한 문제만 풀어요' },
+          { title: `🔥 ${n}일 연속!`, body: '한 문제만 풀면 이어져요. 진짜 한 문제만요' },
+        ]));
       }
     }
 
@@ -188,7 +193,11 @@ Deno.serve(async (req) => {
       const goal = s.goal ?? 50;
       const a = (await getLog(s.user_id)).get(now.day) ?? 0;
       if (a >= Math.ceil(goal / 2) && a < goal) {
-        await push(s, 'goal', now.day, now.day, { title: '거의 다 왔어요 💪', body: `오늘 목표까지 ${goal - a}문제 남았어요` });
+        await push(s, 'goal', now.day, now.day, pick([
+          { title: '거의 다 왔어요 💪', body: `오늘 목표까지 ${goal - a}문제. 지금 안 하면 내일의 내가 욕해요` },
+          { title: '거의 다 왔어요 💪', body: `${goal - a}문제 남았어요. 샤워하기 전에 끝낼 수 있어요` },
+          { title: '거의 다 왔어요 💪', body: `목표까지 ${goal - a}문제! 달팽이도 이 정도는 기어가요` },
+        ]));
       }
     }
 
@@ -199,7 +208,10 @@ Deno.serve(async (req) => {
         const { data: srs } = await db.from('user_srs').select('data').eq('user_id', s.user_id).maybeSingle();
         const t = dayNum(now.day);
         const due = Object.values((srs?.data ?? {}) as Record<string, number[]>).filter((e) => Array.isArray(e) && e[1] <= t).length;
-        if (due >= 10) await push(s, 'review', now.day, now.day, { title: '팽팽이', body: `오늘 복습할 단어가 ${due}개예요` });
+        if (due >= 10) await push(s, 'review', now.day, now.day, pick([
+          { title: '팽팽이', body: `오늘 복습할 단어가 ${due}개예요` },
+          { title: '팽팽이', body: `복습할 단어 ${due}개가 줄 서서 기다려요` },
+        ]));
       }
     }
 
@@ -210,8 +222,8 @@ Deno.serve(async (req) => {
       const r = rankOf(w.get(mondayOf(kst.day)), s.user_id);
       if (r) {
         const body = r.rnk === 1
-          ? `이번 주 1위예요! 오늘 밤까지 지켜 볼까요? (${r.total}점)`
-          : `이번 주 ${r.rnk}위예요. ${r.rnk - 1}위까지 ${r.gap + 1}점 남았어요`;
+          ? pick([`이번 주 1위예요! 지금부터는 잠도 못 자는 자리예요 (${r.total}점)`, `1위! 마감까지 지켜 볼까요? 뒤에서 다들 노리고 있어요`])
+          : pick([`이번 주 ${r.rnk}위예요. ${r.rnk - 1}위까지 ${r.gap + 1}점, 하루 20분이면 따라잡아요`, `${r.rnk - 1}위가 방심하고 있어요. ${r.gap + 1}점만 치고 올라가요`]);
         await push(s, 'rank', mondayOf(kst.day), now.day, { title: '주간 순위 마감이 오늘 밤이에요', body });
       }
     }
@@ -223,12 +235,12 @@ Deno.serve(async (req) => {
       const r = rankOf(w.get(prev), s.user_id);
       if (r) {
         let title = `지난주 ${r.rnk}위였어요`, body = `${r.cnt}명 중 ${r.rnk}위 · ${r.total}점. 이번 주도 도전해 볼까요?`;
-        if (r.rnk <= 3) { title = `🏆 지난주 ${r.rnk}위!`; body = `${r.total}점으로 멋지게 마무리했어요. 이번 주도 이어가 볼까요?`; }
+        if (r.rnk <= 3) { title = `🏆 지난주 ${r.rnk}위!`; body = pick([`${r.total}점. 달팽이가 이렇게 빠르다니 반칙 아닌가요`, `${r.total}점으로 마무리했어요. 이번 주도 자리 지킬 수 있겠어요?`]); }
         else if (r.rnk > 10) {
           const before = w.get(prev2)?.get(s.user_id) ?? 0;
           title = '지난주 결과가 나왔어요';
           body = before > 0 && r.total > before
-            ? `지난주 ${r.total}점, 그 전 주보다 ${r.total - before}점 올랐어요!`
+            ? `지난주 ${r.total}점, 그 전 주보다 ${r.total - before}점 올랐어요. 달팽이도 성장해요`
             : `지난주 ${r.total}점을 모았어요. 이번 주는 더 높이 가 볼까요?`;
         }
         await push(s, 'week', thisMon, now.day, { title, body });
