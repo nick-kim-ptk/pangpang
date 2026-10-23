@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v224';
+  var APP_VERSION = 'v226';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -1881,6 +1881,8 @@
   // 문장이 마침표(.!?)로 끝나면 다음 문장은 다음 줄에서 시작해요
   function gdLines(h) { return String(h).replace(/([.!?])\s+(?=\S)/g, '$1<br>'); }
   function gdKind(r) { return r && (r.kind === 'quiz' || r.kind === 'rain' || r.kind === 'chain' || r.kind === 'score'); }
+  // 점수가 아주 낮을 때: 아쉬워하는 달팽이 둘 중 하나(결과 화면을 다시 그려도 같은 그림이 나오게 결과에 적어 둬요)
+  function rdSad(r) { if (!r._sad) r._sad = pick(['rd-sad1', 'rd-sad2']); return r._sad; }
   function gdCele(r) {
     return (r.milestone ? '<div class="gd-cele"><b>' + r.milestone + '일 연속 학습!</b><span>꾸준함이 실력이 돼요</span></div>' : '') +
       (r.goalHit ? '<div class="gd-cele"><b>오늘 목표 달성!</b><span>오늘 푼 문제 ' + r.goal + '개 · 천천히, 그래도 끝까지 왔어요</span></div>' : '');
@@ -1910,8 +1912,9 @@
       var ap = Math.round(pct * 100);
       card = '<div class="rd-vs"><div class="rd-line">' + r.total + '문제 중 <b>' + r.right + '개</b>를 맞혔어요</div><div class="rd-bars"><div class="rd-bar now"><span>정답률</span><em class="trk"><i style="width:' + ap + '%"></i></em><b>' + ap + '%</b></div></div></div>';
     }
+    var sadQ = hasT && !isCard && pct < .4;
     return '<div class="screen done-screen rd gd">' + gdFx() + ((hasT && pct >= .7) || r.goalHit || r.milestone ? confetti() + (pct >= 1 ? confetti() : '') : '') + '<div class="hero">' +
-      '<div class="stage rd-stage">' + mascot(pct >= .7 ? 'cheer' : pct >= .4 ? 'love' : 'thumbs') + '</div>' +
+      '<div class="stage rd-stage">' + (sadQ ? mascot(rdSad(r)) : mascot(pct >= .7 ? 'cheer' : pct >= .4 ? 'love' : 'thumbs')) + '</div>' +
       '<div class="rd-ttl">' + esc(r.title) + '</div>' +
       (hasT ? '<div class="rd-score"><span class="rd-num" data-to="' + r.right + '">' + r.right + '</span><em>/ ' + r.total + '</em></div><div class="rd-rank">' + gdStars(stars) + '<b>' + rank + '</b></div>'
         : '<p class="rd-msg">' + gdLines(esc(r.line || '')) + '</p>') +
@@ -1948,8 +1951,9 @@
     var stars = w >= 20 ? 3 : w >= 10 ? 2 : w >= 5 ? 1 : 0;
     var starHtml = [0, 1, 2].map(function (i) { return '<i class="rd-star' + (i < stars ? ' on' : '') + '" style="animation-delay:' + (0.5 + i * 0.25).toFixed(2) + 's">★</i>'; }).join('');
     var top = Math.max(r.score, r.prev, 1);
-    return '<div class="screen done-screen rd gd rd-big">' + gdFx() + (r.score > 0 ? confetti() + (r.newBest ? confetti() : '') : '') + '<div class="hero">' +
-      '<div class="stage rd-stage">' + mascot(r.newBest || pct >= .7 ? 'cheer' : 'thumbs') + '</div>' +
+    var sadR = !r.newBest && !r.cleared && pct < .4;
+    return '<div class="screen done-screen rd gd rd-big">' + gdFx() + (r.score > 0 && !sadR ? confetti() + (r.newBest ? confetti() : '') : '') + '<div class="hero">' +
+      '<div class="stage rd-stage">' + (sadR ? mascot(rdSad(r)) : mascot(r.newBest || pct >= .7 ? 'cheer' : 'thumbs')) + '</div>' +
       '<div class="rd-score"><span class="rd-num" data-to="' + r.score + '">' + r.score + '</span><em>점</em></div>' +
       (r.newBest ? '<div class="rd-badge">NEW 최고 기록</div>' : '') +
       '<div class="rd-rank"><div class="rd-stars">' + starHtml + '</div><b>' + rank + '</b>' +
@@ -3768,8 +3772,9 @@
     var t = tone ? [25, 12, 5] : [30, 15, 6], stars = r.right >= t[0] ? 3 : r.right >= t[1] ? 2 : r.right >= t[2] ? 1 : 0;
     var rank = tone ? ['성조 새싹', '귀 트이는 달팽이', '귀 밝은 달팽이', '성조 마스터'][stars] : ['도전하는 달팽이', '꾸준한 달팽이', '쑥쑥 크는 달팽이', '단어 박사 달팽이'][stars];
     var top = Math.max(r.score, r.prev, 1);
-    return '<div class="screen done-screen rd gd rd-big">' + gdFx() + (r.score > 0 ? confetti() + (r.newBest ? confetti() : '') : '') + '<div class="hero">' +
-      '<div class="stage rd-stage">' + mascot(r.newBest || acc >= .7 ? 'cheer' : 'thumbs') + '</div>' +
+    var sadP = !r.newBest && !r.all && acc < .4;
+    return '<div class="screen done-screen rd gd rd-big">' + gdFx() + (r.score > 0 && !sadP ? confetti() + (r.newBest ? confetti() : '') : '') + '<div class="hero">' +
+      '<div class="stage rd-stage">' + (sadP ? mascot(rdSad(r)) : mascot(r.newBest || acc >= .7 ? 'cheer' : 'thumbs')) + '</div>' +
       '<div class="rd-score"><span class="rd-num" data-to="' + r.score + '">' + r.score + '</span><em>점</em></div>' +
       (r.newBest ? '<div class="rd-badge">NEW 최고 기록</div>' : '') +
       '<div class="rd-rank">' + gdStars(stars) + '<b>' + rank + '</b><span>정답 ' + r.right + '개 · ' + Math.round(acc * 100) + '%' + (r.combo >= 2 ? ' · 최고 ' + r.combo + '연속' : '') + '</span></div>' +
@@ -4013,7 +4018,7 @@
           : '<div class="pd-col m' + n + ' empty"><span class="pd-nick">–</span><b class="pd-pt">&nbsp;</b><div class="pd-block"><em>' + n + '</em></div></div>';
       };
       var rest = rk.rows.map(function (r, ri) { return { r: r, ri: ri }; }).filter(function (x) { return x.ri >= pdN || +x.r.rnk > 3; }).filter(function (x) { return x.ri >= pdN; });
-      list = '<div class="pd">' + pdCol(2) + pdCol(1) + pdCol(3) + '</div>' + (rest.length ? '<ul class="rk-list">' + rest.map(function (x) {
+      list = '<div class="pd">' + pdCol(2) + pdCol(1) + pdCol(3) + '</div>%%Q%%' + (rest.length ? '<ul class="rk-list">' + rest.map(function (x) {
         var r = x.r, ri = x.ri, n = +r.rnk, gap = ri && (+r.pos) - (+rk.rows[ri - 1].pos) > 1 ? '<li class="rk-gap" aria-hidden="true">⋮</li>' : '';
         return gap + '<li class="rk-row' + (r.me ? ' me' : '') + '"><span class="rk-no">' + n + '</span><span class="rk-nick">' + esc(r.nick) + (r.me ? ' <i>나</i>' : '') + '</span><b class="rk-pt">' + (+r.total) + '<small>점</small></b></li>';
       }).join('') + '</ul>' : '');
@@ -4024,7 +4029,7 @@
     return '<div class="screen"><div class="topbar"><button class="icon-btn" data-act="back" aria-label="뒤로">' + I.back + '</button></div>' +
       '<div class="scroll" style="padding-top:4px"><h1 class="big-title" style="margin-top:0">이번 주 순위</h1>' +
       '<div class="wk-card"><span class="wk-l">내 토탈 점수</span><b class="wk-n">' + tot + '<small>점</small></b><span class="wk-s">' + games + '</span></div>' +
-      (function () { var r = wkRemain(); return '<div class="rk-cd' + (r.ms < 86400000 ? ' hot' : '') + '"><div class="rk-cd-top"><span>⏳ 마감까지</span><b id="rkCd">' + wkCdText(r.ms) + '</b></div><div class="rk-cd-bar"><i id="rkBar" style="width:' + (r.frac * 100).toFixed(2) + '%"></i></div>' + (rk.rows && rk.rows.length ? '<span class="rk-cd-n">참가 ' + (+rk.rows[0].cnt || rk.rows.length) + '명 · 월요일 0시에 새로 시작</span>' : '<span class="rk-cd-n">월요일 0시에 새로 시작</span>') + '</div>'; })() + (quip ? '<p class="rk-quip">' + esc(quip) + '</p>' : '') + list +
+      (function () { var r = wkRemain(); return '<div class="rk-cd' + (r.ms < 86400000 ? ' hot' : '') + '"><div class="rk-cd-top"><span>⏳ 마감까지</span><b id="rkCd">' + wkCdText(r.ms) + '</b></div>' + (rk.rows && rk.rows.length ? '<span class="rk-cd-n">참가 ' + (+rk.rows[0].cnt || rk.rows.length) + '명 · 월요일 0시에 새로 시작</span>' : '<span class="rk-cd-n">월요일 0시에 새로 시작</span>') + '</div>'; })() + list.replace('%%Q%%', quip ? '<p class="rk-quip">' + esc(quip) + '</p>' : '') +
       '<button class="hsk-row mw-link" data-act="myweeks-open"><span class="hr-t">내 주간 기록</span><span class="hr-s">지난주들의 점수와 순위</span><span class="hr-chev">' + '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg>' + '</span></button>' +
       '<details class="rk-how"><summary>점수는 어떻게 계산해요?</summary><p>토탈 = 4개 게임의 이번 주 최고 점수 합계예요. 어려운 급일수록 배율이 붙어요 (1급 ×0.9 · 2급 ×1.0 · 3급 ×1.1 · 4급 ×1.2). 여러 급을 함께 고르면 평균 배율이에요.</p></details><div style="height:32px"></div></div></div>';
   }
@@ -4985,8 +4990,9 @@
     var stars = r.all ? 3 : st >= 10 ? 3 : st >= 7 ? 2 : st >= 4 ? 1 : 0;
     var starHtml = [0, 1, 2].map(function (i) { return '<i class="rd-star' + (i < stars ? ' on' : '') + '" style="animation-delay:' + (0.5 + i * 0.25).toFixed(2) + 's">★</i>'; }).join('');
     var top = Math.max(sc, prev, 1);
-    return '<div class="screen done-screen rd gd rd-big">' + gdFx() + (sc > 0 ? confetti() + (r.newBest || r.all ? confetti() : '') : '') + '<div class="hero">' +
-      '<div class="stage rd-stage">' + chImg(r.newBest || r.all ? 'trophy' : st >= 5 ? 'love' : st >= 3 ? 'cheer' : 'focus', 'chr-done') + '</div>' +
+    var sadC = !r.newBest && !r.all && st < 3;
+    return '<div class="screen done-screen rd gd rd-big">' + gdFx() + (sc > 0 && !sadC ? confetti() + (r.newBest || r.all ? confetti() : '') : '') + '<div class="hero">' +
+      '<div class="stage rd-stage">' + (sadC ? '<img class="chr chr-done" src="img/' + rdSad(r) + '.webp" alt="" draggable="false">' : chImg(r.newBest || r.all ? 'trophy' : st >= 5 ? 'love' : st >= 3 ? 'cheer' : 'focus', 'chr-done')) + '</div>' +
       '<div class="rd-score"><span class="rd-num" data-to="' + sc + '">' + sc + '</span><em>점</em></div>' +
       (r.newBest ? '<div class="rd-badge">NEW 최고 기록</div>' : '') +
       '<div class="rd-rank">' + '<div class="rd-stars">' + starHtml + '</div><b>' + rank + '</b>' +
