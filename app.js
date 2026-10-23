@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v231';
+  var APP_VERSION = 'v232';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -916,6 +916,8 @@
     var l = tdLastAll(); l[key] = o.day;
     try { localStorage.setItem(tdKey('.last'), JSON.stringify(l)); } catch (e) { /* 무시 */ }
   }
+  var REV_CAP = 20;   // 하루 복습 분량 상한(밀린 건 내일 이어서) — 많이 쌓여도 부담되지 않게
+  function tdRevInc(n) { var o = tdLoad(); o.revDone = (o.revDone || 0) + n; tdSave(o); }
   function tdLessonQ(n) { var o = tdLoad(); o.lessonQ = (o.lessonQ || 0) + n; tdSave(o); }
   function tdRng(seed) {
     var h = 1779033703 ^ seed.length, i;
@@ -1055,7 +1057,11 @@
   function tdBuild(rtot, due, wdue, phraseCard) {
     var o = tdLoad(), next = nextLesson(), items = [], day = o.day;
     if (o.rev0 < 0) { o.rev0 = rtot; tdSave(o); }
-    if (o.rev0 > 0) items.push({ req: 1, done: rtot === 0, title: '오늘의 복습', sub: (due ? '문장 ' + due + '개' : '') + (due && wdue ? ' · ' : '') + (wdue ? '단어 ' + wdue + '개' : ''), doneSub: '복습을 모두 마쳤어요', act: 'today-review', btn: '복습 시작' });
+    if (o.rev0 > 0) {
+      var rem = Math.max(0, Math.min(o.rev0, REV_CAP) - (o.revDone || 0)), left = due + wdue;
+      var dueS = Math.min(due, rem), dueW = Math.min(wdue, rem - dueS);
+      items.push({ req: 1, done: left === 0 || rem === 0, title: '오늘의 복습', sub: (dueS ? '문장 ' + dueS + '개' : '') + (dueS && dueW ? ' · ' : '') + (dueW ? '단어 ' + dueW + '개' : '') + (left > rem && rem ? ' (나머지는 내일)' : ''), doneSub: left > 0 ? '오늘 분량 끝! 남은 ' + left + '개는 내일 이어서 해요' : '복습을 모두 마쳤어요', act: 'today-review', btn: '복습 시작' });
+    }
     if (next || o.lessonQ > 0) {
       var q = Math.min(o.lessonQ, TD_LESSON_Q);
       items.push({ req: 1, done: o.lessonQ >= TD_LESSON_Q, title: '레슨 ' + TD_LESSON_Q + '문제 대답하기', sub: q + '/' + TD_LESSON_Q + (next ? ' · ' + next.title : ''), doneSub: TD_LESSON_Q + '문제를 말했어요',
@@ -4165,6 +4171,7 @@
     if (!q) return;   // 마지막 카드를 빠르게 두 번 눌러도 안전하게
     setHskKnown(q.lv, q.i, yes);
     srsGrade(q.lv, q.i, yes);
+    if (c.mode === 'due') tdRevInc(1);
     if (yes) { c.known++; sfx('right', c.known); } else sfx('tap');
     bumpAnswer();
     c.i++; c.flip = false;
@@ -5333,6 +5340,7 @@
       s.queue.shift();
       s.solved++;
       if (s.kind === 'lesson') tdLessonQ(1);
+      if (s.kind === 'review') tdRevInc(1);
       s.pass = true;
       if (s.log) s.log.push({ npc: q.zh, me: r.heard });
       s.mood = pick(['love', 'thumbs', 'wink']);
