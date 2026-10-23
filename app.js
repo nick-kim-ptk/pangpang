@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v233';
+  var APP_VERSION = 'v234';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -3249,7 +3249,7 @@
       (pro ? '<div class="pay-status"><b>' + esc(m.t) + '</b><span>' + esc(m.s) + '</span></div>' : '') +
       '<ul class="perks">' +
         '<li>' + I.check + LESSONS.length + '강 전체 레슨 <em class="perk-tag">계속 업데이트돼요</em></li>' +
-        '<li>' + I.check + '개정된 신 HSK 3.0 · 1~4급 단어 <em class="perk-tag">최신 개정판</em></li>' +
+        '<li>' + I.check + '개정된 신 HSK 3.0 · 1~6급 단어 <em class="perk-tag">최신 개정판</em></li>' +
         '<li>' + I.check + '스피드 퀴즈 무제한</li>' +
         '<li>' + I.check + '복습 알림 · 1분 중국어 알림</li>' +
         '<li>' + I.check + 'AI 대화 · 매달 15크레딧 지급</li>' +
@@ -4510,7 +4510,7 @@
       '<p class="hsk-note under-title">하나의 상황에서 쓸 수 있는 중국어 문장을 익혀서 연습해요.</p>' +
       '<ul class="list" style="margin-top:0">' + show.map(function (s) { return scItemRow(s, pg); }).join('') + '</ul>';
   }
-  var SC_CATS = ['전체', '일상', '여행', '대화'];
+  var SC_CATS = ['전체', '일상', '여행', '대화', '직장·학교'];
   function viewScenes() {
     var pg = scProg(), cat = state.scCat || '전체';
     var chips = '<div class="hsk-chips sc-cats" role="tablist" aria-label="상황 분류">' + SC_CATS.map(function (c) {
