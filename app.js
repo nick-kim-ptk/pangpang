@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v248';
+  var APP_VERSION = 'v249';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -4548,6 +4548,13 @@
       '<span class="txt"><div class="t">' + esc(s.title) + '</div><div class="s">' + esc(s.sub) + '</div></span>' +
       (scDone(pg, s) ? '<span class="chip green">' + I.check + '완료</span>' : '<span class="chip soft">시작</span>') + '</button></li>';
   }
+  var SC_LVCLS = { '쉬움': 'e', '보통': 'm', '어려움': 'h' };
+  function scCardHtml(s, pg) {
+    var slk = scLocked(s.id);
+    return '<button class="sc-card' + (slk ? ' locked' : '') + (scDone(pg, s) ? ' done' : '') + '" data-act="sc-open" data-id="' + s.id + '">' + (slk ? '<span class="chip lockchip sc-pro">' + I.lock + 'PRO</span>' : (scDone(pg, s) ? '<span class="chip green sc-pro">' + I.check + '완료</span>' : '')) +
+      '<em class="sc-lv ' + (SC_LVCLS[s.lv] || 'm') + '">' + esc(s.lv || '보통') + '</em><span class="sc-ci">' + s.icon + '</span>' +
+      '<b>' + esc(s.title) + '</b><span class="sc-cs">' + esc(s.sub) + '</span></button>';
+  }
   // 레슨 탭: 이어서 할 상황 2개만 보여 주고, 전체는 '전체 보기'에서 분류별로 봐요
   function scenesSection() {
     if (!SCENES.length) return '';
@@ -4556,7 +4563,7 @@
     return '<div class="sc-head"><div class="section-title" style="margin:0">상황 레슨</div><span class="chip y">NEW</span>' +
       (full ? '<button class="sec-more sc-all" data-act="sc-all">전체 보기<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg></button>' : '') + '</div>' +
       '<p class="hsk-note under-title">하나의 상황에서 쓸 수 있는 중국어 문장을 익혀서 연습해요.</p>' +
-      '<ul class="list" style="margin-top:0">' + show.map(function (s) { return scItemRow(s, pg); }).join('') + '</ul>';
+      '<div class="sc-grid sc-grid-home">' + show.map(function (s) { return scCardHtml(s, pg); }).join('') + '</div>';
   }
   var SC_CATS = ['일상', '여행', '대화', '직장·학교'];
   function viewScenes() {
@@ -4571,12 +4578,7 @@
       return '<button class="sc-lvb' + (lvf === v ? ' on' : '') + '" data-act="sc-lv" data-id="' + v + '" aria-pressed="' + (lvf === v) + '">' + v + '</button>';
     }).join('') + '</div></div>';
     var lvCls = { '쉬움': 'e', '보통': 'm', '어려움': 'h' };
-    var grid = list.length ? '<div class="sc-grid">' + list.map(function (s) {
-      var slk = scLocked(s.id);
-      return '<button class="sc-card' + (slk ? ' locked' : '') + '" data-act="sc-open" data-id="' + s.id + '">' + (slk ? '<span class="chip lockchip sc-pro">' + I.lock + 'PRO</span>' : '') +
-        '<em class="sc-lv ' + (lvCls[s.lv] || 'm') + '">' + esc(s.lv || '보통') + '</em><span class="sc-ci">' + s.icon + '</span>' +
-        '<b>' + esc(s.title) + '</b><span class="sc-cs">' + esc(s.sub) + '</span></button>';
-    }).join('') + '</div>' : '<p class="hsk-note" style="text-align:center;margin-top:32px">이 난이도의 상황이 아직 없어요</p>';
+    var grid = list.length ? '<div class="sc-grid">' + list.map(function (s) { return scCardHtml(s, pg); }).join('') + '</div>' : '<p class="hsk-note" style="text-align:center;margin-top:32px">이 난이도의 상황이 아직 없어요</p>';
     return '<div class="screen"><div class="topbar"><button class="icon-btn" data-act="back" aria-label="뒤로">' + I.back + '</button></div>' +
       '<div class="scroll" style="padding-top:4px"><h1 class="big-title" style="margin-top:0">상황 레슨</h1>' +
       chips + filt + grid + '<div style="height:32px"></div></div></div>';
