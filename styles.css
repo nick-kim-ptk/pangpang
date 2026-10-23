@@ -2850,7 +2850,7 @@ html, body, * { scrollbar-width: none; -ms-overflow-style: none; }
 .mw-sub { margin-top: 4px; font-size: 12px; color: var(--ink-3); }
 
 /* v208: 급 고르기 시트에 게임 설명·캐릭터 */
-.gsheet .gs-mascot { position: absolute; right: 12px; top: -92px; width: 132px; height: auto; pointer-events: none; transform-origin: 50% 90%; animation: gs-bob 2.8s ease-in-out infinite; }
+.gsheet .gs-mascot { position: absolute; right: 28px; top: -92px; width: 132px; height: auto; pointer-events: none; transform-origin: 50% 90%; animation: gs-bob 2.8s ease-in-out infinite; }
 .gs-rules { list-style: none; margin: var(--sp-2) 0 var(--sp-3); padding: 0; display: grid; gap: 6px; }
 .gs-rules li { display: flex; align-items: center; gap: var(--sp-2); font-size: 14px; line-height: 1.4; color: var(--ink-2); }
 .gs-ri { flex: none; display: inline-flex; width: 22px; height: 22px; align-items: center; justify-content: center; color: var(--navy); }

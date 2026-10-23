@@ -799,3 +799,6 @@ select kind, count(*) n, round(avg(in_tokens)) avg_in, round(avg(cache_read)) av
 
 ## v221
 - 게임 시작 창(급 고르기) 캐릭터 4종 교체(img/gs-quiz·chain·tone·rain.webp, 여백 잘라 400px·장당 약 30KB), 조금 더 크게(132px), 살짝 둥실거리는 모션(움직임 줄이기 설정이면 멈춤).
+
+## v222
+- 게임 시작 창 캐릭터를 오른쪽에서 조금 띄움(16px→28px).
