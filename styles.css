@@ -2889,12 +2889,21 @@ html, body, * { scrollbar-width: none; -ms-overflow-style: none; }
 .last-badge { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-style: normal; font-size: 11px; font-weight: 800; letter-spacing: -.02em; padding: 3px 8px; border-radius: 10px; background: #1f2a44; color: #fff6e4; }
 .lg-hint { margin: 2px 0 0; text-align: center; font-size: 12.5px; color: #8b94b2; letter-spacing: -.01em; }
 .last-badge { top: -9px; right: 16px; transform: none; box-shadow: 0 2px 6px rgba(0,0,0,.25); }
-.lg-main { padding-top: calc(clamp(8px, 7dvh, 150px) + env(safe-area-inset-top, 0px)); }
-.lg-copy { margin-top: 30px; }
 .lg-later { height: 38px; }
-@media (max-height: 700px) { .lg-lede { display: none; } }
-.lg-main { padding-top: calc(clamp(0px, 3dvh, 150px) + env(safe-area-inset-top, 0px)); }
-.lg-copy { margin-top: 24px; }
-.lg-lede { margin-top: 14px; }
-@media (max-height: 760px) { .lg-lede { display: none; } }
-.lg-main { padding-top: calc(clamp(8px, 5dvh, 150px) + env(safe-area-inset-top, 0px)); }
+/* v215: HSK 급 칩은 한 줄로 옆으로 밀어 보고, 5·6급은 준비 중 */
+.hsk-chips { display: flex; grid-template-columns: none; gap: var(--sp-2); overflow-x: auto; margin-right: -20px; padding-right: 20px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.hsk-chips::-webkit-scrollbar { display: none; }
+.hsk-chip { flex: none; min-width: 66px; padding: 10px 14px; }
+.hsk-chip small { font-size: 10.5px; font-weight: 700; opacity: .75; margin-left: 1px; }
+.hsk-chip.soon:not(.on) { border-style: dashed; color: var(--ink-3, var(--ink-2)); }
+.hsk-soon { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; padding: 22px 16px; margin: 4px 0 8px; border-radius: var(--r-lg, 20px); background: var(--card); box-shadow: inset 0 0 0 1.5px var(--line); }
+.hsk-soon b { font-size: 16px; }
+.hsk-soon span { font-size: 13.5px; line-height: 1.55; color: var(--ink-2); }
+.hsk-soon-img { width: 96px; height: auto; }
+/* v215: 로그인 화면은 위(캐릭터·로고)와 아래(버튼) 사이 남는 공간을 위쪽 내용이 가운데로 받아요 */
+.screen.lg { display: flex; flex-direction: column; }
+.lg-main { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; justify-content: center; padding-top: calc(16px + env(safe-area-inset-top, 0px)); padding-bottom: 20px; }
+.lg-copy { margin-top: 28px; }
+.lg-cta { position: relative; left: auto; right: auto; bottom: auto; margin: 0 24px; padding-bottom: calc(32px + var(--safe-b, 0px)); }
+.lg-later { height: 38px; }
+@media (max-height: 760px) { .lg-lede { display: none; } .lg-copy { margin-top: 20px; } }

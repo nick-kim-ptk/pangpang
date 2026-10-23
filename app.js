@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v214';
+  var APP_VERSION = 'v215';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -48,11 +48,13 @@
 
   var GOALS = [20, 50, 100];
   // HSK 단어별 '알아요' 표시: 급마다 0/1 문자열 (예: '0110…')
+  var HSK_ALL = [1, 2, 3, 4, 5, 6];   // 5·6급은 준비 중 (단어가 들어오면 자동으로 열려요)
+  function hskAvail() { return HSK_ALL.filter(function (l) { return window.HSK && window.HSK[l] && window.HSK[l].length; }); }
   function normHsk(h) {
     var out = {};
-    [1, 2, 3, 4].forEach(function (lv) {
+    HSK_ALL.forEach(function (lv) {
       var s = h && typeof h[lv] === 'string' ? h[lv] : '';
-      out[lv] = /^[01]*$/.test(s) ? s.slice(0, 1100) : '';
+      out[lv] = /^[01]*$/.test(s) ? s.slice(0, 2200) : '';
     });
     return out;
   }
@@ -66,7 +68,7 @@
   }
   function normWordLv(a) {
     var out = [];
-    (Array.isArray(a) ? a : []).forEach(function (x) { x = parseInt(x, 10); if (x >= 1 && x <= 4 && out.indexOf(x) < 0) out.push(x); });
+    (Array.isArray(a) ? a : []).forEach(function (x) { x = parseInt(x, 10); if (x >= 1 && x <= 6 && out.indexOf(x) < 0) out.push(x); });
     out.sort();
     return out.length ? out : [1];
   }
@@ -2662,7 +2664,7 @@
       var r = state.daily[dayStr(d)];
       dots += '<div class="d' + (r && r.answers > 0 ? ' on' : '') + (i === 0 ? ' today-d' : '') + '">' + days[d.getDay()] + '<i></i></div>';
     }
-    var hskTotal = [1, 2, 3, 4].reduce(function (s, l) { return s + (HSKW[l] ? hskCount(l) : 0); }, 0);
+    var hskTotal = hskAvail().reduce(function (s, l) { return s + (HSKW[l] ? hskCount(l) : 0); }, 0);
     return '<div class="screen"><div class="scroll with-nav">' +
       '<div class="tab-head"><div><h1 class="big-title">' + (nickname() ? esc(nickname()) + '님,<br>' : '') + '오늘도 화이팅!</h1>' +
       '<p class="sub-title" style="margin-bottom:0">내 학습 기록이에요.</p></div>' + ppm('hello', 100) + '</div>' +
@@ -2753,7 +2755,7 @@
   function glvGet() {
     var v = [];
     try { v = JSON.parse(localStorage.getItem('pangpang.gamelvs') || '[]'); } catch (e) { v = []; }
-    v = (v || []).filter(function (l) { return [1, 2, 3, 4].indexOf(l) >= 0 && !hskLocked(l); });
+    v = (v || []).filter(function (l) { return hskAvail().indexOf(l) >= 0 && !hskLocked(l); });
     return v.length ? v : [1];
   }
   function glvSet(v) { try { localStorage.setItem('pangpang.gamelvs', JSON.stringify(v)); } catch (e) { /* 무시 */ } }
@@ -2786,7 +2788,7 @@
     var run = runGet(g.game), ri = run ? runInfo(g.game, run) : null;
     var resume = ri && !hskLocked(ri.key) ? '<div class="gs-resume"><div><b>이어서 하기</b><span>' + ri.text + '</span></div><button class="btn sm" data-act="gs-resume">이어서</button></div>' : '';
     var py = g.game === 'rain' ? '<button class="rn-pytog gs-py' + (rnPyOn() ? ' on' : '') + '" data-act="gs-py" aria-pressed="' + (rnPyOn() ? 'true' : 'false') + '"><i></i> 병음 힌트 ' + (rnPyOn() ? '켜짐' : '꺼짐') + '</button>' : '';
-    var chips = [1, 2, 3, 4].map(function (l) {
+    var chips = hskAvail().map(function (l) {
       var on = g.sel.indexOf(l) >= 0, lk = hskLocked(l), w = o.r[g.game + l] || 0;
       return '<button class="gs-chip' + (on ? ' on' : '') + (lk ? ' lk' : '') + '" data-act="gs-toggle" data-id="' + l + '" aria-pressed="' + on + '">' +
         '<b>' + (lk ? '<i class="hc-lock">' + I.lock + '</i>' : '') + l + '급</b><span>' + (w ? '이번 주 ' + w + '점' : '아직 기록 없음') + '</span></button>';
@@ -2995,7 +2997,7 @@
         return '<div class="prow"><button class="pmain" data-act="say" data-text="' + esc(q.a.zh) + '"><div class="zh p-zh2">' + esc(q.a.zh) + '</div><div class="py">' + esc(q.a.py) + '</div><div class="kr">' + esc(kr(q.a.py)) + '</div><div class="ko">' + esc(q.a.ko) + '</div></button>' +
           '<span class="chip soft">' + r.wrong + '번</span></div>';
       }).join('') + '</div>' : '';
-    var hskHtml = HSKW[1] ? '<div class="section-title" style="margin-top:24px">HSK 급별 진도</div><div class="words">' + [1, 2, 3, 4].map(function (l) {
+    var hskHtml = HSKW[1] ? '<div class="section-title" style="margin-top:24px">HSK 급별 진도</div><div class="words">' + hskAvail().map(function (l) {
       var n = hskList(l).length, k = hskCount(l), pct = n ? Math.round(k / n * 100) : 0;
       return '<div class="lm"><div class="lm-top"><span>' + l + '급</span><b>' + k + '/' + n + '</b></div><div class="meter g"><i style="width:' + pct + '%"></i></div></div>';
     }).join('') + '</div>' : '';
@@ -3483,12 +3485,12 @@
   function lvDigits(key) { return String(key).split('').map(Number); }
   function lvTxt(key) { return lvDigits(key).join('·') + '급'; }
   function hskList(lv) {
-    if (lv <= 4) return HSKW[lv] || [];
+    if (lv <= 6) return HSKW[lv] || [];
     if (!HSKCOMB[lv]) { var out = []; lvDigits(lv).forEach(function (l) { out = out.concat(HSKW[l] || []); }); HSKCOMB[lv] = out; }
     return HSKCOMB[lv];
   }
   function lvSplit(lv, i) {
-    if (lv <= 4) return { lv: lv, i: i };
+    if (lv <= 6) return { lv: lv, i: i };
     var ds = lvDigits(lv), off = 0;
     for (var k = 0; k < ds.length; k++) { var n = (HSKW[ds[k]] || []).length; if (i < off + n) return { lv: ds[k], i: i - off }; off += n; }
     return { lv: ds[ds.length - 1], i: i - off };
@@ -3561,7 +3563,7 @@
   }
   // 학습·퀴즈에 넣을 단어: 복습할 단어(몰랐던 것 먼저) → 아직 안 본 단어 → 나머지
   function hskPick(lv, n) {
-    if (lv > 4) {   // 여러 급: 급마다 고른 단어를 번갈아 섞어요
+    if (lv > 6) {   // 여러 급: 급마다 고른 단어를 번갈아 섞어요
       var ds = lvDigits(lv), off = {}, o = 0, per = [];
       ds.forEach(function (l) { off[l] = o; o += (HSKW[l] || []).length; });
       ds.forEach(function (l) { per.push(hskPick(l, n).map(function (q) { return { lv: lv, i: off[l] + q.i }; })); });
@@ -3828,11 +3830,11 @@
   function hskLvSel() {
     var v = state.hskLv;
     if (!v) { try { v = parseInt(localStorage.getItem('pangpang.hsklv'), 10); } catch (e) { /* 무시 */ } }
-    return [1, 2, 3, 4].indexOf(v) >= 0 && !hskLocked(v) ? v : 1;
+    return hskAvail().indexOf(v) >= 0 && !hskLocked(v) ? v : 1;
   }
   function hmi(n) { return '<img class="hm-img" src="img/hm-' + n + '.webp" alt="" draggable="false">'; }
   /* ---------- 이번 주 점수와 순위: 4개 게임의 이번 주 최고 점수를 급별 배율로 더해요 ---------- */
-  var WK_MULT = { 1: 0.9, 2: 1, 3: 1.1, 4: 1.2 }, WK_GAMES = ['quiz', 'chain', 'tone', 'rain'];
+  var WK_MULT = { 1: 0.9, 2: 1, 3: 1.1, 4: 1.2, 5: 1.3, 6: 1.4 }, WK_GAMES = ['quiz', 'chain', 'tone', 'rain'];
   function wkNow() { return new Date(Date.now() + 9 * 3600 * 1000); }
   function wkDow() { return (wkNow().getUTCDay() + 6) % 7; }   // 월요일=0 (한국 시간)
   function wkMonday() {
@@ -4000,8 +4002,10 @@
     if (!Object.keys(HSKW).length) return '';
     var lv = hskLvSel(), n = hskList(lv).length, k = hskCount(lv), pct = n ? Math.round(k / n * 100) : 0;
     var wd = hskDue(0).length, locked = hskLocked(lv);
-    var chips = '<div class="hsk-chips" role="tablist" aria-label="HSK 급 선택">' + [1, 2, 3, 4].map(function (l) {
-      return '<button role="tab" class="hsk-chip' + (l === lv ? ' on' : '') + '" data-act="hsk-lv" data-id="' + l + '" aria-selected="' + (l === lv) + '"' + (hskLocked(l) ? ' disabled aria-disabled="true"' : '') + '>' + (hskLocked(l) ? '<i class="hc-lock">' + I.lock + '</i>' : '') + l + '급</button>';
+    var prep = state.hskPrep || 0, av = hskAvail();
+    var chips = '<div class="hsk-chips" role="tablist" aria-label="HSK 급 선택">' + HSK_ALL.map(function (l) {
+      var soon = av.indexOf(l) < 0, on = soon ? l === prep : (!prep && l === lv);
+      return '<button role="tab" class="hsk-chip' + (on ? ' on' : '') + (soon ? ' soon' : '') + '" data-act="hsk-lv" data-id="' + l + '" aria-selected="' + on + '"' + (!soon && hskLocked(l) ? ' disabled aria-disabled="true"' : '') + '>' + (!soon && hskLocked(l) ? '<i class="hc-lock">' + I.lock + '</i>' : '') + l + '급' + (soon ? '<small>준비중</small>' : '') + '</button>';
     }).join('') + '</div>';
     var chev = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg>';
     function row(act, t, sub, extra) {
@@ -4022,6 +4026,8 @@
       '<b class="wk-n">' + tot + '<small>점</small></b>' +
       '<button class="wk-rank" data-act="rank-open">' + icn('trophy') + ' 전체 순위 보기<span class="hr-chev">' + chev + '</span></button></div>';
     wkLastLoad(); wkPull();
+    var soonCard = prep ? '<div class="hsk-soon">' + chImg('focus', 'hsk-soon-img') + '<b>HSK ' + prep + '급은 준비 중이에요</b><span>단어와 게임을 열심히 준비하고 있어요.<br>조금만 기다려 주세요!</span></div>' : '';
+    if (prep) { study = soonCard; locked = false; }
     return '<div class="hsk-main">' + wkLastCard() + chips +
       (locked ? '<p class="hsk-lock-note">' + I.lock + ' ' + lv + '급은 멤버십이 필요해요. 1급은 무료예요.</p>' : '') +
       study + '<p class="hsk-note hsk-foot hsk-grp-note">' + HSK_NOTE + '</p>' + gameHead +
@@ -5804,7 +5810,7 @@
       case 'hsk-open':
         if (hskLocked(parseInt(id, 10))) { go('pay', { payWhy: 'HSK ' + id + '급은 멤버십이 필요해요. 1급은 무료예요.' }); break; }
         state.hsk = { lv: parseInt(id, 10), unknownOnly: false }; go('hsk'); break;
-      case 'hsk-lv': state.hskLv = parseInt(id, 10); try { localStorage.setItem('pangpang.hsklv', String(state.hskLv)); } catch (e) { /* 무시 */ } sfx('tap'); renderKeep(); break;
+      case 'hsk-lv': if (hskAvail().indexOf(parseInt(id, 10)) < 0) { state.hskPrep = parseInt(id, 10); sfx('tap'); renderKeep(); break; } state.hskPrep = 0; state.hskLv = parseInt(id, 10); try { localStorage.setItem('pangpang.hsklv', String(state.hskLv)); } catch (e) { /* 무시 */ } sfx('tap'); renderKeep(); break;
       case 'hsk-study': if (hskGate(id)) break; startHskStudy(parseInt(id, 10)); break;
       case 'hsk-quiz': if (hskGate(id)) break; startHskQuiz(parseInt(id, 10)); break;
       case 'chat-open': state.chatFrom = state.screen === 'aichats' ? 'all' : 'tab'; go('aichatlog', { chatId: id }); break;

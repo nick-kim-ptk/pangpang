@@ -248,7 +248,7 @@ Deno.serve(async (req) => {
     // 9) 오늘의 단어: 현지 8시~21시 정시마다 한 단어 (앱을 열지 않아도 배울 수 있게)
     if (pr.word && hour >= WORD_FROM && hour <= WORD_TO && now.minutes % 60 < WINDOW_MIN) {
       const all = await loadWords();
-      const lvs = (pr.wordLv && pr.wordLv.length ? pr.wordLv : [1]).filter((l) => l >= 1 && l <= 4).sort();
+      const lvs = (pr.wordLv && pr.wordLv.length ? pr.wordLv : [1]).filter((l) => l >= 1 && l <= 6).sort();
       if (all) {
         const pool: { lv: number; w: string[] }[] = [];
         lvs.forEach((l) => (all[String(l)] ?? []).forEach((w) => pool.push({ lv: l, w })));
