@@ -817,3 +817,6 @@ select kind, count(*) n, round(avg(in_tokens)) avg_in, round(avg(cache_read)) av
 
 ## v227
 - 레슨 이름 질문(你叫什么名字 등): 「我叫」 뿐 아니라 「我是…」「我的名字是…」로 내 이름을 말해도 통과(lessons.js 5곳·grammar.js 1곳). 이름 자체는 원래 아무 이름이나 통과였어요. 안내 문구도 추가.
+
+## v228
+- AI 대화 탭의 "전체 보기" 버튼을 레슨 탭과 같은 글자+화살표(sec-more) 스타일로 통일(다시 써 볼 표현, 지난 대화).

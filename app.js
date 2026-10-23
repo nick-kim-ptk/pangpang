@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v227';
+  var APP_VERSION = 'v228';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -540,7 +540,7 @@
   // AI 대화 탭: 모은 표현 최근 5건만 보여 주고, 전체는 '전체 보기'에서 봐요
   function aiFixSection() {
     var list = aiFixes().filter(function (f) { return f.kind === 'ask' || f.kind === 'say'; }).slice(0, 5);
-    var head = '<div class="aisec-head"><div class="section-title" style="margin:0">다시 써 볼 표현</div><button class="aisec-all" data-act="open-aiall">전체 보기</button></div>';
+    var head = '<div class="sec-head aisec-head"><h2 class="section-title">다시 써 볼 표현</h2><button class="sec-more" data-act="open-aiall">전체 보기<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg></button></div>';
     var body = list.length ?
       '<div class="fixlist" style="margin-top:12px">' + list.map(function (f) { return fixRowHtml(f, true); }).join('') + '</div>'
       : '<div class="aiempty">아직 모은 표현이 없어요.<br>AI와 대화하고 마치면 자주 쓸 표현이 여기에 모여요.</div>';
@@ -2300,10 +2300,9 @@
   }
   function aiHistorySection() {
     var list = state.chats || [];
-    var head = '<div class="section-title" style="margin-top:28px">지난 대화</div>';
+    var head = '<div class="sec-head" style="margin-top:28px"><h2 class="section-title">지난 대화</h2>' + (list.length > 3 ? '<button class="sec-more" data-act="chat-all">전체 보기<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg></button>' : '') + '</div>';
     if (!list.length) return head + '<div class="chat-empty">대화를 하면 말한 그대로<br>여기에 저장돼요.</div>';
-    return head + '<ul class="list">' + list.slice(0, 3).map(chatRow).join('') + '</ul>' +
-      (list.length > 3 ? '<button class="more-btn" data-act="chat-all">전체 보기 (' + list.length + '개)</button>' : '');
+    return head + '<ul class="list">' + list.slice(0, 3).map(chatRow).join('') + '</ul>';
   }
   function viewChatAll() {
     var list = state.chats || [];
