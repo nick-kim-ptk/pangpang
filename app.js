@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v217';
+  var APP_VERSION = 'v218';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -2588,6 +2588,15 @@
       '<button class="pill-sm" data-act="nick-edit">수정</button></div>';
   }
 
+  // 켜고 끄는 스위치 (data-v 는 눌렀을 때 바뀔 값)
+  function tgl(act, on, label, extra) {
+    return '<button class="tg' + (on ? ' on' : '') + '" role="switch" aria-checked="' + (on ? 'true' : 'false') + '" aria-label="' + esc(label) + '" data-act="' + act + '" data-v="' + (on ? 'off' : 'on') + '"' + (extra || '') + '><i></i></button>';
+  }
+  var CHEV = '<svg class="set-chev" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg>';
+  // 줄 전체를 누르면 들어가고 오른쪽엔 화살표만 있는 메뉴 줄
+  function setLink(act, title, sub, extra) {
+    return '<button class="set-row set-link" data-act="' + act + '"' + (extra || '') + '><span class="set-lt"><span class="set-t">' + title + '</span>' + (sub ? '<span class="set-s">' + sub + '</span>' : '') + '</span>' + CHEV + '</button>';
+  }
   function seg(act, cur, opts) {
     return '<div class="seg" role="group">' + opts.map(function (o) {
       return '<button data-act="' + act + '" data-v="' + o[0] + '" class="' + (String(cur) === String(o[0]) ? 'on' : '') + '">' + o[1] + '</button>';
@@ -2639,17 +2648,17 @@
     return '<div class="screen"><div class="topbar"><button class="icon-btn" data-act="back" aria-label="뒤로">' + I.back + '</button></div>' +
       '<div class="scroll" style="padding-top:4px"><h1 class="big-title" style="margin-top:0">환경 설정</h1>' +
       '<div class="section-title" style="margin-top:8px">소리 · 화면</div><div class="set-card">' +
-        '<div class="set-row"><div class="set-t">효과음·진동</div>' + seg('set-sound', p.sound ? 'on' : 'off', [['on', '켜짐'], ['off', '꺼짐']]) + '</div>' +
-        '<div class="set-row"><div class="set-t">중국어 음성' + (function () { var z = zhVoiceState(); return '<div class="set-sub">' + (z === 'yes' ? '사용할 수 있어요' : z === 'no' ? '이 폰에 없어요' : '확인 중이에요') + '</div>'; })() + '</div><button class="pill-sm" data-act="zh-guide">설치 방법</button></div>' +
+        '<div class="set-row"><div class="set-t">효과음·진동</div>' + tgl('set-sound', p.sound, '효과음·진동') + '</div>' +
+        setLink('zh-guide', '중국어 음성', (function () { var z = zhVoiceState(); return z === 'yes' ? '사용할 수 있어요' : z === 'no' ? '이 폰에 없어요 · 설치 방법 보기' : '확인 중이에요'; })()) +
         '<div class="set-row"><div class="set-t">화면</div>' + seg('set-theme', p.theme, [['auto', '자동'], ['light', '라이트'], ['dark', '다크']]) + '</div></div>' +
-      ((sb && !isGuest()) ? '<div class="section-title" style="margin-top:24px">순위</div><div class="set-card"><div class="set-row"><div class="set-t">순위에 닉네임 공개<div class="set-sub">' + (p.rankPub ? '끄면 \'비공개\'와 숫자로 바꿔 보여요' : '지금은 \'' + rankNick() + '\'로 보여요') + '</div></div>' + seg('set-rank', p.rankPub ? 'on' : 'off', [['on', '공개'], ['off', '비공개']]) + '</div></div>' : '') +
+      ((sb && !isGuest()) ? '<div class="section-title" style="margin-top:24px">순위</div><div class="set-card"><div class="set-row"><div class="set-t">순위에 닉네임 공개<div class="set-sub">' + (p.rankPub ? '끄면 \'비공개\'와 숫자로 바꿔 보여요' : '지금은 \'' + rankNick() + '\'로 보여요') + '</div></div>' + tgl('set-rank', p.rankPub, '닉네임 공개') + '</div></div>' : '') +
       (extra ? '<div class="section-title" style="margin-top:24px">알림 · 앱 설치</div><div class="set-card">' + extra + '</div>' : '') +
       ((sb ? 1 : 0) ? '<div class="section-title" style="margin-top:24px">이용권 · 계정</div><div class="set-card">' +
-        '<div class="set-row"><div class="set-t">쿠폰 등록</div><button class="pill-sm" data-act="open-coupon">입력</button></div>' +
-        (!isGuest() ? '<div class="set-row"><div class="set-t">계정 관리</div><button class="pill-sm" data-act="open-account">열기</button></div>' : '') + '</div>' : '') +
+        setLink('open-coupon', '쿠폰 등록') +
+        (!isGuest() ? setLink('open-account', '계정 관리') : '') + '</div>' : '') +
       '<div class="section-title" style="margin-top:24px">도움말</div><div class="set-card">' +
-        '<button class="set-row set-link" data-act="open-review"><span class="set-t">콘텐츠 검수 도구</span><span class="set-arrow">›</span></button>' +
-        '<div class="set-row"><div class="set-t">의견 보내기</div><button class="pill-sm" data-act="open-feedback">보내기</button></div>' +
+        setLink('open-review', '콘텐츠 검수 도구') +
+        setLink('open-feedback', '의견 보내기') +
         '<div class="set-row"><div class="set-t">앱 버전</div><div class="set-v">' + APP_VERSION + '</div></div></div>' +
       '<div style="height:40px"></div></div></div>';
   }
@@ -6151,20 +6160,18 @@
     var p = state.profile, h = '';
     if (!isStandalone()) {
       if (installEvt) {
-        h += '<div class="set-row"><div><div class="set-t">앱으로 설치</div><div class="set-s">홈 화면에서 바로 열어요</div></div>' +
-          '<button class="pill-sm" data-act="install">설치</button></div>';
+        h += setLink('install', '앱으로 설치', '홈 화면에서 바로 열어요');
       } else if (isIOS) {
         h += '<div class="set-row"><div><div class="set-t">앱으로 설치</div><div class="set-s">Safari 공유 버튼 → “홈 화면에 추가”</div></div></div>';
       }
     }
     if (pushReady()) {
       var anyOn = pushOn && pushAny(p);
-      h += '<div class="set-row"><div class="set-t">알림 받기</div>' +
-        '<button class="pill-sm' + (!anyOn && !isPro() ? ' pro' : '') + '" data-act="pn-toggle" data-id="all">' + (anyOn ? '모두 끄기' : (isPro() ? '모두 켜기' : I.lock + 'PRO')) + '</button></div>';
+      var proTag = !isPro() ? '<span class="set-pro">' + I.lock + 'PRO</span>' : '';
+      h += '<div class="set-row"><div class="set-t">알림 받기</div>' + proTag + tgl('pn-toggle', anyOn, '알림 받기', ' data-id="all"') + '</div>';
       PN_LIST.forEach(function (x) {
         var k = x[0], on = pnIsOn(k);
-        h += '<div class="set-row"><div><div class="set-t">' + x[1] + '</div><div class="set-s">' + x[2] + '</div></div>' +
-          '<button class="pill-sm' + (!on && !isPro() ? ' pro' : '') + '" data-act="pn-toggle" data-id="' + k + '">' + (on ? '끄기' : (isPro() ? '켜기' : I.lock + 'PRO')) + '</button></div>';
+        h += '<div class="set-row"><div><div class="set-t">' + x[1] + '</div><div class="set-s">' + x[2] + '</div></div>' + tgl('pn-toggle', on, x[1], ' data-id="' + k + '"') + '</div>';
         if (k === 'daily' && on) {
           h += '<div class="set-row"><div class="set-t">알림 시간</div><input class="time-in" type="time" value="' + esc(p.remind) + '" aria-label="알림 시간"></div>';
         }
