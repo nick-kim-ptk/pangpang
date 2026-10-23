@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v244';
+  var APP_VERSION = 'v245';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -566,9 +566,15 @@
   // 비로그인·미멤버십은 앞의 2개 상황만 체험해요
   function scAvail() { return (loggedOut() || !isPro()) ? SCENES.slice(0, 2) : SCENES; }
   function loggedOut() { return isGuest() || !state.user || state.user.id === 'local'; }
+  // 로그인 전 체험: 상황·문법·말하기 레슨 모두 화면에 보이는 앞의 2개만 열려요(나머지는 전체 보기에서 잠금)
+  var TRIAL_N = 2;
+  function gmLocked(id) { return loggedOut() && !isPro() && GRAMMAR.indexOf(lessonById(id)) >= TRIAL_N; }
+  function scLocked(id) { return (loggedOut() || !isPro()) && SCENES.indexOf(sceneById(id)) >= TRIAL_N; }
   function lessonLocked(id) {
-    var i = LESSONS.indexOf(lessonById(id));
-    return i >= FREE_LESSONS && !isPro();
+    var l = lessonById(id);
+    if (GRAMMAR.indexOf(l) >= 0) return gmLocked(id);
+    var i = LESSONS.indexOf(l);
+    return i >= (loggedOut() ? TRIAL_N : FREE_LESSONS) && !isPro();
   }
   // 무료 체험: 스피드 퀴즈는 1회분, HSK는 1급만
   function speedLocked() { return !isPro() && state.profile.speedUsed >= 1; }
@@ -811,8 +817,7 @@
       var last = lastLogin();
       var badge = '<i class="last-badge">최근 로그인</i>';
       cta = '<button class="btn g-btn" data-act="google">' + I.google + 'Google로 계속하기' + (last === 'google' ? badge : '') + '</button>' +
-        '<button class="btn k-btn" data-act="kakao">' + I.kakao + '카카오로 계속하기' + (last === 'kakao' ? badge : '') + '</button>' +
-        '<p class="lg-hint">쓰던 계정이 있다면 그때 쓴 방법으로 들어오세요.</p>';
+        '<button class="btn k-btn" data-act="kakao">' + I.kakao + '카카오로 계속하기' + (last === 'kakao' ? badge : '') + '</button>';
     }
     var later = (!local && !state.loginBusy) ? '<button class="lg-later" data-act="lg-later">' + (state.loginLater ? '나중에 할게요' : '둘러보기') + '</button>' : '';
     function bub(cls, zh, ko, d, x1, y1, x2, y2) {
@@ -1168,17 +1173,19 @@
   function gmRow(id, withRel) {
     var l = lessonById(id), isDone = !!state.done[id], pc = isDone ? 0 : lessonPercent(id);
     var rel = withRel ? (l.rel || []).map(gmShort).filter(Boolean) : [];
-    return '<li><button class="item' + (isDone ? '' : ' off') + '" data-act="open-lesson" data-id="' + id + '">' +
+    var lk = gmLocked(id);
+    return '<li><button class="item' + (isDone && !lk ? '' : ' off') + (lk ? ' locked' : '') + '" data-act="open-lesson" data-id="' + id + '">' +
       '<span class="num">' + (GRAMMAR.indexOf(l) + 1) + '</span><span class="txt"><div class="t">' + esc(l.title) + '</div><div class="s">' + esc(l.sub) + '</div>' +
       (rel.length ? '<div class="gm-rel">같이 보면 좋아요 · ' + esc(rel.join(', ')) + '</div>' : '') + '</span>' +
       '<span class="chips-end">' + (l.tag ? '<span class="chip soft gm-tag">' + esc(l.tag) + '</span>' : '') +
-      (isDone ? '<span class="chip green">' + I.check + '완료</span>' : (pc > 0 ? '<span class="chip soft pct">' + pc + '%</span>' : '')) + '</span></button></li>';
+      (lk ? '<span class="chip lockchip">' + I.lock + 'PRO</span>' : isDone ? '<span class="chip green">' + I.check + '완료</span>' : (pc > 0 ? '<span class="chip soft pct">' + pc + '%</span>' : '')) + '</span></button></li>';
   }
   // 레슨 탭: 아직 안 한 문법 2개만 보여 주고, 전체 보기에서 묶음별로 모두 봐요
   function grammarSection() {
     if (!GRAMMAR.length) return '';
-    var todo = GRAMMAR.filter(function (g) { return !state.done[g.id]; });
-    var show = (todo.length ? todo : GRAMMAR).slice(0, 2);
+    var avG = GRAMMAR.filter(function (g) { return !gmLocked(g.id); });
+    var todo = avG.filter(function (g) { return !state.done[g.id]; });
+    var show = (todo.length ? todo : avG).slice(0, 2);
     return '<div class="sc-head" style="margin-top:24px"><div class="section-title" style="margin:0">문법 레슨</div><span class="chip y">NEW</span>' +
       '<button class="sec-more sc-all" data-act="gm-all">전체 보기<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg></button></div>' +
       '<p class="hsk-note under-title">중국어 문법을 다양한 방식을 통해서 익히고 학습해요.</p>' +
@@ -1200,7 +1207,7 @@
   }
   function lessonRow(l, i) {
     var isDone = !!state.done[l.id], pc = isDone ? 0 : lessonPercent(l.id), locked = lessonLocked(l.id);
-    return '<li><button class="item' + (isDone && !locked ? '' : ' off') + (locked ? ' locked' : '') + '" data-act="open-lesson" data-id="' + l.id + '"' + (locked && loggedOut() ? ' disabled aria-disabled="true"' : '') + '>' +
+    return '<li><button class="item' + (isDone && !locked ? '' : ' off') + (locked ? ' locked' : '') + '" data-act="open-lesson" data-id="' + l.id + '"' + '>' +
       '<span class="num">' + (i + 1) + '</span><span class="txt"><div class="t">' + esc(l.title) + '</div><div class="s">' + esc(l.sub) + '</div></span>' +
       (locked ? '<span class="chip lockchip">' + I.lock + 'PRO</span>' : isDone ? '<span class="chip green">' + I.check + '완료</span>' : '<span class="chips-end">' +
         (pc > 0 ? '<span class="chip soft pct">' + pc + '%</span>' : '') + '</span>') + '</button></li>';
@@ -1371,6 +1378,7 @@
   }
   function startGrammar(lid) {
     var l = lessonById(lid); if (!l || !l.od) return;
+    if (gmLocked(lid)) { go('pay', { payWhy: '이 문법 레슨은 멤버십이 필요해요. 앞의 2개는 체험할 수 있어요.' }); return; }
     var steps = [];
     shuffle(l.od.slice()).forEach(function (d) { steps.push({ t: 'od', d: d }); });
     shuffle(l.fl.slice()).forEach(function (d) { steps.push({ t: 'fl', d: d }); });
@@ -4543,7 +4551,7 @@
   // 레슨 탭: 이어서 할 상황 2개만 보여 주고, 전체는 '전체 보기'에서 분류별로 봐요
   function scenesSection() {
     if (!SCENES.length) return '';
-    var pg = scProg(), av = scAvail(), todo = av.filter(function (s) { return !scDone(pg, s); }), full = av.length === SCENES.length;
+    var pg = scProg(), av = scAvail(), todo = av.filter(function (s) { return !scDone(pg, s); }), full = true;
     var show = (todo.length ? todo : av).slice(0, 2);
     return '<div class="sc-head"><div class="section-title" style="margin:0">상황 레슨</div><span class="chip y">NEW</span>' +
       (full ? '<button class="sec-more sc-all" data-act="sc-all">전체 보기<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg></button>' : '') + '</div>' +
@@ -4564,7 +4572,8 @@
     }).join('') + '</div></div>';
     var lvCls = { '쉬움': 'e', '보통': 'm', '어려움': 'h' };
     var grid = list.length ? '<div class="sc-grid">' + list.map(function (s) {
-      return '<button class="sc-card" data-act="sc-open" data-id="' + s.id + '">' +
+      var slk = scLocked(s.id);
+      return '<button class="sc-card' + (slk ? ' locked' : '') + '" data-act="sc-open" data-id="' + s.id + '">' + (slk ? '<span class="chip lockchip sc-pro">' + I.lock + 'PRO</span>' : '') +
         '<em class="sc-lv ' + (lvCls[s.lv] || 'm') + '">' + esc(s.lv || '보통') + '</em><span class="sc-ci">' + s.icon + '</span>' +
         '<b>' + esc(s.title) + '</b><span class="sc-cs">' + esc(s.sub) + '</span></button>';
     }).join('') + '</div>' : '<p class="hsk-note" style="text-align:center;margin-top:32px">이 난이도의 상황이 아직 없어요</p>';
@@ -4586,6 +4595,7 @@
   function startScene(id) {
     var sc = sceneById(id);
     if (!sc) return;
+    if (scLocked(id)) { go('pay', { payWhy: '이 상황 레슨은 멤버십이 필요해요. 앞의 2개는 체험할 수 있어요.' }); return; }
     var L = sc.lines, all = L.map(function (_, i) { return i; });
     var blank = shuffle(all.slice()).slice(0, 4).map(function (i) {
       var others = shuffle(all.filter(function (j) { return j !== i; })).slice(0, 2).map(function (j) { return L[j][3]; });
@@ -5884,7 +5894,7 @@
           go('tab', { tab: 'home' });
         });
         break;
-      case 'open-lesson': state.lsFrom = state.screen === 'grams' || state.screen === 'lsall' ? state.screen : ''; go('intro', { lessonId: id }); break;
+      case 'open-lesson': if (lessonLocked(id)) { go('pay', { payWhy: '‘' + lessonById(id).title + '’ 레슨은 멤버십이 필요해요. 로그인 전에는 앞의 2개만 체험할 수 있어요.' }); break; } state.lsFrom = state.screen === 'grams' || state.screen === 'lsall' ? state.screen : ''; go('intro', { lessonId: id }); break;
       case 'gm-all': go('grams'); break;
       case 'ls-all': go('lsall'); break;
       case 'back': goBack(); break;
