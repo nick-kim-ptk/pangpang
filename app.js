@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v199';
+  var APP_VERSION = 'v200';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -717,7 +717,7 @@
     if (extra) Object.keys(extra).forEach(function (k) { state[k] = extra[k]; });
     render();
     window.scrollTo(0, 0);
-    if (screen === 'done' && state.result && (state.result.kind === 'rain' || state.result.kind === 'chain')) rdCount();
+    if (screen === 'done' && state.result && (state.result.kind === 'rain' || state.result.kind === 'chain' || state.result.kind === 'score')) rdCount();
     if (screen === 'done' && gdKind(state.result)) { gdAim(); requestAnimationFrame(gdAim); setTimeout(gdAim, 250); }
     if (screen === 'done') maybeCelebrate(); else if (celEl) closeCelebration(true);
   }
@@ -1849,7 +1849,7 @@
   // 게임 결과 화면(카드 학습·퀴즈·성조·기억 사슬·소나기) 공통: 어두운 배경 + 같은 구성
   // 문장이 마침표(.!?)로 끝나면 다음 문장은 다음 줄에서 시작해요
   function gdLines(h) { return String(h).replace(/([.!?])\s+(?=\S)/g, '$1<br>'); }
-  function gdKind(r) { return r && (r.kind === 'quiz' || r.kind === 'rain' || r.kind === 'chain'); }
+  function gdKind(r) { return r && (r.kind === 'quiz' || r.kind === 'rain' || r.kind === 'chain' || r.kind === 'score'); }
   function gdCele(r) {
     return (r.milestone ? '<div class="gd-cele"><b>' + r.milestone + '일 연속 학습!</b><span>꾸준함이 실력이 돼요</span></div>' : '') +
       (r.goalHit ? '<div class="gd-cele"><b>오늘 목표 달성!</b><span>오늘 푼 문제 ' + r.goal + '개 · 천천히, 그래도 끝까지 왔어요</span></div>' : '');
@@ -1942,6 +1942,7 @@
     if (r.kind === 'speed') return speedDone(r);
     if (r.kind === 'chain') return chainDone(r);
     if (r.kind === 'rain') return rainDone(r);
+    if (r.kind === 'score') return ptDone(r);
     if (r.kind === 'quiz') return quizDone(r);
     var st = streak();
     return '<div class="screen done-screen">' + ((r.goalHit || r.milestone) ? confetti() : '') + '<div class="hero">' +
@@ -3489,6 +3490,68 @@
     }
     return out.length ? out : null;
   }
+  /* ---------- 공통 점수: 한 문제 100점 + 속도 0~100점 + 연속 +10점(최대 +50점) ---------- */
+  var QZ_HEARTS = 3, TN_HEARTS = 5;
+  function ptsFor(frac, combo) { return 100 + Math.round(Math.max(0, Math.min(1, frac)) * 100) + Math.min(combo, 5) * 10; }
+  function ptKey() { return 'pangpang.score.' + (state.user ? state.user.id : 'x'); }
+  function ptAll() { try { return JSON.parse(localStorage.getItem(ptKey()) || '{}'); } catch (e) { return {}; } }
+  function ptBest(g, lv) { var r = ptAll()[g + lv]; return r ? (r.best || 0) : 0; }
+  function ptSave(g, lv, score) {
+    var all = ptAll(), r = all[g + lv] || { best: 0, plays: 0 };
+    r.best = Math.max(r.best, score); r.plays = (r.plays || 0) + 1; all[g + lv] = r;
+    try { localStorage.setItem(ptKey(), JSON.stringify(all)); } catch (e) { /* 무시 */ }
+  }
+  function ptHearts(n, total) {
+    var h = '';
+    for (var k = 0; k < total; k++) h += '<span class="ch-heart' + (k < n ? ' on' : '') + '">' + icn(k < n ? 'heart' : 'heart-empty') + '</span>';
+    return h;
+  }
+  // 위쪽 줄(닫기·하트·점수)과 남은 시간 막대
+  function ptTop(act, hearts, total, score, win, t0, live) {
+    var el = Math.max(0, (performance.now() - t0) / 1000);
+    return '<div class="topbar ch-top"><button class="icon-btn" data-act="' + act + '" aria-label="그만하기">' + I.close + '</button>' +
+      '<div class="ch-hearts">' + ptHearts(hearts, total) + '</div><span class="chip y">' + score + '점</span></div>' +
+      '<div class="pt-time">' + (live ? '<i style="animation-duration:' + win.toFixed(1) + 's;animation-delay:-' + Math.min(el, win).toFixed(2) + 's"></i>' : '') + '</div>';
+  }
+  function ptFinish(game, lv, s, again) {
+    var goal = state.profile.goal, now = todayAnswers(), hit = s.before < goal && now >= goal;
+    var prev = ptBest(game, lv), nb = s.score > prev && prev > 0, first = prev === 0;
+    ptSave(game, lv, s.score);
+    stopSpeak(); sfx(hit || nb ? 'goal' : 'done');
+    go('done', { result: { kind: 'score', game: game, lv: lv, score: s.score, prev: prev, newBest: nb, first: first, right: s.right, answered: s.answered, combo: s.maxCombo, all: !!s.all,
+      answers: now, goal: goal, goalHit: hit, milestone: 0, again: again } });
+  }
+  // 퀴즈·성조 결과: 점수를 크게, 최고 기록과 견줘요 (소나기·기억 사슬 결과와 같은 모양)
+  function ptDone(r) {
+    var diff = r.score - r.prev, acc = r.answered ? r.right / r.answered : 0, tone = r.game === 'tone';
+    var vs, cls;
+    if (r.first) { vs = '첫 기록이에요! 다음엔 이 점수를 넘어 볼까요?'; cls = 'first'; }
+    else if (r.newBest) { vs = '최고 기록을 <b>' + diff + '점</b> 올렸어요!'; cls = 'up'; }
+    else if (diff === 0) { vs = '최고 기록과 똑같아요. 한 끗만 더!'; cls = 'same'; }
+    else { vs = '최고 기록까지 <b>' + (-diff) + '점</b> 남았어요'; cls = 'down'; }
+    var msg = r.all ? '이 급의 단어를 모두 풀었어요!'
+      : acc >= .9 ? (tone ? '귀가 활짝 열렸어요! 성조가 쏙쏙 들려요' : '거의 완벽해요! 눈에 쏙 들어오죠?')
+      : acc >= .7 ? '점점 눈에 익어 가시는군요!'
+      : acc >= .4 ? '조금씩 익숙해지고 있어요. 한 번만 더 해 볼까요?'
+      : '처음엔 다 그래요. 틀린 건 내일 복습에 나와요';
+    var t = tone ? [25, 12, 5] : [30, 15, 6], stars = r.right >= t[0] ? 3 : r.right >= t[1] ? 2 : r.right >= t[2] ? 1 : 0;
+    var rank = tone ? ['성조 새싹', '귀 트이는 달팽이', '귀 밝은 달팽이', '성조 마스터'][stars] : ['도전하는 달팽이', '꾸준한 달팽이', '쑥쑥 크는 달팽이', '단어 박사 달팽이'][stars];
+    var top = Math.max(r.score, r.prev, 1);
+    return '<div class="screen done-screen rd gd rd-big">' + gdFx() + (r.score > 0 ? confetti() + (r.newBest ? confetti() : '') : '') + '<div class="hero">' +
+      '<div class="stage rd-stage">' + mascot(r.newBest || acc >= .7 ? 'cheer' : 'thumbs') + '</div>' +
+      '<div class="rd-score"><span class="rd-num" data-to="' + r.score + '">' + r.score + '</span><em>점</em></div>' +
+      (r.newBest ? '<div class="rd-badge">NEW 최고 기록</div>' : '') +
+      '<div class="rd-rank">' + gdStars(stars) + '<b>' + rank + '</b><span>정답 ' + r.right + '개 · ' + Math.round(acc * 100) + '%' + (r.combo >= 2 ? ' · 최고 ' + r.combo + '연속' : '') + '</span></div>' +
+      '<div class="rd-vs ' + cls + '"><div class="rd-line">' + gdLines(vs) + '</div>' +
+      (r.first ? '' : '<div class="rd-bars"><div class="rd-bar"><span>최고</span><em class="trk"><i style="width:' + Math.round(r.prev / top * 100) + '%"></i></em><b>' + r.prev + '</b></div>' +
+        '<div class="rd-bar now"><span>이번</span><em class="trk"><i style="width:' + Math.round(r.score / top * 100) + '%"></i></em><b>' + r.score + '</b></div></div>') + '</div>' +
+      gdCele(r) +
+      '<div class="rd-msgbox"><p class="rd-msg">“' + gdLines(esc(msg)) + '”</p></div>' +
+      '</div><div class="footer" style="padding-left:0;padding-right:0">' +
+      '<button class="btn" data-act="' + r.again.act + '" data-id="' + r.again.id + '">한 번 더 하기</button>' +
+      '<button class="gd-link" data-act="hsk-home">홈으로</button></div></div>';
+  }
+  function toneWin(it) { return 4 + 2 * it.tones.length; }
   function startTone(lv) {
     var pool = [];
     hskList(lv).forEach(function (w, i) {
@@ -3496,7 +3559,7 @@
       if (t && t.length <= 4) pool.push({ zh: w[0], py: w[1], ko: w[2], tones: t, hi: i });
     });
     if (!pool.length) return;
-    state.tn = { lv: lv, items: shuffle(pool).slice(0, QUIZ_SIZE), i: 0, right: 0, combo: 0, cur: [], res: null, before: todayAnswers() };
+    state.tn = { lv: lv, items: shuffle(pool), i: 0, right: 0, combo: 0, maxCombo: 0, hearts: TN_HEARTS, score: 0, lastPts: 0, t0: performance.now(), cur: [], res: null, before: todayAnswers() };
     go('tone');
     speakTone();
   }
@@ -3511,7 +3574,11 @@
     if (tn.cur.length < it.tones.length) { sfx('tap'); render(); return; }
     var ok = tn.cur.every(function (x, k) { return x === it.tones[k]; });
     tn.res = { ok: ok };
-    if (ok) { tn.right++; tn.combo++; sfx('right', tn.combo); } else { tn.combo = 0; sfx('wrong'); }
+    if (ok) {
+      tn.right++; tn.combo++; tn.maxCombo = Math.max(tn.maxCombo, tn.combo);
+      tn.lastPts = ptsFor(1 - (performance.now() - tn.t0) / 1000 / toneWin(it), tn.combo); tn.score += tn.lastPts;
+      sfx('right', tn.combo);
+    } else { tn.combo = 0; tn.hearts--; sfx('wrong'); if (it.hi != null) srsGrade(tn.lv, it.hi, false); }
     bumpAnswer();
     render();
   }
@@ -3519,28 +3586,21 @@
     var tn = state.tn;
     if (!tn.res) return;
     tn.i++; tn.cur = []; tn.res = null;
-    if (tn.i >= tn.items.length) { finishTone(); return; }
+    if (tn.hearts <= 0) { finishTone(); return; }
+    if (tn.i >= tn.items.length) { tn.all = true; finishTone(); return; }
+    tn.t0 = performance.now();
     render(); speakTone();
   }
   function finishTone() {
     tdMark('tone-start');
-    var tn = state.tn, goal = state.profile.goal, now = todayAnswers();
-    var hit = tn.before < goal && now >= goal;
-    stopSpeak(); sfx(hit ? 'goal' : 'done');
-    go('done', { result: {
-      kind: 'quiz', game: 'tone', right: tn.right, total: tn.items.length, title: '성조 연습 끝!',
-      line: tn.items.length + '문제 중 ' + tn.right + '개 맞혔어요' + (tn.right === tn.items.length ? '. 전부 정답이에요!' : '.'),
-      answers: now, goal: goal, goalHit: hit, milestone: 0,
-      again: { act: 'tone-start', id: String(tn.lv), label: '한 번 더 하기' }
-    } });
+    var tn = state.tn;
+    ptFinish('tone', tn.lv, { score: tn.score, right: tn.right, answered: tn.i, maxCombo: tn.maxCombo, all: tn.all, before: tn.before }, { act: 'tone-start', id: String(tn.lv) });
   }
   function viewTone() {
     var tn = state.tn, it = tn.items[tn.i], n = it.tones.length, res = tn.res;
     var answered = tn.i + (res ? 1 : 0), pct = Math.round(answered / tn.items.length * 100);
     var len = Math.max(1, Array.from(it.zh).length);
-    var top = '<div class="topbar"><button class="icon-btn" data-act="tone-quit" aria-label="그만하기">' + I.close + '</button>' +
-      '<div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + pct + '"><i style="width:' + pct + '%"></i></div>' +
-      '<span class="chip" style="min-width:48px;justify-content:center">' + answered + '/' + tn.items.length + '</span></div>';
+    var top = ptTop('tone-quit', tn.hearts, TN_HEARTS, tn.score, toneWin(it), tn.t0, !res);
     var prompt = '<div class="qz-prompt qz-word">' +
       '<button class="round-btn qz-spk" data-act="say" data-text="' + esc(it.zh) + '" aria-label="듣기">' + I.spk + '</button>' +
       '<div class="q-zh big" style="font-size:min(104px, calc((100vw - 64px) / ' + len + '))">' + esc(it.zh) + '</div>' +
@@ -3556,7 +3616,7 @@
     var pad = '<div class="tn-pad">' + [1, 2, 3, 4, 0].map(function (v) {
       return '<button class="tn-btn t' + v + '" data-act="tone-pick" data-id="' + v + '"' + (res ? ' disabled' : '') + '><b>' + TN_SYM[v] + '</b><span>' + TN_NAME[v] + '</span></button>';
     }).join('') + '</div>';
-    var foot = qzFoot(!!res, res && res.ok, res ? (res.ok ? (tn.combo >= 2 ? '연속 ' + tn.combo + '번 정답' : '귀가 좋아요') : '빨간 칸의 작은 글자가 정답이에요') : '', 'tone-next', tn.i + 1 >= tn.items.length ? '결과 보기' : '다음');
+    var foot = qzFoot(!!res, res && res.ok, res ? (res.ok ? '+' + tn.lastPts + '점' + (tn.combo >= 2 ? ' · ' + tn.combo + '연속' : '') : '빨간 칸의 작은 글자가 정답이에요') : '', 'tone-next', res && (tn.hearts <= 0 || tn.i + 1 >= tn.items.length) ? '결과 보기' : '다음');
     return '<div class="screen qz-fit">' + top + '<div class="qz-wrap qz-ctr tn-fit">' + prompt + slots + pad + '</div>' + foot + '</div>';
   }
   // 단어장 탭의 HSK 영역: 급을 고르면 학습 방식 4가지가 바로 보여요
@@ -3592,9 +3652,9 @@
       listCard +
       '<div class="hsk-modes">' +
       mode('hsk-study', hmi('game'), '카드 학습', '밀어서 외우기', '') +
-      mode('hsk-quiz', hmi('quiz'), '퀴즈', '소리·뜻 고르기', '') +
+      mode('hsk-quiz', hmi('quiz'), '퀴즈', ptBest('hskquiz', lv) ? '최고 ' + ptBest('hskquiz', lv) + '점' : '하트 3개로 도전', ptBest('hskquiz', lv) ? '' : 'NEW') +
       mode('ch-start', hmi('kisa'), '기억 사슬', rec.best ? '최고 ' + rec.best + '단계' : '몇 단계까지 갈까?', rec.plays ? '' : 'NEW') +
-      mode('tone-start', hmi('sungjo'), '성조 연습', '소리로 성조 맞히기', '') +
+      mode('tone-start', hmi('sungjo'), '성조 연습', ptBest('tone', lv) ? '최고 ' + ptBest('tone', lv) + '점' : '하트 5개로 도전', ptBest('tone', lv) ? '' : 'NEW') +
       mode('rain-start', hmi('sonagi'), '소나기 퀴즈', '떨어지는 한자를 잡아요', rnBest(lv) ? '' : 'NEW', 'wide') + '</div>' +
       '<p class="hsk-note hsk-foot">' + HSK_NOTE + '</p></div>';
   }
@@ -3673,15 +3733,21 @@
   }
   function startHskQuiz(lv) {
     var list = hskList(lv);
-    var kos = list.map(function (w) { return w[2]; });
-    var items = shuffle(hskPick(lv, QUIZ_SIZE)).map(function (q) {
-      var i = q.i, w = list[i];
-      return { id: null, lessonId: null, zh: w[0], py: w[1], ko: w[2], hi: i, options: quizOptions(w[2], kos) };
-    });
-    state.z = { kind: 'word', hsk: lv, items: items, i: 0, right: 0, combo: 0, picked: null, before: todayAnswers() };
+    state.z = { kind: 'word', hsk: lv, items: [], pool: hskPick(lv, list.length), pi: 0, i: 0, right: 0, combo: 0, maxCombo: 0, hearts: QZ_HEARTS, score: 0, lastPts: 0, t0: performance.now(), picked: null, before: todayAnswers() };
+    quizFeed(state.z);
     go('quiz');
     speakQuiz();
   }
+  // 하트가 남는 동안 계속: 10개씩 이어서 문제를 만들어요
+  function quizFeed(z) {
+    var list = hskList(z.hsk), kos = list.map(function (w) { return w[2]; });
+    shuffle(z.pool.slice(z.pi, z.pi + 10)).forEach(function (q) {
+      var w = list[q.i];
+      z.items.push({ id: null, lessonId: null, zh: w[0], py: w[1], ko: w[2], hi: q.i, options: quizOptions(w[2], kos) });
+    });
+    z.pi += 10;
+  }
+  function quizWin(z) { return Math.max(4, 6 - z.i * 0.1); }
 
   /* ---------- 퀴즈: 듣기 · 단어 ---------- */
   var QUIZ_SIZE = 10;
@@ -3728,7 +3794,11 @@
     if (z.picked !== null) return;
     z.picked = idx;
     var ok = it.options[idx].ok;
-    if (ok) { z.right++; z.combo++; sfx('right', z.combo); } else { z.combo = 0; sfx('wrong'); }
+    if (ok) {
+      z.right++; z.combo++;
+      if (z.hsk) { z.maxCombo = Math.max(z.maxCombo, z.combo); z.lastPts = ptsFor(1 - (performance.now() - z.t0) / 1000 / quizWin(z), z.combo); z.score += z.lastPts; }
+      sfx('right', z.combo);
+    } else { z.combo = 0; if (z.hsk) z.hearts--; sfx('wrong'); }
     // 풀자마자 오늘 푼 문제 수에 더하고, 틀린 듣기 문제는 약한 문제로 보내요
     bumpAnswer();
     if (z.hsk && it.hi != null) { setHskKnown(z.hsk, it.hi, ok); srsGrade(z.hsk, it.hi, ok); }
@@ -3743,11 +3813,22 @@
     var z = state.z;
     if (z.picked === null) return;
     z.i++; z.picked = null; z.peek = false;
+    if (z.hsk) {
+      if (z.hearts <= 0) { finishQuiz(); return; }
+      if (z.i >= z.items.length) quizFeed(z);
+      if (z.i >= z.items.length) { z.all = true; finishQuiz(); return; }
+      z.t0 = performance.now(); render(); speakQuiz(); return;
+    }
     if (z.i >= z.items.length) { finishQuiz(); return; }
     render(); speakQuiz();
   }
   function finishQuiz() {
     if (state.z && state.z.hsk) tdMark('hsk-quiz');
+    if (state.z && state.z.hsk) {
+      var h = state.z;
+      ptFinish('hskquiz', h.hsk, { score: h.score, right: h.right, answered: h.i, maxCombo: h.maxCombo, all: h.all, before: h.before }, { act: 'hsk-quiz', id: String(h.hsk) });
+      return;
+    }
     var z = state.z, goal = state.profile.goal, now = todayAnswers();
     var hit = z.before < goal && now >= goal;
     var label = z.kind === 'listen' ? '듣기 연습' : (z.hsk ? 'HSK ' + z.hsk + '급 퀴즈' : '단어 퀴즈');
@@ -3769,7 +3850,7 @@
   function viewQuiz() {
     var z = state.z, it = z.items[z.i], answered = z.i + (z.picked !== null ? 1 : 0);
     var pct = Math.round(answered / z.items.length * 100);
-    var top = '<div class="topbar"><button class="icon-btn" data-act="quiz-quit" aria-label="그만하기">' + I.close + '</button>' +
+    var top = z.hsk ? ptTop('quiz-quit', z.hearts, QZ_HEARTS, z.score, quizWin(z), z.t0, z.picked === null) : '<div class="topbar"><button class="icon-btn" data-act="quiz-quit" aria-label="그만하기">' + I.close + '</button>' +
       '<div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + pct + '"><i style="width:' + pct + '%"></i></div>' +
       '<span class="chip" style="min-width:48px;justify-content:center">' + answered + '/' + z.items.length + '</span></div>';
     var prompt;
@@ -3794,7 +3875,9 @@
       reveal = '<div class="qz-reveal-slot">' + (z.picked !== null ? '<div class="qz-reveal"><div class="zh">' + esc(it.zh) + '</div><div class="py">' + esc(it.py) + '</div><div class="kr">' + esc(kr(it.py)) + '</div></div>' : '') + '</div>';
     }
     var vok = z.picked !== null && it.options[z.picked].ok;
-    var foot = qzFoot(z.picked !== null, vok, vok ? (z.combo >= 2 ? '연속 ' + z.combo + '번 정답' : '잘했어요') : '괜찮아요, 다시 해봐요', 'quiz-next', z.i + 1 >= z.items.length ? '결과 보기' : '다음');
+    var qsub = z.hsk ? (vok ? '+' + z.lastPts + '점' + (z.combo >= 2 ? ' · ' + z.combo + '연속' : '') : (z.hearts > 0 ? '하트가 하나 줄었어요' : '하트를 모두 썼어요')) : (vok ? (z.combo >= 2 ? '연속 ' + z.combo + '번 정답' : '잘했어요') : '괜찮아요, 다시 해봐요');
+    var qlast = z.hsk ? (z.picked !== null && z.hearts <= 0) : z.i + 1 >= z.items.length;
+    var foot = qzFoot(z.picked !== null, vok, qsub, 'quiz-next', qlast ? '결과 보기' : '다음');
     return '<div class="screen qz-fit">' + top + '<div class="qz-wrap qz-ctr">' + prompt + reveal + opts + '</div>' + foot + '</div>';
   }
 
@@ -4373,7 +4456,7 @@
       c.right++; c.stageRight++; c.combo++; c.maxCombo = Math.max(c.maxCombo, c.combo); a.streak++;
       // 빨리 누를수록 높은 점수: 기본 100 + 남은 시간 비율 × 100 + 연속 보너스
       var left = Math.max(0, 1 - (performance.now() - c.t0) / 1000 / c.secs);
-      c.lastPts = 100 + Math.round(left * 100) + Math.min(c.combo, 5) * 10;
+      c.lastPts = ptsFor(left, c.combo);
       c.score += c.lastPts;
       sfx('right', c.combo);
       if (c.stage >= CH_ACTIVE && a.streak >= CH_GRAD) {
@@ -4519,7 +4602,7 @@
 
   /* ---------- 소나기 퀴즈 (v148): 소리를 듣고 하늘에서 떨어지는 한자를 눌러 잡아요 ---------- */
   var RN_LIVES = 3, RN_WAVES = 10, RN_DROPS = 6, RN_LANES = [0.2, 0.5, 0.8];
-  function rnKey() { return 'pangpang.rain.' + (state.user ? state.user.id : 'x'); }
+  function rnKey() { return 'pangpang.rain2.' + (state.user ? state.user.id : 'x'); }
   function rnRecAll() { try { return JSON.parse(localStorage.getItem(rnKey()) || '{}'); } catch (e) { return {}; } }
   function rnBest(lv) { var r = rnRecAll()[lv]; return r ? (r.best || 0) : 0; }
   function rnSaveBest(lv, score) {
@@ -4658,7 +4741,7 @@
     if (!d || d.dead) return;
     if (d.isT) {
       r.combo++; r.maxCombo = Math.max(r.maxCombo, r.combo); r.right++;
-      r.score += 100 + Math.min(r.combo, 5) * 10 + Math.round(Math.max(0, 1 - d.y) * 50);
+      r.score += ptsFor(1 - d.y, r.combo);
       sfx('right', r.combo);
       if (d.el) d.el.classList.add('ok');
       d.dead = true;

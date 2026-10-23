@@ -2767,3 +2767,8 @@ html, body, * { scrollbar-width: none; -ms-overflow-style: none; }
 @media (min-height: 681px) {
   .gd > .hero, .gd.rd-big > .hero { padding-top: clamp(40px, 12dvh, 128px); }
 }
+
+/* v200: 퀴즈·성조 남은 시간 막대 */
+.pt-time { height: 6px; margin: 0 var(--sp-4) var(--sp-2); border-radius: 3px; background: var(--soft); overflow: hidden; flex: none; }
+.pt-time i { display: block; height: 100%; width: 100%; background: var(--green); transform-origin: left; animation: ptDrain linear forwards; }
+@keyframes ptDrain { to { transform: scaleX(0); } }
