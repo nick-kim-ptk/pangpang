@@ -3058,3 +3058,8 @@ body.kb .nav { display: none; }
 .td-card .td-group .td-item { padding-bottom: 12px; }
 .td-card .td-group .phrase-card { margin: 0 0 18px; padding: 16px 18px; }
 .td-head2 .td-sub { margin-top: 6px; }
+
+/* v250 상황 레슨 연습 화면: 문장 카드 좌우 여백, 주제 줄↔스텝 간격, 아래 구분선 삭제 */
+.sc-fit .sc-card { padding-left: 22px; padding-right: 22px; }
+.sc-fit .sc-head2 { border-bottom: 0; padding-bottom: var(--sp-2); }
+.sc-fit .sc-head2 .sc-ctx { margin-bottom: 22px; }

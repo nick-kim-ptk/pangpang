@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v249';
+  var APP_VERSION = 'v250';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -4691,7 +4691,14 @@
       var e = els[i];
       e.style.zoom = '';
       var need = e.scrollWidth, avail = e.clientWidth;
-      if (need > avail + 1 && avail > 0) e.style.zoom = String(Math.max(.5, avail / need - .01));
+      // 가운데 정렬된 줄은 왼쪽으로 넘친 길이를 scrollWidth가 못 재서, 덩어리들의 실제 폭으로 직접 재요
+      if (e.classList.contains('sc-chunks') && e.lastElementChild) { var f = e.firstElementChild, la = e.lastElementChild; need = Math.max(need, la.offsetLeft + la.offsetWidth - f.offsetLeft); }
+      // 카드 양옆에 여유가 남도록 폭의 94%까지만 쓰고, 줄인 뒤에도 넘치면 한 번 더 줄여요
+      var cap = e.classList.contains('sc-chunks') ? avail * .94 : avail;
+      if (need > cap + 1 && avail > 0) {
+        var z = Math.max(.5, cap / need - .01); e.style.zoom = String(z);
+        
+      }
     }
   }
   function scLineView(l, key) {
