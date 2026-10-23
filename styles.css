@@ -2875,3 +2875,7 @@ html, body, * { scrollbar-width: none; -ms-overflow-style: none; }
 .ch-tile .mk { top: 8px; right: 10px; transform: none; font-size: 15px; }
 .tn-slot.ok b::after { content: " ✓"; font-size: .6em; }
 @media (prefers-reduced-motion: reduce) { .pt-time i, .ch-timer i { animation-timing-function: steps(8, end) !important; } }
+
+/* v210: 업데이트 알림 글자가 두 줄로 내려가던 문제(왼쪽 50% 기준이라 폭이 반으로 줄던 것) */
+.upd-bar { width: max-content; white-space: nowrap; justify-content: center; }
+.upd-bar b, .upd-bar span { white-space: nowrap; }
