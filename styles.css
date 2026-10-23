@@ -461,7 +461,7 @@ button { font: inherit; color: inherit; letter-spacing: inherit; cursor: pointer
   --dot:rgba(210,222,255,.22); --ring:rgba(255,224,170,.8); --ray:#FFDD9A; --shadow:rgba(0,4,20,.5); --track:rgba(255,255,255,.12); --trail:rgba(255,220,160,.95);
   position: fixed; inset: 0; z-index: 100; overflow: hidden; background: linear-gradient(170deg, var(--bg1), var(--bg2)); transition: opacity .25s ease; color: var(--ink); }
 .sp.sp-out { opacity: 0; }
-.sp-stage { position: absolute; left: 50%; top: 50%; width: 370px; height: 824px; margin: -412px 0 0 -185px; transform: scale(var(--k, 1)); transform-origin: center; }
+.sp-stage { position: absolute; left: 50%; top: calc(50% - 48px); width: 370px; height: 824px; margin: -412px 0 0 -185px; transform: scale(var(--k, 1)); transform-origin: center; }
 .sp i { display: block; }
 .sp-dots { position: absolute; inset: -400px -300px; opacity: .5; background-image: radial-gradient(var(--dot) 1.2px, transparent 1.4px); background-size: 16px 16px;
   -webkit-mask-image: radial-gradient(60% 35% at 50% 50%, transparent 35%, #000 80%); mask-image: radial-gradient(60% 35% at 50% 50%, transparent 35%, #000 80%); }
