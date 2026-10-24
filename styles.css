@@ -3114,3 +3114,9 @@ html body .screen.qz-fit .footer.qz-foot2 .qz-fb.no img { animation: qzsnailno .
   html body .screen.qz-fit .footer.qz-foot2 .qz-fb img { width: 64px; height: 64px; }
   html body .screen.qz-fit .footer.qz-foot2 .qz-fb .qv-t b { font-size: 28px; }
 }
+
+/* v264 레슨 NEW 뱃지를 AI 대화 '대표 기능' 뱃지 크기로, 제목과 설명 간격 좁힘 */
+.sc-head .chip.y { height: auto; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 800; letter-spacing: .02em; gap: 0; }
+html body .sc-head { margin-bottom: 0; }
+html body .sc-head + .hsk-note.under-title { margin: 0 0 var(--sp-3); }
+html body .sc-head { margin-bottom: 2px; }
