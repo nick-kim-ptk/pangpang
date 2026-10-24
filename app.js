@@ -38,7 +38,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v277';
+  var APP_VERSION = 'v278';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });

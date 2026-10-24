@@ -987,3 +987,6 @@ select kind, count(*) n, round(avg(in_tokens)) avg_in, round(avg(cache_read)) av
 
 ## v277
 - 상황 카드 일러스트 4개 추가: 편의점에서 계산하기, 병원·약국 가기, 식당에서 주문하기, 점심 약속 잡기(`img/sc-*.webp`). 병원 이미지는 검은 배경을 지워 투명하게 만들었어요.
+
+## v278
+- 병원·약국 가기 일러스트를 투명 배경 원본으로 교체했어요.
