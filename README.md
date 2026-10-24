@@ -968,3 +968,7 @@ select kind, count(*) n, round(avg(in_tokens)) avg_in, round(avg(cache_read)) av
 
 ## v271
 - 陈宇轩(Alen)·张美婷(Kelly) 카드의 '미리 듣기'를 켰어요. Fish Audio로 한 번 만든 미리 듣기 파일(`audio/voice-*.mp3`)을 재생해요. 카드 선택은 아직 '준비 중'이에요.
+
+## v272
+- 목소리 카드 정리: 카드 세 장의 줄(병음·설명·상태·버튼)을 맞추고, '미리 듣기' 버튼이 두 줄로 꺾이지 않게 하고 색을 정리했어요.
+- 陈宇轩·张美婷 미리 듣기 파일을 새 녹음으로 교체했어요.

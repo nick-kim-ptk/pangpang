@@ -38,7 +38,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v271';
+  var APP_VERSION = 'v272';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -2724,7 +2724,7 @@
       var on = v.ready && cur === v.id;
       return '<div class="vp' + (on ? ' on' : '') + (v.ready ? '' : ' soon') + '" role="radio" tabindex="0" aria-checked="' + on + '" data-act="set-voice" data-v="' + v.id + '">' +
         '<img class="vp-img" src="' + v.img + '" alt="" width="56" height="56" decoding="async">' +
-        '<b class="vp-n">' + esc(v.name) + '</b>' + (v.py ? '<span class="vp-py">' + esc(v.py) + '</span>' : '') +
+        '<b class="vp-n">' + esc(v.name) + '</b>' + '<span class="vp-py"' + (v.py ? '>' + esc(v.py) : ' aria-hidden="true">&nbsp;') + '</span>' +
         '<span class="vp-s">' + esc(v.sub) + '</span>' +
         '<span class="vp-tag' + (on ? ' on' : v.ready ? '' : ' soon') + '">' + (on ? '사용 중' : v.ready ? '선택' : '준비 중') + '</span>' +
         '<button class="vp-play" data-act="voice-preview" data-v="' + v.id + '"' + (v.ready || v.clip ? '' : ' disabled') + ' aria-label="' + esc(v.name) + ' 미리 듣기">' + I.spk + '미리 듣기</button></div>';
