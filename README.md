@@ -938,3 +938,7 @@ select kind, count(*) n, round(avg(in_tokens)) avg_in, round(avg(cache_read)) av
 
 ## v263
 - HSK 화면의 "오늘 복습할 단어"를 고른 급 기준으로 따로 세고, 눌렀을 때도 그 급 단어만 복습. (이전엔 전체 급 합계가 모든 급에 똑같이 보임)
+
+## 목소리 테스트 (앱 본체 변경 없음)
+- `voice-tts.html`: 문장을 쓰면 Fish Audio 목소리로 읽어 주는 테스트 페이지(로그인 필요, 앱과 별개).
+- `supabase/functions/fish-tts`: 로그인 확인 후 Fish Audio를 부르는 함수. 비밀 값 `FISH_API_KEY`가 필요하고 'Verify JWT'는 끄고 배포해요.
