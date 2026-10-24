@@ -38,7 +38,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v272';
+  var APP_VERSION = 'v273';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -2640,7 +2640,7 @@
     var ai = aiOn();
     if (isLifetime() && !ai) return '';   // 평생 회원은 아래 메뉴 목록에서 확인해요
     var m = memberLabel(), pro = isPro();
-    var aiRow = ai ? '<button class="mc-ai" data-act="open-aicharge"><span class="mc-ai-t">AI 대화</span><span class="mc-ai-n">남은 크레딧 <b>' + aiBal() + '</b></span><span class="mc-ai-go">충전</span></button>' : '';
+    var aiRow = ai ? '<button class="mc-ai" data-act="open-aicharge"><span class="mc-ai-t">크레딧</span><span class="mc-ai-n"><b>' + aiBal() + '</b></span><span class="mc-ai-go">충전</span></button>' : '';
     var head = isLifetime()
       ? '<div class="mc-main"><span class="mc-t">' + esc(m.t) + '</span><span class="mc-s">' + esc(m.s) + '</span></div>'
       : '<button class="mc-main" data-act="open-pay"><span class="mc-t">' + esc(m.t) + '</span><span class="mc-s">' + esc(m.s) + '</span>' +
