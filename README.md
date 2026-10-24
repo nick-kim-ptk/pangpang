@@ -981,3 +981,6 @@ select kind, count(*) n, round(avg(in_tokens)) avg_in, round(avg(cache_read)) av
 
 ## v275
 - 상황 카드 일러스트의 노란 배경을 없애고, 그림과 글 사이에 얇은 구분선만 남겼어요.
+
+## v276
+- 상황 카드 일러스트 영역의 위·아래 여백을 늘렸어요(그림 크기는 그대로).
