@@ -22,6 +22,7 @@
   .vr{display:flex;gap:6px;margin-bottom:8px}
   .vr input{min-width:0}.vr .n{flex:0 0 28%}
   .vr button{width:auto;margin:0;padding:10px 12px;flex:0 0 auto}
+  .vr .d{background:#e3eae3;color:#1d2a1f}
   .vr .x{background:#e3eae3;color:#1d2a1f}
   .log{white-space:pre-line;margin-top:16px;font-size:13px;color:#5b6b5e}
 </style></head><body><main>
@@ -56,7 +57,7 @@
   var $ = function(id){ return document.getElementById(id); };
   var sb = (cfg.SUPABASE_URL && cfg.SUPABASE_ANON_KEY && window.supabase)
     ? window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY, {auth:{persistSession:true,autoRefreshToken:true}}) : null;
-  var EX = ['你好！今天天气很好，我们一起去公园玩吧。','请问，去地铁站怎么走？','我想点一杯热咖啡，不要糖。','你周末一般做什么？我喜欢在家看电影。'];
+  var EX = ['你好，和我一起练习吧！','你好！今天天气很好，我们一起去公园玩吧。','请问，去地铁站怎么走？','我想点一杯热咖啡，不要糖。','你周末一般做什么？我喜欢在家看电影。'];
   EX.forEach(function(s){ var b=document.createElement('button'); b.textContent=s.slice(0,8)+'…'; b.onclick=function(){ $('t').value=s; }; $('ex').appendChild(b); });
   $('sp').oninput = function(){ $('spv').textContent = Number($('sp').value).toFixed(1); };
   var token = null, cur = null, vid = 0;
@@ -65,10 +66,11 @@
   function rows(){ return Array.prototype.map.call($('vs').children, function(d){ return {el:d, n:d.querySelector('.n').value.trim(), v:d.querySelector('.i').value.trim()}; }); }
   function addRow(n, v){
     var d = document.createElement('div'); d.className = 'vr';
-    d.innerHTML = '<input class="n" placeholder="이름" maxlength="12"><input class="i" placeholder="목소리 ID" autocomplete="off"><button class="p">▶</button><button class="x">×</button>';
+    d.innerHTML = '<input class="n" placeholder="이름" maxlength="12"><input class="i" placeholder="목소리 ID" autocomplete="off"><button class="p" title="듣기">▶</button><button class="d" title="mp3 저장">⬇</button><button class="x">×</button>';
     d.querySelector('.n').value = n || ''; d.querySelector('.i').value = v || '';
     d.querySelector('.n').oninput = d.querySelector('.i').oninput = save;
     d.querySelector('.p').onclick = function(){ run([rowOf(d)]); };
+    d.querySelector('.d').onclick = function(){ saveOne(rowOf(d)); };
     d.querySelector('.x').onclick = function(){ d.remove(); save(); };
     $('vs').appendChild(d);
   }
@@ -97,6 +99,18 @@
   }
   function playUrl(u){ return new Promise(function(res){ stop(); var a = new Audio(u); cur = a; a.onended = a.onerror = function(){ res(); }; a.play().catch(function(){ res(); }); }); }
 
+  async function saveOne(it){
+    var text = $('t').value.trim();
+    if(!text){ say('문장을 써 주세요.'); return; }
+    var name = it.n || '목소리', key = [text,it.v,$('md').value,$('sp').value].join('|');
+    try {
+      var o = cache[key];
+      if(!o){ say(name+' 만드는 중…'); o = cache[key] = await fetchOne(text, it.v); }
+      var a = document.createElement('a'); a.href = o.url; a.download = 'voice-' + name.replace(/[^A-Za-z0-9가-힣_-]/g,'') + '.mp3';
+      document.body.appendChild(a); a.click(); a.remove();
+      say('저장했어요: '+a.download+' (다운로드 폴더를 확인하세요)');
+    } catch(e){ say(e.message || '저장에 실패했어요.'); }
+  }
   var cache = {}; // 같은 문장·목소리·모델·속도면 다시 만들지 않아요(비용 절약)
   async function run(list){
     var text = $('t').value.trim();
