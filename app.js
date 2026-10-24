@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v264';
+  var APP_VERSION = 'v265';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -59,6 +59,13 @@
     out.m = h && h.m === 'a' ? 'a' : '';   // 'a' = v235 단어 번호 정리(중복 삭제) 반영 완료 표시
     return out;
   }
+  // 읽어 주는 목소리: 지금은 기기 음성만 쓸 수 있고, 나머지는 준비 중이에요(선택해도 기기 음성으로 읽어요)
+  var VOICES = [
+    { id: 'device', name: '기본 목소리', sub: '내 폰의 중국어 음성으로 읽어요', note: '인터넷 없이도 돼요', ready: true },
+    { id: 'yuxuan', name: '陈宇轩', py: 'Chén Yǔxuān', sub: '30대 남자 목소리', note: '고품질 음성 · 곧 만나요', ready: false },
+    { id: 'meiting', name: '张美婷', py: 'Zhāng Měitíng', sub: '20대 여자 목소리', note: '고품질 음성 · 곧 만나요', ready: false }
+  ];
+  var VOICE_IDS = VOICES.map(function (v) { return v.id; });
   var PN_KEYS = ['learn', 'game', 'word'];
   function normPn(o) {
     o = o || {}; var out = {};
@@ -90,6 +97,7 @@
       sound: p.sound !== false,
       kr: p.kr !== false,
       input: p.input === 'type' ? 'type' : 'voice',
+      voice: VOICE_IDS.indexOf(p.voice) >= 0 ? p.voice : 'device',
       hsk3: normHsk(p.hsk3),
       dlg: (Array.isArray(p.dlg) ? p.dlg : []).filter(function (x) { return typeof x === 'string'; }).slice(0, 50),
       favs: (Array.isArray(p.favs) ? p.favs : []).filter(function (x) { return typeof x === 'string'; }).slice(0, 100)
@@ -270,7 +278,7 @@
     state.progress = {}; state.done = {}; state.daily = {};
     if (!keepProfile) {
       var meta = (state.user && state.user.user_metadata) || {};
-      state.profile = normProfile({ nickname: meta.nickname, rankPub: meta.rankPub, rankAnon: meta.rankAnon, goal: meta.goal, theme: meta.theme, remind: meta.remind, remindOn: meta.remindOn, pn: meta.pn, wordLv: meta.wordLv, speedUsed: meta.speedUsed, sound: meta.sound, kr: meta.kr, input: meta.input, favs: meta.favs, dlg: meta.dlg, hsk3: meta.hsk3 });
+      state.profile = normProfile({ nickname: meta.nickname, rankPub: meta.rankPub, rankAnon: meta.rankAnon, goal: meta.goal, theme: meta.theme, remind: meta.remind, remindOn: meta.remindOn, pn: meta.pn, wordLv: meta.wordLv, speedUsed: meta.speedUsed, sound: meta.sound, kr: meta.kr, input: meta.input, voice: meta.voice, favs: meta.favs, dlg: meta.dlg, hsk3: meta.hsk3 });
       applyTheme();
     }
     (res[0].data || []).forEach(function (r) { state.progress[r.qid] = r; });
@@ -347,7 +355,7 @@
       persistLocal();
       if (!sb || isGuest()) return;
       var p = state.profile;
-      var res = await sb.auth.updateUser({ data: { nickname: p.nickname, rankPub: p.rankPub, rankAnon: p.rankAnon, goal: p.goal, theme: p.theme, remind: p.remind, remindOn: p.remindOn, pn: p.pn, wordLv: p.wordLv, speedUsed: p.speedUsed, sound: p.sound, kr: p.kr, input: p.input, favs: p.favs, dlg: p.dlg, hsk3: state.hskSynced ? null : p.hsk3 } });
+      var res = await sb.auth.updateUser({ data: { nickname: p.nickname, rankPub: p.rankPub, rankAnon: p.rankAnon, goal: p.goal, theme: p.theme, remind: p.remind, remindOn: p.remindOn, pn: p.pn, wordLv: p.wordLv, speedUsed: p.speedUsed, sound: p.sound, kr: p.kr, input: p.input, voice: p.voice, favs: p.favs, dlg: p.dlg, hsk3: state.hskSynced ? null : p.hsk3 } });
       if (res.error) saveFailed(res.error); else if (res.data && res.data.user) state.user = res.data.user;
     }),
     saveDaily: tracked(async function (row) {
@@ -678,7 +686,7 @@
     else if (sc === 'rank') go('tab', { tab: 'words' });
     else if (sc === 'myweeks') go('rank');
     else if (sc === 'done') go('tab', { tab: 'home' });
-    else if (sc === 'feedback' || sc === 'account' || sc === 'coupon') go('prefs');
+    else if (sc === 'feedback' || sc === 'account' || sc === 'coupon' || sc === 'voice') go('prefs');
     else if (sc === 'intro' && (state.lsFrom === 'grams' || state.lsFrom === 'lsall')) go(state.lsFrom);
     else if (sc === 'intro' || sc === 'stats' || sc === 'aicharge' || sc === 'aiall' || sc === 'phrases' || sc === 'prefs' || sc === 'about' || sc === 'advisor') go('tab');
   }
@@ -2704,6 +2712,20 @@
       '<h2>검수 범위</h2><div class="adv-chips">' + chips.map(function (c) { return '<span class="chip soft">' + c + '</span>'; }).join('') + '</div>' +
       '<h2>한마디</h2><p>“틀려도 괜찮아요. 입으로 말해 보는 게 가장 빠른 길이에요.” (임시 문구)</p><div style="height:40px"></div></div></div>';
   }
+  function viewVoice() {
+    var cur = state.profile.voice;
+    return '<div class="screen"><div class="topbar"><button class="icon-btn" data-act="back" aria-label="뒤로">' + I.back + '</button></div>' +
+      '<div class="scroll" style="padding-top:4px"><h1 class="big-title" style="margin-top:0">읽어 주는 목소리</h1>' +
+      '<p class="sub-title">단어와 문장을 들려줄 때 쓸 목소리를 골라요.</p>' +
+      '<div class="vc-list">' + VOICES.map(function (v) {
+        var on = v.ready && cur === v.id;
+        return '<button class="vc' + (on ? ' on' : '') + (v.ready ? '' : ' soon') + '" data-act="set-voice" data-v="' + v.id + '" aria-pressed="' + on + '">' +
+          '<span class="vc-ico" aria-hidden="true">' + (v.ready ? '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5v5h4l5 4v-13l-5 4z"/><path d="M16.5 9a4 4 0 0 1 0 6M19 6.5a7.5 7.5 0 0 1 0 11"/></svg>' : esc(v.name.charAt(0))) + '</span>' +
+          '<span class="vc-t"><b>' + esc(v.name) + (v.py ? '<em>' + esc(v.py) + '</em>' : '') + '</b><span>' + esc(v.sub) + '</span><span class="vc-n">' + esc(v.note) + '</span></span>' +
+          (v.ready ? '<span class="vc-tag' + (on ? ' on' : '') + '">' + (on ? '사용 중' : '선택') + '</span>' : '<span class="vc-tag soon">준비 중</span>') + '</button>';
+      }).join('') + '</div>' +
+      '<div style="height:40px"></div></div></div>';
+  }
   function viewPrefs() {
     var p = state.profile;
     var extra = typeof settingsExtra === 'function' ? settingsExtra() : '';
@@ -2711,6 +2733,7 @@
       '<div class="scroll" style="padding-top:4px"><h1 class="big-title" style="margin-top:0">환경 설정</h1>' +
       '<div class="section-title" style="margin-top:8px">소리 · 화면</div><div class="set-card">' +
         '<div class="set-row"><div class="set-t">효과음·진동</div>' + tgl('set-sound', p.sound, '효과음·진동') + '</div>' +
+        setLink('open-voice', '읽어 주는 목소리', (VOICES.filter(function (v) { return v.id === p.voice; })[0] || VOICES[0]).name) +
         setLink('zh-guide', '중국어 음성', (function () { var z = zhVoiceState(); return z === 'yes' ? '사용할 수 있어요' : z === 'no' ? '이 폰에 없어요 · 설치 방법 보기' : '확인 중이에요'; })()) +
         '<div class="set-row"><div class="set-t">화면</div>' + seg('set-theme', p.theme, [['auto', '자동'], ['light', '라이트'], ['dark', '다크']]) + '</div></div>' +
       ((sb && !isGuest()) ? '<div class="section-title" style="margin-top:24px">순위</div><div class="set-card"><div class="set-row"><div class="set-t">순위에 닉네임 공개<div class="set-sub">' + (p.rankPub ? '끄면 \'비공개\'와 숫자로 바꿔 보여요' : '지금은 \'' + rankNick() + '\'로 보여요') + '</div></div>' + tgl('set-rank', p.rankPub, '닉네임 공개') + '</div></div>' : '') +
@@ -2952,6 +2975,7 @@
     else if (state.screen === 'feedback') html = viewFeedback();
     else if (state.screen === 'privacy') html = viewPrivacy();
     else if (state.screen === 'about') html = viewAbout();
+    else if (state.screen === 'voice') html = viewVoice();
     else if (state.screen === 'advisor') html = viewAdvisor();
     else if (state.screen === 'account') html = viewAccount();
     else if (state.screen === 'coupon') html = viewCoupon();
@@ -5897,6 +5921,11 @@
       case 'open-aiall': state.aiallHint = false; go('aiall'); break;
       case 'open-prefs': go('prefs'); break;
       case 'zh-guide': askConfirm({ title: '중국어 음성 설치 방법', body: ZH_GUIDE, ok: '알겠어요', cancel: '닫기', m: 'sleep', left: true }); break;
+      case 'open-voice': go('voice'); break;
+      case 'set-voice':
+        if (el.getAttribute('data-v') === 'device') { setProfile({ voice: 'device' }); sfx('pop'); }
+        else toast('아직 준비 중이에요. 곧 만나요');
+        break;
       case 'open-about': go('about'); break;
       case 'open-advisor': go('advisor'); break;
       case 'open-review': location.href = 'review.html'; break;
