@@ -8,9 +8,11 @@
   var Hangul = window.Hangul;
   var PHRASES = window.PHRASES || [];
   function kr(py) {
-    if (typeof state !== 'undefined' && state && state.profile && state.profile.kr === false) return '';
+    if (typeof state !== 'undefined' && state && state.profile && state.profile.kr !== true) return '';
     return Hangul ? Hangul.fromPinyin(py) : '';
   }
+  // 병음 아래에 붙이는 한글 발음 한 줄(설정이 꺼져 있거나 비어 있으면 아무것도 안 붙여요)
+  function krs(py, cls) { var k = kr(py || ''); return k ? '<span class="kr kr-s' + (cls ? ' ' + cls : '') + '">' + esc(k) + '</span>' : ''; }
   var cfg = window.APP_CONFIG || {};
   var sb = null;
   if (cfg.SUPABASE_URL && cfg.SUPABASE_ANON_KEY && window.supabase) {
@@ -36,7 +38,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v265';
+  var APP_VERSION = 'v266';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -95,7 +97,7 @@
       wordLv: normWordLv(p.wordLv),
       speedUsed: Math.max(0, parseInt(p.speedUsed, 10) || 0),
       sound: p.sound !== false,
-      kr: p.kr !== false,
+      kr: p.kr === true,
       input: p.input === 'type' ? 'type' : 'voice',
       voice: VOICE_IDS.indexOf(p.voice) >= 0 ? p.voice : 'device',
       hsk3: normHsk(p.hsk3),
@@ -522,7 +524,7 @@
       (ago ? '<span class="fix-ago">' + ago + '</span>' : '') +
       (x ? '<span class="xchip ' + f.kind + '">' + (f.kind === 'ask' ? '질문' : '대답') + '</span>' : '') +
       '<span class="zh">' + esc(f.natural) + '</span>' +
-      (f.pinyin ? '<span class="py">' + esc(f.pinyin) + '</span>' : '') + (f.ko ? '<span class="why">' + esc(f.ko) + '</span>' : '') +
+      (f.pinyin ? '<span class="py">' + esc(f.pinyin) + '</span>' + krs(f.pinyin) : '') + (f.ko ? '<span class="why">' + esc(f.ko) + '</span>' : '') +
       (f.mine ? '<span class="mine">내가 한 말 · ' + esc(f.mine) + '</span>' : '') +
       (f.why ? '<span class="why">' + esc(f.why) + '</span>' : '') + '</button>' + spkBtn(f.natural) + '</div>';
     if (noDel) return row;
@@ -1499,7 +1501,7 @@
     var note = '';
     if (done) {
       var py = st.t === 'od' ? d.py : '';
-      note = '<div class="gm-exp"><button class="zh gm-say" data-act="say" data-text="' + esc(correctZh) + '" aria-label="다시 듣기">' + esc(correctZh) + I.spk + '</button>' + (py ? '<div class="py">' + esc(py) + '</div>' : '') +
+      note = '<div class="gm-exp"><button class="zh gm-say" data-act="say" data-text="' + esc(correctZh) + '" aria-label="다시 듣기">' + esc(correctZh) + I.spk + '</button>' + (py ? '<div class="py">' + esc(py) + '</div>' + (kr(py) ? '<div class="kr">' + esc(kr(py)) + '</div>' : '') : '') +
         (st.t === 'fx' ? '<div class="why">' + esc(d.why) + '</div>' : '') + '</div>';
     }
     var foot = qzFoot(done, g.ok, g.ok ? (g.combo >= 2 ? '연속 ' + g.combo + '번 정답' : '잘했어요') : '괜찮아요, 규칙을 다시 봐요', 'gm-next', g.i + 1 >= g.steps.length ? '결과 보기' : '다음');
@@ -1524,7 +1526,7 @@
           ? '<div class="qlist">' + l.qs.map(function (q, n) {
               function line(s, cls) {
                 return '<button class="qline' + cls + '" data-act="say" data-text="' + esc(s.zh) + '" aria-label="듣기"><span class="qtx"><span class="zh q-zh">' + esc(s.zh) + '</span>' +
-                  '<span class="py">' + esc(s.py) + '</span><span class="ko">' + esc(s.ko) + '</span></span><span class="spk">' + I.spk + '</span></button>';
+                  '<span class="py">' + esc(s.py) + '</span>' + krs(s.py) + '<span class="ko">' + esc(s.ko) + '</span></span><span class="spk">' + I.spk + '</span></button>';
               }
               return '<div class="qcard"><span class="qno">' + (n + 1) + '</span>' + line(q, '') + line(q.a, ' ans') + '</div>';
             }).join('') + '</div>'
@@ -1641,7 +1643,7 @@
   }
   function wsRow(w) {
     var k = kr(w.py), lab = srcLabel(w.src);
-    return '<button class="ws-row" data-act="say" data-text="' + esc(w.zh) + '"><span class="ws-top"><span class="zh ws-zh">' + esc(w.zh) + '</span><span class="py ws-py">' + esc(w.py) + '</span>' +
+    return '<button class="ws-row" data-act="say" data-text="' + esc(w.zh) + '"><span class="ws-top"><span class="zh ws-zh">' + esc(w.zh) + '</span><span class="py ws-py">' + esc(w.py) + '</span>' + krs(w.py) +
       (k ? '<span class="ws-kr">' + esc(k) + '</span>' : '') + (lab ? '<span class="ws-src">' + lab + '</span>' : '') + '</span><span class="ws-ko">' + esc(w.ko) + '</span></button>';
   }
   function wordsSheet(s, q) {
@@ -1665,7 +1667,7 @@
       '<div class="ws-sent zh">' + esc(q.zh) + '</div><div class="ws-body">' + body + '</div></div>';
   }
   function qTools(s) {
-    var on = !(state.profile && state.profile.kr === false);
+    var on = !(state.profile && state.profile.kr !== true);
     return '<div class="q-tools">' + '<button class="ko-peek' + (s.showKo ? ' on' : '') + '" data-act="ko" aria-pressed="' + (!!s.showKo) + '">' + (s.showKo ? '뜻 가리기' : '뜻 보기') + '</button>' +
       '<button class="tg' + (on ? ' on' : '') + '" data-act="set-kr" data-v="' + (on ? 'off' : 'on') + '" role="switch" aria-checked="' + on + '">한글 발음<i aria-hidden="true"></i></button>' +
       '<button class="tg wd" data-act="words-open">' + I.book + '단어</button></div>';
@@ -1920,7 +1922,7 @@
       return '<span class="sq-mk ' + (ok ? 'ok' : 'no') + '"><i>' + (k + 1) + '</i><b>' + (ok ? 'O' : 'X') + '</b></span>';
     }).join('') + '</div>';
     var miss = r.missed.length ? '<div class="sq-miss"><div class="lab">다시 볼 문장</div>' + r.missed.slice(0, 4).map(function (m) {
-      return '<div class="it"><div class="zh">' + esc(m.zh) + '</div><div class="py">' + esc(m.py) + '</div><div class="ko">' + esc(m.ko) + '</div></div>';
+      return '<div class="it"><div class="zh">' + esc(m.zh) + '</div><div class="py">' + esc(m.py) + '</div>' + (kr(m.py) ? '<div class="kr">' + esc(kr(m.py)) + '</div>' : '') + '<div class="ko">' + esc(m.ko) + '</div></div>';
     }).join('') + '</div>' : '';
     return '<div class="screen done-screen">' + ((r.goalHit || r.score === 100) ? confetti() : '') + '<div class="hero sq-done">' +
       '<div class="stage">' + mascot(r.score >= 50 ? 'love' : 'cheer') + '</div>' +
@@ -2154,7 +2156,7 @@
     if (m.who === 'me') {
       return '<div class="acb me' + (m.corrected ? ' fixed' : '') + '">' + (m.corrected ? '<div class="acb-tag">고친 문장으로 다시 말했어요</div>' : '') + '<div class="zh">' + esc(m.zh) + '</div></div>' +
         (m.fix ? '<div class="acfix"><div class="acfix-l">이렇게 말하면 더 자연스러워요</div>' +
-          '<button class="acfix-n" data-act="say" data-text="' + esc(m.fix.natural) + '"><span class="zh">' + esc(m.fix.natural) + '</span>' + (m.fix.pinyin ? '<span class="py">' + esc(m.fix.pinyin) + '</span>' : '') + '</button>' +
+          '<button class="acfix-n" data-act="say" data-text="' + esc(m.fix.natural) + '"><span class="zh">' + esc(m.fix.natural) + '</span>' + (m.fix.pinyin ? '<span class="py">' + esc(m.fix.pinyin) + '</span>' + krs(m.fix.pinyin) : '') + '</button>' +
           (m.fix.ko ? '<div class="acfix-k">' + esc(m.fix.ko) + '</div>' : '') +
           (m.fix.why ? '<div class="acfix-w">' + esc(m.fix.why) + '</div>' : '') +
           (state.ac && state.ac.pending ? '' : '<button class="acfix-rep" data-act="ac-rep" data-i="' + idx + '">따라 말해 보기</button>') + '</div>' : '');
@@ -2243,7 +2245,7 @@
         a.sug.map(function (x, i) {
           var on = !!a.shown[i];
           return '<div class="acsg' + (on ? ' on' : '') + '"><button class="acsg-main" data-act="ac-sug" data-i="' + i + '">' + esc(x.ko || x.zh) + '</button>' +
-            (on ? '<div class="acsg-ans"><span class="zh">' + esc(x.zh) + '</span>' + (x.py ? '<span class="py">' + esc(x.py) + '</span>' : '') + '</div>' : '') +
+            (on ? '<div class="acsg-ans"><span class="zh">' + esc(x.zh) + '</span>' + (x.py ? '<span class="py">' + esc(x.py) + '</span>' + krs(x.py) : '') + '</div>' : '') +
             '<button class="acsg-show" data-act="ac-sug-show" data-i="' + i + '">' + (on ? '답변 가리기' : '답변 보기') + '</button></div>';
         }).join('') + '</div>' : '';
       foot = '<div class="ac-foot">' + (a.low ? '<div class="notice ac-low">크레딧이 모자라요. 마이 화면에서 충전하거나, 대화를 마치고 정리를 볼 수 있어요.</div>' : '') +
@@ -2263,12 +2265,12 @@
     if (w.err) return head + '<p class="hsk-note under-title">표현을 고르지 못했어요. 다음 대화에서는 꼭 모아 드릴게요.</p>';
     return head + '<p class="hsk-note under-title">AI 대화 탭에 저장했어요. 눌러서 소리를 들어 보세요.</p><div class="fixlist">' + (w.items || []).map(function (x) {
       return '<div class="fixrow"><button class="fixrow-main" data-act="say" data-text="' + esc(x.zh) + '"><span class="xchip ' + (x.kind === 'ask' ? 'ask' : 'say') + '">' + (x.kind === 'ask' ? '질문' : '대답') + '</span><span class="zh">' + esc(x.zh) + '</span>' +
-        (x.py ? '<span class="py">' + esc(x.py) + '</span>' : '') + (x.ko ? '<span class="why">' + esc(x.ko) + '</span>' : '') + '</button>' + spkBtn(x.zh) + '</div>';
+        (x.py ? '<span class="py">' + esc(x.py) + '</span>' + krs(x.py) : '') + (x.ko ? '<span class="why">' + esc(x.ko) + '</span>' : '') + '</button>' + spkBtn(x.zh) + '</div>';
     }).join('') + '</div>';
   }
   function acEnd(a) {
     var fx = a.fixes.length ? a.fixes.map(function (f) {
-      return '<div class="acfix sm"><div class="acfix-l">내가 한 말 · ' + esc(f.mine) + '</div><button class="acfix-n" data-act="say" data-text="' + esc(f.natural) + '"><span class="zh">' + esc(f.natural) + '</span>' + (f.pinyin ? '<span class="py">' + esc(f.pinyin) + '</span>' : '') + '</button>' +
+      return '<div class="acfix sm"><div class="acfix-l">내가 한 말 · ' + esc(f.mine) + '</div><button class="acfix-n" data-act="say" data-text="' + esc(f.natural) + '"><span class="zh">' + esc(f.natural) + '</span>' + (f.pinyin ? '<span class="py">' + esc(f.pinyin) + '</span>' + krs(f.pinyin) : '') + '</button>' +
         (f.ko ? '<div class="acfix-k">' + esc(f.ko) + '</div>' : '') +
         (f.why ? '<div class="acfix-w">' + esc(f.why) + '</div>' : '') + '</div>';
     }).join('') : '<p class="sub-title" style="margin:0">고칠 곳 없이 잘 말했어요!</p>';
@@ -2384,7 +2386,7 @@
       if (m.who === 'me') {
         return '<div class="acb me' + (m.corrected ? ' fixed' : '') + '">' + (m.corrected ? '<div class="acb-tag">고친 문장으로 다시 말했어요</div>' : '') + '<div class="zh">' + esc(m.zh) + '</div></div>' +
           (m.fix ? '<div class="acfix"><div class="acfix-l">이렇게 말하면 더 자연스러워요</div>' +
-            '<button class="acfix-n" data-act="say" data-text="' + esc(m.fix.natural) + '"><span class="zh">' + esc(m.fix.natural) + '</span>' + (m.fix.pinyin ? '<span class="py">' + esc(m.fix.pinyin) + '</span>' : '') + '</button>' +
+            '<button class="acfix-n" data-act="say" data-text="' + esc(m.fix.natural) + '"><span class="zh">' + esc(m.fix.natural) + '</span>' + (m.fix.pinyin ? '<span class="py">' + esc(m.fix.pinyin) + '</span>' + krs(m.fix.pinyin) : '') + '</button>' +
             (m.fix.ko ? '<div class="acfix-k">' + esc(m.fix.ko) + '</div>' : '') + (m.fix.why ? '<div class="acfix-w">' + esc(m.fix.why) + '</div>' : '') + '</div>' : '');
       }
       return '<div class="acb them"><div class="acb-main"><div class="zh">' + esc(m.zh) + '</div>' + (m.py ? '<div class="py">' + esc(m.py) + '</div><div class="kr">' + esc(kr(m.py)) + '</div>' : '') +
@@ -2393,7 +2395,7 @@
     }).join('');
     var wrap = (c.wrap && c.wrap.length) ? '<div class="section-title" style="margin-top:20px">자주 쓸 만한 표현</div><div class="fixlist">' + c.wrap.map(function (x) {
       return '<div class="fixrow"><button class="fixrow-main" data-act="say" data-text="' + esc(x.zh) + '"><span class="xchip ' + (x.kind === 'ask' ? 'ask' : 'say') + '">' + (x.kind === 'ask' ? '질문' : '대답') + '</span><span class="zh">' + esc(x.zh) + '</span>' +
-        (x.py ? '<span class="py">' + esc(x.py) + '</span>' : '') + (x.ko ? '<span class="why">' + esc(x.ko) + '</span>' : '') + '</button></div>';
+        (x.py ? '<span class="py">' + esc(x.py) + '</span>' + krs(x.py) : '') + (x.ko ? '<span class="why">' + esc(x.ko) + '</span>' : '') + '</button></div>';
     }).join('') + '</div>' : '';
     return '<div class="screen">' + back + '<div class="scroll" style="padding-top:4px"><h1 class="big-title" style="margin-top:0">' + esc(c.title || 'AI 대화') + '</h1>' +
       '<p class="sub-title">' + chatWhen(c.at) + ' · ' + c.turns + '번 주고받았어요</p>' +
@@ -2553,7 +2555,7 @@
       chars.push('<span class="' + (good ? 'dg' : 'db') + '">' + esc(ch) + '</span>');
     });
     var tips = miss.slice(0, 3).map(function (m) {
-      return '<li><b class="zh">' + esc(m.ch) + '</b>' + (m.py ? ' <span class="py">' + esc(m.py) + '</span> <em>' + TONE_TIP[pyTone(m.py)] + '</em>' : '') + '</li>';
+      return '<li><b class="zh">' + esc(m.ch) + '</b>' + (m.py ? ' <span class="py">' + esc(m.py) + '</span>' + krs(m.py) + ' <em>' + TONE_TIP[pyTone(m.py)] + '</em>' : '') + '</li>';
     }).join('');
     return '<div class="rep-diff"><div class="rd-t zh">' + chars.join('') + '</div>' +
       (miss.length ? '<div class="rd-l">빨간 글자를 다시 말해 보세요</div><ul class="rd-tips">' + tips + '</ul>' : '') + '</div>';
@@ -3287,7 +3289,7 @@
       if (running && sp.voice) body += '<div class="sq-mic"><span>' + I.mic + '</span></div><div id="sq-heard" class="sq-heard"></div>';
       if (running && !sp.voice && sp.opts) {
         body += '<div class="qz-opts">' + sp.opts.map(function (o, i) {
-          return '<button class="opt" data-act="speed-pick" data-id="' + i + '"><span class="sq-ozh">' + esc(o.zh) + '</span><span class="sq-opy">' + esc(o.py) + '</span></button>';
+          return '<button class="opt" data-act="speed-pick" data-id="' + i + '"><span class="sq-ozh">' + esc(o.zh) + '</span><span class="sq-opy">' + esc(o.py) + '</span>' + (kr(o.py) ? '<span class="sq-opy">' + esc(kr(o.py)) + '</span>' : '') + '</button>';
         }).join('') + '</div>';
       }
     }
@@ -4753,7 +4755,7 @@
     var c = state.sc;
     return '<div class="sc-chunks">' + l[4].map(function (ch, i) {
       return '<button class="sc-chunk' + (key && ch[0].indexOf(key) >= 0 ? ' key' : '') + (c.gloss === i ? ' on' : '') + '" data-act="sc-chunk" data-i="' + i + '">' +
-        '<span class="sc-cz">' + esc(ch[0]) + '</span><span class="sc-cp">' + esc(ch[1]) + '</span></button>';
+        '<span class="sc-cz">' + esc(ch[0]) + '</span><span class="sc-cp">' + esc(ch[1]) + '</span>' + krs(ch[1], 'sc-kc') + '</button>';
     }).join('') + '</div>';
   }
   // 상황 레슨 문장은 한 줄에 — 넘치면 이 줄만 비율로 줄여요(zoom)
