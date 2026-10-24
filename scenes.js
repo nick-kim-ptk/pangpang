@@ -10,7 +10,7 @@
  */
 window.SCENES = [
   {
-    id: 'parcel', cat: '일상', lv: '보통', icon: '📦', title: '택배 받기', sub: '문 앞에 두고 가 달라고 부탁해요',
+    id: 'parcel', cat: '일상', lv: '보통', icon: '📦', img: 'img/sc-parcel.webp', title: '택배 받기', sub: '문 앞에 두고 가 달라고 부탁해요',
     mission: '택배 기사님께 문 앞에 두고 가 달라고 부탁하기',
     lines: [
       ['快递到了吗？', 'Kuàidì dào le ma?', '택배 왔어요?', '快递', [["快递", "kuàidì", "택배"], ["到了", "dào le", "도착했다"], ["吗？", "ma", "~요?"]]],
@@ -22,7 +22,7 @@ window.SCENES = [
     ]
   },
   {
-    id: 'cafe', cat: '일상', lv: '쉬움', icon: '☕', title: '카페에서 주문하기', sub: '음료를 고르고 결제까지',
+    id: 'cafe', cat: '일상', lv: '쉬움', icon: '☕', img: 'img/sc-cafe.webp', title: '카페에서 주문하기', sub: '음료를 고르고 결제까지',
     mission: '카페에서 아이스 아메리카노 주문하고 결제하기',
     lines: [
       ['我要一杯冰美式。', 'Wǒ yào yì bēi bīng měishì.', '아이스 아메리카노 한 잔 주세요.', '冰美式', [["我要", "wǒ yào", "~주세요"], ["一杯", "yì bēi", "한 잔"], ["冰美式。", "bīng měishì", "아이스 아메리카노"]]],
