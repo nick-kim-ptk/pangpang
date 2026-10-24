@@ -3147,3 +3147,7 @@ html body .sc-head { margin-bottom: 2px; }
 .vp-py { margin-top: -1px; }
 .vp-s { margin-top: 1px; }
 .vp-tag { margin-top: 8px; padding: 4px 10px; }
+
+/* v269 목소리 카드: 이모지 대신 캐릭터 이미지 */
+.vp-img { width: 56px; height: 56px; object-fit: contain; margin-bottom: 4px; }
+.vp.soon .vp-img { filter: saturate(.75); }

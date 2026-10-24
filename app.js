@@ -38,7 +38,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v268';
+  var APP_VERSION = 'v269';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -63,9 +63,9 @@
   }
   // 읽어 주는 목소리: 지금은 기기 음성만 쓸 수 있고, 나머지는 준비 중이에요(선택해도 기기 음성으로 읽어요)
   var VOICES = [
-    { id: 'device', emo: '🧑', name: '기본 목소리', sub: '내 폰의 음성', ready: true },
-    { id: 'yuxuan', emo: '👨', name: '陈宇轩', py: 'Chén Yǔxuān', sub: '30대 남자', ready: false },
-    { id: 'meiting', emo: '👩', name: '张美婷', py: 'Zhāng Měitíng', sub: '20대 여자', ready: false }
+    { id: 'device', img: 'img/voice-snail.webp', name: '기본 목소리', sub: '내 폰의 음성', ready: true },
+    { id: 'yuxuan', img: 'img/voice-man.webp', name: '陈宇轩', py: 'Chén Yǔxuān', sub: '30대 남자', ready: false },
+    { id: 'meiting', img: 'img/voice-woman.webp', name: '张美婷', py: 'Zhāng Měitíng', sub: '20대 여자', ready: false }
   ];
   var VOICE_IDS = VOICES.map(function (v) { return v.id; });
   var PN_KEYS = ['learn', 'game', 'word'];
@@ -2721,7 +2721,7 @@
     return '<div class="vp-list" role="radiogroup" aria-label="읽어 주는 목소리">' + VOICES.map(function (v) {
       var on = v.ready && cur === v.id;
       return '<button class="vp' + (on ? ' on' : '') + (v.ready ? '' : ' soon') + '" role="radio" aria-checked="' + on + '" data-act="set-voice" data-v="' + v.id + '">' +
-        '<span class="vp-emo" aria-hidden="true">' + v.emo + '</span>' +
+        '<img class="vp-img" src="' + v.img + '" alt="" width="56" height="56" decoding="async">' +
         '<b class="vp-n">' + esc(v.name) + '</b>' + (v.py ? '<span class="vp-py">' + esc(v.py) + '</span>' : '') +
         '<span class="vp-s">' + esc(v.sub) + '</span>' +
         '<span class="vp-tag' + (on ? ' on' : v.ready ? '' : ' soon') + '">' + (on ? '사용 중' : v.ready ? '선택' : '준비 중') + '</span></button>';
