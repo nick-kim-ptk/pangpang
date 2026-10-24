@@ -34,7 +34,7 @@ window.SCENES = [
     ]
   },
   {
-    id: 'lunch', cat: '일상', lv: '쉬움', icon: '🍜', title: '점심 약속 잡기', sub: '동료에게 같이 먹자고 해요',
+    id: 'lunch', cat: '일상', lv: '쉬움', icon: '🍜', img: 'img/sc-lunch.webp', title: '점심 약속 잡기', sub: '동료에게 같이 먹자고 해요',
     mission: '동료에게 점심 같이 먹자고 하고 메뉴 정하기',
     lines: [
       ['中午一起吃饭吧？', 'Zhōngwǔ yìqǐ chīfàn ba?', '점심 같이 먹을래요?', '中午', [["中午", "zhōngwǔ", "점심"], ["一起", "yìqǐ", "같이"], ["吃饭", "chīfàn", "밥 먹다"], ["吧？", "ba", "~할래요?"]]],
@@ -70,7 +70,7 @@ window.SCENES = [
     ]
   },
   {
-    id: 'restaurant', cat: '일상', lv: '쉬움', icon: '🍲', title: '식당에서 주문하기', sub: '메뉴를 고르고 계산까지',
+    id: 'restaurant', cat: '일상', lv: '쉬움', icon: '🍲', img: 'img/sc-restaurant.webp', title: '식당에서 주문하기', sub: '메뉴를 고르고 계산까지',
     mission: '식당에서 음식 주문하고 계산 요청하기',
     lines: [
       ['请给我菜单。', 'Qǐng gěi wǒ càidān.', '메뉴판 주세요.', '菜单', [["请给我", "qǐng gěi wǒ", "저에게 주세요"], ["菜单。", "càidān", "메뉴판"]]],
@@ -130,7 +130,7 @@ window.SCENES = [
     ]
   },
   {
-    id: 'clinic', cat: '일상', lv: '어려움', icon: '💊', title: '병원·약국 가기', sub: '증상을 말하고 약을 받아요',
+    id: 'clinic', cat: '일상', lv: '어려움', icon: '💊', img: 'img/sc-clinic.webp', title: '병원·약국 가기', sub: '증상을 말하고 약을 받아요',
     mission: '병원에서 증상 설명하고 약 받기',
     lines: [
       ['我头疼，还有点儿发烧。', 'Wǒ tóuténg, hái yǒudiǎnr fāshāo.', '머리가 아프고 열도 좀 있어요.', '发烧', [["我", "wǒ", "저는"], ["头疼，", "tóuténg", "머리가 아프다"], ["还有点儿", "hái yǒudiǎnr", "또 조금"], ["发烧。", "fāshāo", "열이 나다"]]],
@@ -154,7 +154,7 @@ window.SCENES = [
     ]
   },
   {
-    id: "cvs", cat: "일상", lv: "쉬움", icon: "🏪", title: "편의점에서 계산하기", sub: "봉투와 결제 방법을 말해요",
+    id: "cvs", cat: "일상", lv: "쉬움", icon: "🏪", img: 'img/sc-cvs.webp', title: "편의점에서 계산하기", sub: "봉투와 결제 방법을 말해요",
     mission: "편의점에서 물건 사고 결제하기",
     lines: [
       ["我要一瓶水和一个面包。", "Wǒ yào yì píng shuǐ hé yí ge miànbāo.", "물 한 병이랑 빵 하나 주세요.", "面包", [["我要", "wǒ yào", "~을 주세요"], ["一瓶水", "yì píng shuǐ", "물 한 병"], ["和", "hé", "그리고"], ["一个面包。", "yí ge miànbāo", "빵 하나"]]],
