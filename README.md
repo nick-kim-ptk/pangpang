@@ -978,3 +978,6 @@ select kind, count(*) n, round(avg(in_tokens)) avg_in, round(avg(cache_read)) av
 
 ## v274
 - 상황 레슨 카드: 택배 받기·카페에서 주문하기는 이모지 대신 일러스트로 위쪽을 꽉 채운 콘텐츠 카드로 바꿨어요(`img/sc-*.webp`). 나머지 상황은 이모지 그대로예요.
+
+## v275
+- 상황 카드 일러스트의 노란 배경을 없애고, 그림과 글 사이에 얇은 구분선만 남겼어요.
