@@ -38,7 +38,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v267';
+  var APP_VERSION = 'v268';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -2676,7 +2676,7 @@
   }
   function inputOpt(v, t, sub) {
     var on = state.profile.input === v;
-    return '<button class="radio-o' + (on ? ' on' : '') + '" role="radio" aria-checked="' + on + '" data-act="set-input" data-v="' + v + '"><i></i><span><b>' + t + '</b><small>' + sub + '</small></span></button>';
+    return '<button class="radio-o' + (on ? ' on' : '') + '" role="radio" aria-checked="' + on + '" data-act="set-input" data-v="' + v + '"><span><b>' + t + '</b><small>' + sub + '</small></span></button>';
   }
   // 마이페이지에는 자주 바꾸는 세 가지만 두고, 나머지는 '환경 설정' 화면에서 관리해요
   function settingsCard() {
