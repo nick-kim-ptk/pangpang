@@ -38,7 +38,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v270';
+  var APP_VERSION = 'v271';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -64,9 +64,10 @@
   // 읽어 주는 목소리: 지금은 기기 음성만 쓸 수 있고, 나머지는 준비 중이에요(선택해도 기기 음성으로 읽어요)
   var VOICES = [
     { id: 'device', img: 'img/voice-snail.webp', name: '기본 목소리', sub: '내 폰의 음성', ready: true },
-    { id: 'yuxuan', img: 'img/voice-man.webp', name: '陈宇轩', py: 'Chén Yǔxuān', sub: '30대 남자', ready: false },
-    { id: 'meiting', img: 'img/voice-woman.webp', name: '张美婷', py: 'Zhāng Měitíng', sub: '20대 여자', ready: false }
+    { id: 'yuxuan', img: 'img/voice-man.webp', name: '陈宇轩', py: 'Chén Yǔxuān', sub: '30대 남자', clip: 'audio/voice-yuxuan.mp3', ready: false },
+    { id: 'meiting', img: 'img/voice-woman.webp', name: '张美婷', py: 'Zhāng Měitíng', sub: '20대 여자', clip: 'audio/voice-meiting.mp3', ready: false }
   ];
+  var voiceClip = null;
   var VOICE_PREVIEW = '你好，和我一起练习吧！';   // 안녕하세요, 저와 함께 연습해요!
   var VOICE_IDS = VOICES.map(function (v) { return v.id; });
   var PN_KEYS = ['learn', 'game', 'word'];
@@ -2726,7 +2727,7 @@
         '<b class="vp-n">' + esc(v.name) + '</b>' + (v.py ? '<span class="vp-py">' + esc(v.py) + '</span>' : '') +
         '<span class="vp-s">' + esc(v.sub) + '</span>' +
         '<span class="vp-tag' + (on ? ' on' : v.ready ? '' : ' soon') + '">' + (on ? '사용 중' : v.ready ? '선택' : '준비 중') + '</span>' +
-        '<button class="vp-play" data-act="voice-preview" data-v="' + v.id + '"' + (v.ready ? '' : ' disabled') + ' aria-label="' + esc(v.name) + ' 미리 듣기">' + I.spk + '미리 듣기</button></div>';
+        '<button class="vp-play" data-act="voice-preview" data-v="' + v.id + '"' + (v.ready || v.clip ? '' : ' disabled') + ' aria-label="' + esc(v.name) + ' 미리 듣기">' + I.spk + '미리 듣기</button></div>';
     }).join('') + '</div>';
   }
   function viewPrefs() {
@@ -5923,7 +5924,15 @@
       case 'open-prefs': go('prefs'); break;
       case 'zh-guide': askConfirm({ title: '중국어 음성 설치 방법', body: ZH_GUIDE, ok: '알겠어요', cancel: '닫기', m: 'sleep', left: true }); break;
       case 'voice-preview':
-        if (el.getAttribute('data-v') === 'device') speak(VOICE_PREVIEW, 0.9);
+        (function () {
+          var v = VOICES.filter(function (x) { return x.id === el.getAttribute('data-v'); })[0];
+          if (!v) return;
+          stopSpeak();
+          if (voiceClip) { try { voiceClip.pause(); } catch (e) { /* 무시 */ } voiceClip = null; }
+          if (v.clip) {
+            try { voiceClip = new Audio(v.clip); var pr = voiceClip.play(); if (pr && pr.catch) pr.catch(function () { toast('소리를 재생하지 못했어요'); }); } catch (e) { toast('소리를 재생하지 못했어요'); }
+          } else speak(VOICE_PREVIEW, 0.9);
+        })();
         break;
       case 'set-voice':
         if (el.getAttribute('data-v') === 'device') { setProfile({ voice: 'device' }); sfx('pop'); }
