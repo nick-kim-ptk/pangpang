@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v258';
+  var APP_VERSION = 'v259';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -747,6 +747,7 @@
     if (screen === 'intro' && extra && extra.lessonId && lessonLocked(extra.lessonId)) {
       extra = { payWhy: '‘' + lessonById(extra.lessonId).title + '’ 레슨은 멤버십이 필요해요.' }; screen = 'pay';
     }
+    if (screen === 'tab') state.tdSrc = '';
     state.screen = screen;
     syncHistory(screen);
     if (extra) Object.keys(extra).forEach(function (k) { state[k] = extra[k]; });
@@ -991,6 +992,25 @@
     o.hskReq = c[Math.floor(rng() * c.length) % c.length]; tdSave(o);
     return o.hskReq;
   }
+  // 필수를 끝낸 뒤 '더 해 볼까요?'로 권하는 항목: 오늘 이미 한 것은 빼고 아직 안 한 것으로 새로 골라요
+  function tdExtras(o) {
+    if (o.extra && o.extra.length) return o.extra;
+    var rng = tdRng('x' + o.day + (state.user ? state.user.id : 'x')), pool = [], pg = scProg();
+    if (Object.keys(HSKW).length) pool = ['hsk-study'].concat(TD_HSK_REQ.filter(function (k) { return k !== o.hskReq; }));
+    if (SCENES.length && scAvail().some(function (sc) { return !(pg[sc.id] && pg[sc.id].done); })) pool.push('scene');
+    var ds = window.DIALOGS || [];
+    if (ds.some(function (d) { return state.profile.dlg.indexOf(d.id) < 0 && !dialogLocked(d.id); })) pool.push('dialog');
+    if (sb && !isGuest()) pool.push('ai');
+    pool = pool.filter(function (k) { return !o.done[k]; });
+    var out = [], paid = 0;
+    while (out.length < 2 && pool.length) {
+      var k = pool.splice(Math.floor(rng() * pool.length) % pool.length, 1)[0];
+      if (tdPaid(k)) { if (paid) continue; paid++; }
+      out.push(k);
+    }
+    o.extra = out; tdSave(o);
+    return out;
+  }
   // 보너스 안내: 화면을 위로 올리면(또는 버튼) 뾰로롱 소리와 함께 걷히고, 아래 '더 해 볼까요?'가 스르륵 나타나요
   function tdBonusGo() {
     if (!state.tdBonus || state.tdBonusBusy) return;
@@ -1074,7 +1094,7 @@
     if (next || o.lessonQ > 0) {
       var q = Math.min(o.lessonQ, TD_LESSON_Q);
       items.push({ req: 1, done: o.lessonQ >= TD_LESSON_Q, title: '레슨 ' + TD_LESSON_Q + '문제 대답하기', sub: q + '/' + TD_LESSON_Q + (next ? ' · ' + next.title : ''), doneSub: TD_LESSON_Q + '문제를 말했어요',
-        act: next ? 'open-lesson' : 'review-start', id: next ? next.id : '', btn: q ? '이어서' : '학습하기' });
+        act: next ? 'td-lesson' : 'review-start', id: next ? next.id : '', btn: q ? '이어서' : '학습하기' });
     }
     if (phraseCard) items.push({ req: 1, done: !!o.done.phrase, title: '오늘의 한 문장 듣기', sub: '카드의 스피커를 눌러 들어 보세요', doneSub: '들어 봤어요', phrase: 1 });
     var hk = tdHskReq(o), hm = hk ? tdMeta(hk) : null;
@@ -1111,7 +1131,13 @@
       if (hr >= 6 && hr < 18 && Math.random() < 0.6) { o.bonus = 1; if (!calm) state.tdBonus = true; }
       tdSave(o);
     }
-    var more = !opt.length ? '' : (over && o.bonus ? '<div class="td-extra"><div class="td-more">더 해 볼까요? <em>선택</em></div>' + opt.map(tdRow).join('') + '</div>' : '');
+    var xt = [];
+    if (over && o.bonus) xt = tdExtras(o).map(function (k) {
+      var m = tdMeta(k); if (!m) return null;
+      var dlgFree = k === 'dialog' && !isPro() && !tdPaid('dialog');
+      return Object.assign(m, { done: !!o.done[k], why: '', pro: tdPaid(k), free: dlgFree, doneSub: '오늘 해냈어요' });
+    }).filter(Boolean);
+    var more = !xt.length ? '' : '<div class="td-extra"><div class="td-more">더 해 볼까요? <em>선택</em></div>' + xt.map(tdRow).join('') + '</div>';
     var bits = [[58, 212, 16, 'star', '#FFD45E', .5, 2.4, 12], [316, 196, 9, 'dot', '#7FB3FF', .6, 2, 12], [304, 420, 14, 'ring', '#FFB24A', .7, 2.8, -10], [300, 262, 11, 'star', '#FF9BB0', .8, 2.2, -16], [72, 404, 8, 'dot', '#FFD45E', .9, 2.6, 12], [96, 168, 10, 'ring', '#7FB3FF', 1, 3, 12]].map(function (b) {
       return '<span class="tb-bit ' + b[3] + '" style="left:' + (b[0] / 370 * 100).toFixed(1) + '%;top:' + (b[1] / 824 * 100).toFixed(1) + '%;--s:' + b[2] + 'px;--c:' + b[4] + ';--d:' + b[5] + 's;--t:' + b[6] + 's;--rot:' + b[7] + 'deg"></span>';
     }).join('');
@@ -1508,7 +1534,10 @@
     var q = s.cur;
     var l = s.kind === 'dialog' ? { title: s.dlg.title, tip: '' } : lessonById(q.lessonId);
     var pct = Math.round((s.solved / s.total) * 100), cnt = s.solved + '/' + s.total;
-    if (s.kind === 'lesson') {   // 레슨은 20문제가 기준이고, 더 하기를 고르면 남은 문제로 바가 다시 채워져요
+    if (s.kind === 'lesson' && s.tdN) {   // 홈 미션: 오늘 목표(10문제) 기준
+      var tdAll = s.tdBase + s.solved;
+      pct = Math.min(100, Math.round(tdAll / TD_LESSON_Q * 100)); cnt = Math.min(tdAll, TD_LESSON_Q) + '/' + TD_LESSON_Q;
+    } else if (s.kind === 'lesson') {   // 레슨은 20문제가 기준이고, 더 하기를 고르면 남은 문제로 바가 다시 채워져요
       if (!s.cleared) { pct = Math.min(100, Math.round(s.solved / CLEAR_COUNT * 100)); cnt = Math.min(s.solved, CLEAR_COUNT) + '/' + CLEAR_COUNT; }
       else { pct = Math.min(100, Math.round((s.solved - CLEAR_COUNT) / Math.max(1, s.total - CLEAR_COUNT) * 100)); }
     }
@@ -3689,15 +3718,19 @@
     }
     return out.slice(0, n);
   }
-  function startHskDue() {
-    var q = hskDue(0).slice(0, HSK_STUDY).map(function (x) { return { lv: x.lv, i: x.i }; });
+  function startHskDue(n) {
+    var q = hskDue(0).slice(0, n || HSK_STUDY).map(function (x) { return { lv: x.lv, i: x.i }; });
     if (!q.length) { toast('지금 복습할 단어가 없어요'); return; }
     state.hc = { lv: 0, mode: 'due', queue: q, i: 0, flip: false, known: 0, before: todayAnswers() };
     go('hskstudy');
     speakCard();
   }
+  // 홈 '오늘의 복습': 카드에 적힌 개수만큼만 시켜요 (문장 먼저, 다 하면 남은 단어)
   function startTodayReview() {
-    if (dueRows().length) startReview(); else startHskDue();
+    var o = tdLoad(), rem = Math.max(0, Math.min(o.rev0 < 0 ? 0 : o.rev0, REV_CAP) - (o.revDone || 0));
+    var dueS = Math.min(dueRows().length, rem), dueW = Math.min(hskDue(0).length, rem - dueS);
+    if (dueS > 0) startReview(dueS); else if (dueW > 0) startHskDue(dueW);
+    else if (dueRows().length) startReview(); else startHskDue();
   }
   function bumpAnswer() {
     var day = dayStr(new Date());
@@ -4420,7 +4453,7 @@
     return list[p.vi] || base;
   }
   function saveResume(s) {
-    if (!s || !s.lessonId || !s.queue.length) return;
+    if (!s || !s.lessonId || !s.queue.length || s.tdN) return;
     var m = readResume();
     m[resumeKey(s.kind, s.lessonId)] = {
       queue: s.queue.map(packQ), total: s.total, solved: s.solved, first: s.first, wrong: s.wrong,
@@ -4489,6 +4522,12 @@
     }
     fresh();
   }
+  // 홈 '레슨 N문제' 미션: 남은 수만큼만 새로 뽑아서 풀고 끝내요 (다른 곳에서 한 연습과 상관없이)
+  function startHomeLesson(id) {
+    state.tdSrc = '';
+    var o = tdLoad(), n = Math.max(1, TD_LESSON_Q - (o.lessonQ || 0));
+    beginSession('lesson', rounds(lessonById(id).qs, n), id, { tdN: n, tdBase: o.lessonQ || 0 });
+  }
   // 나갈 때: 풀어 본 문제까지의 기록을 저장해요 (복습·약한 문제에 바로 반영)
   function savePartial() {
     var s = state.s, now = new Date().toISOString(), rows = [];
@@ -4530,6 +4569,7 @@
     if (s.solved > 0 || Object.keys(s.first).length) {
       var body = s.kind === 'dialog' ? '푼 ' + s.solved + '번까지는 학습 기록에 더해져요.'
         : s.kind === 'review' ? '푼 ' + s.solved + '문제는 이미 복습으로 인정됐어요. 남은 문제는 다음에 이어서 할 수 있어요.'
+        : s.tdN ? '푼 ' + s.solved + '문제까지는 오늘 할 일에 반영돼요. 나중에 이어서 할 수 있어요.'
         : '푼 ' + s.solved + '문제까지는 저장돼요.' + (s.kind === 'lesson' && !s.cleared ? ' ' + CLEAR_COUNT + '문제를 채우면 레슨이 완료돼요.' : '') + ' 다음에 이어서 할 수 있어요.';
       askConfirm({ title: '연습을 그만할까요?', body: body, ok: '저장하고 나가기', cancel: '계속하기', m: 'ask' }, function () { savePartial(); stopRec(); stopSpeak(); go('tab'); });
     } else {
@@ -5484,7 +5524,7 @@
       if (s.first[q.id] === undefined) s.first[q.id] = (s.tries === 0 && !s.revealed);
       s.queue.shift();
       s.solved++;
-      if (s.kind === 'lesson') tdLessonQ(1);
+      if (s.kind === 'lesson' && s.tdN) tdLessonQ(1);   // 홈 미션으로 시작한 연습만 홈 숫자에 더해요
       if (s.kind === 'review') tdRevInc(1);
       s.pass = true;
       if (s.log) s.log.push({ npc: q.zh, me: r.heard });
@@ -5615,7 +5655,7 @@
   function nextQuestion() {
     var s = state.s;
     if (!s.queue.length) { finishSession(); return; }
-    if (s.kind === 'lesson' && !s.cleared && s.solved >= CLEAR_COUNT) {
+    if (s.kind === 'lesson' && !s.tdN && !s.cleared && s.solved >= CLEAR_COUNT) {
       s.cleared = true;
       markLessonDone(s);
       stopRec(); stopSpeak();
@@ -5651,7 +5691,7 @@
     var s = state.s;
     if (s.kind === 'dialog') { finishDialog(); return; }
     var now = new Date().toISOString();
-    var pool = s.kind === 'lesson' ? lessonById(s.lessonId).qs
+    var pool = s.kind === 'lesson' && !s.tdN ? lessonById(s.lessonId).qs
       : Object.keys(s.first).map(function (id) { return QMAP[id]; });
     var rows = [];
     var firstTry = 0;
@@ -5675,13 +5715,19 @@
     var d = state.daily[day] || { day: day, lessons: 0, answers: 0 };
     var before = d.answers;
     var goal = state.profile.goal;
-    d = { day: day, lessons: d.lessons + (s.kind === 'lesson' && !s.doneMarked ? 1 : 0), answers: d.answers + Math.max(s.solved - s.solvedCommitted, 0) };
+    d = { day: day, lessons: d.lessons + (s.kind === 'lesson' && !s.tdN && !s.doneMarked ? 1 : 0), answers: d.answers + Math.max(s.solved - s.solvedCommitted, 0) };
     state.daily[day] = d;
     store.saveProgress(rows);
     store.saveDaily(d);
 
     var result;
-    if (s.kind === 'lesson') {
+    if (s.kind === 'lesson' && s.tdN) {   // 홈 미션: 레슨 완료로 치지 않고 오늘 할 일만 채워요
+      result = {
+        kind: 'lesson', title: '오늘 레슨 ' + (s.tdBase + s.solved >= TD_LESSON_Q ? TD_LESSON_Q + '문제 ' : '') + '끝!',
+        line: '홈으로 돌아가 오늘 할 일을 확인해 보세요.',
+        firstTry: firstTry, total: pool.length, again: null
+      };
+    } else if (s.kind === 'lesson') {
       if (!s.doneMarked) {
         var prevDone = state.done[s.lessonId];
         var drow = { lesson_id: s.lessonId, done_at: now, times: (prevDone ? prevDone.times : 0) + 1 };
@@ -5731,10 +5777,10 @@
   }
 
   /* ---------- 시작 함수 ---------- */
-  function startReview() {
+  function startReview(n) {
     // 밀렸을 땐 많이 틀리고 아직 익숙하지 않은 문제부터 고르고(같은 조건이면 오래 미룬 것), 레슨은 골고루 섞어요
     var dr = dueRows().sort(function (a, b) { return (a.box || 0) - (b.box || 0) || (b.wrong || 0) - (a.wrong || 0) || new Date(a.due_at) - new Date(b.due_at); });
-    var qs = mixLessons(dr.map(function (r) { return QMAP[r.qid]; }), REVIEW_SIZE);
+    var qs = mixLessons(dr.map(function (r) { return QMAP[r.qid]; }), n || REVIEW_SIZE);
     if (!qs.length) { toast('지금 복습할 문제가 없어요'); return; }
     beginSession('review', shuffle(qs));
   }
@@ -5978,6 +6024,7 @@
           go('tab', { tab: 'home' });
         });
         break;
+      case 'td-lesson': state.tdSrc = id; /* fall through */
       case 'open-lesson': if (lessonLocked(id)) { go('pay', { payWhy: '‘' + lessonById(id).title + '’ 레슨은 멤버십이 필요해요. 로그인 전에는 앞의 2개만 체험할 수 있어요.' }); break; } state.lsFrom = state.screen === 'grams' || state.screen === 'lsall' ? state.screen : ''; go('intro', { lessonId: id }); break;
       case 'gm-all': go('grams'); break;
       case 'ls-all': go('lsall'); break;
@@ -5989,7 +6036,7 @@
         break;
       case 'words-open': if (state.s) { state.s.wordsOpen = true; render(); } break;
       case 'words-close': if (state.s) { state.s.wordsOpen = false; render(); } break;
-      case 'practice-lesson': startLessonSession('lesson', id); break;
+      case 'practice-lesson': if (state.tdSrc === id) startHomeLesson(id); else startLessonSession('lesson', id); break;
       case 'review-start': startReview(); break;
       case 'today-review': startTodayReview(); break;
       case 'hsk-due': startHskDue(); break;
