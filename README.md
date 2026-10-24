@@ -942,3 +942,4 @@ select kind, count(*) n, round(avg(in_tokens)) avg_in, round(avg(cache_read)) av
 ## 목소리 테스트 (앱 본체 변경 없음)
 - `voice-tts.html`: 문장을 쓰면 Fish Audio 목소리로 읽어 주는 테스트 페이지(로그인 필요, 앱과 별개).
 - `supabase/functions/fish-tts`: 로그인 확인 후 Fish Audio를 부르는 함수. 비밀 값 `FISH_API_KEY`가 필요하고 'Verify JWT'는 끄고 배포해요.
+- 목소리 테스트: 목소리를 여러 칸 등록해 '전부 차례로 듣기'로 비교하고, 모델(s2.1-pro / s2-pro / drama-3)도 고를 수 있어요. 함수는 다시 배포해야 반영돼요.

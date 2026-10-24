@@ -11,7 +11,7 @@ const CORS = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 const MAX_TEXT = 200;       // 한 번에 읽을 최대 글자 수
-const MAX_PER_MINUTE = 8;   // 사용자당 분당 호출 제한
+const MAX_PER_MINUTE = 20;  // 사용자당 분당 호출 제한
 const hits = new Map<string, number[]>();
 
 function json(o: unknown, status = 200) {
@@ -48,6 +48,10 @@ Deno.serve(async (req: Request) => {
   const voice = String(body?.voice ?? '').trim();
   const speed = Math.min(1.5, Math.max(0.6, Number(body?.speed) || 1));
 
+  const MODELS = ['s2.1-pro', 's2-pro', 'drama-3'];
+  const asked = String(body?.model ?? '');
+  const model = MODELS.includes(asked) ? asked : (Deno.env.get('FISH_MODEL') ?? 's2.1-pro');
+
   const payload: Record<string, unknown> = {
     text,
     format: 'mp3',
@@ -66,7 +70,7 @@ Deno.serve(async (req: Request) => {
       headers: {
         Authorization: `Bearer ${key}`,
         'Content-Type': 'application/json',
-        model: Deno.env.get('FISH_MODEL') ?? 's2.1-pro',
+        model: model,
       },
       body: JSON.stringify(payload),
     });

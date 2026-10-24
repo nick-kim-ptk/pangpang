@@ -18,7 +18,12 @@
   #st{margin-top:14px;font-size:14px;white-space:pre-wrap}
   .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
   .chips button{width:auto;margin:0;padding:8px 12px;font-weight:500;font-size:14px;background:#e3eae3;color:#1d2a1f}
-  .log{margin-top:16px;font-size:13px;color:#5b6b5e}
+  select{width:100%;box-sizing:border-box;font:inherit;padding:12px;border:1px solid #c9d3c9;border-radius:12px;background:#fff}
+  .vr{display:flex;gap:6px;margin-bottom:8px}
+  .vr input{min-width:0}.vr .n{flex:0 0 28%}
+  .vr button{width:auto;margin:0;padding:10px 12px;flex:0 0 auto}
+  .vr .x{background:#e3eae3;color:#1d2a1f}
+  .log{white-space:pre-line;margin-top:16px;font-size:13px;color:#5b6b5e}
 </style></head><body><main>
 <h1>목소리 테스트</h1>
 <p class="s">문장을 쓰고 누르면 Fish Audio 목소리로 읽어 줘요. 앱 본체와는 별개예요.</p>
@@ -31,12 +36,14 @@
   <label for="t">읽을 문장 (최대 200자)</label>
   <textarea id="t">你好！今天天气很好，我们一起去公园玩吧。</textarea>
   <div class="chips" id="ex"></div>
-  <label for="v">목소리 ID (비워 두면 기본 목소리)</label>
-  <input id="v" placeholder="Fish Audio 목소리 페이지의 ID" autocomplete="off">
+  <label>목소리 목록 (이름과 ID, 비운 칸은 기본 목소리)</label>
+  <div id="vs"></div>
+  <button id="addv" class="g">+ 목소리 칸 추가</button>
+  <label for="md">모델</label>
+  <select id="md"><option value="s2.1-pro">s2.1-pro (기본)</option><option value="s2-pro">s2-pro</option><option value="drama-3">drama-3 (더 비쌈)</option></select>
   <label for="sp">속도 <span id="spv">1.0</span></label>
   <input id="sp" type="range" min="0.6" max="1.5" step="0.1" value="1">
-  <button id="go">읽어 줘요</button>
-  <button id="again" class="g" disabled>다시 듣기</button>
+  <button id="go">전부 차례로 듣기</button>
   <div id="st"></div>
   <div class="log" id="log"></div>
 </div>
@@ -52,43 +59,64 @@
   var EX = ['你好！今天天气很好，我们一起去公园玩吧。','请问，去地铁站怎么走？','我想点一杯热咖啡，不要糖。','你周末一般做什么？我喜欢在家看电影。'];
   EX.forEach(function(s){ var b=document.createElement('button'); b.textContent=s.slice(0,8)+'…'; b.onclick=function(){ $('t').value=s; }; $('ex').appendChild(b); });
   $('sp').oninput = function(){ $('spv').textContent = Number($('sp').value).toFixed(1); };
-  try { $('v').value = localStorage.getItem('fishVoice') || ''; } catch(e){}
-  var url = null, token = null;
+  var token = null, cur = null, vid = 0;
   function say(m){ $('st').textContent = m; }
+  function save(){ try { localStorage.setItem('fishVoices', JSON.stringify(rows().map(function(r){return {n:r.n,v:r.v};}))); } catch(e){} }
+  function rows(){ return Array.prototype.map.call($('vs').children, function(d){ return {el:d, n:d.querySelector('.n').value.trim(), v:d.querySelector('.i').value.trim()}; }); }
+  function addRow(n, v){
+    var d = document.createElement('div'); d.className = 'vr';
+    d.innerHTML = '<input class="n" placeholder="이름" maxlength="12"><input class="i" placeholder="목소리 ID" autocomplete="off"><button class="p">▶</button><button class="x">×</button>';
+    d.querySelector('.n').value = n || ''; d.querySelector('.i').value = v || '';
+    d.querySelector('.n').oninput = d.querySelector('.i').oninput = save;
+    d.querySelector('.p').onclick = function(){ run([rowOf(d)]); };
+    d.querySelector('.x').onclick = function(){ d.remove(); save(); };
+    $('vs').appendChild(d);
+  }
+  function rowOf(d){ return {el:d, n:d.querySelector('.n').value.trim(), v:d.querySelector('.i').value.trim()}; }
+  var saved = []; try { saved = JSON.parse(localStorage.getItem('fishVoices') || '[]'); } catch(e){}
+  if(!saved.length) saved = [{n:'기본',v:''}];
+  saved.forEach(function(s){ addRow(s.n, s.v); });
+  $('addv').onclick = function(){ addRow('', ''); };
 
-  function play(){ if(!url) return; var a = new Audio(url); a.play().catch(function(){ say('재생이 막혔어요. 버튼을 한 번 더 눌러 주세요.'); }); }
+  function stop(){ if(cur){ cur.pause(); cur = null; } }
+  async function fetchOne(text, voice){
+    var t0 = performance.now();
+    var r = await fetch(cfg.SUPABASE_URL + '/functions/v1/fish-tts', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+token, 'apikey': cfg.SUPABASE_ANON_KEY },
+      body: JSON.stringify({ text:text, voice:voice, model:$('md').value, speed:Number($('sp').value) })
+    });
+    var ms = Math.round(performance.now()-t0);
+    if(!r.ok){
+      var j = {}; try { j = await r.json(); } catch(e){}
+      var why = {no_key:'서버에 FISH_API_KEY가 아직 없어요.', auth:'로그인이 필요해요. 앱에서 다시 로그인해 주세요.', rate:'1분에 20번까지만 돼요. 잠깐 쉬었다가 해 주세요.', fish:'Fish Audio가 거절했어요 ('+(j.status||'')+') '+(j.message||''), network:'Fish Audio에 연결하지 못했어요.'}[j.error];
+      throw new Error(why || ('실패했어요 ('+r.status+'). 함수가 아직 올라가지 않았을 수 있어요.'));
+    }
+    var blob = await r.blob();
+    return { url: URL.createObjectURL(blob), ms: ms, kb: Math.round(blob.size/1024) };
+  }
+  function playUrl(u){ return new Promise(function(res){ stop(); var a = new Audio(u); cur = a; a.onended = a.onerror = function(){ res(); }; a.play().catch(function(){ res(); }); }); }
 
-  $('go').onclick = async function(){
+  var cache = {}; // 같은 문장·목소리·모델·속도면 다시 만들지 않아요(비용 절약)
+  async function run(list){
     var text = $('t').value.trim();
     if(!text){ say('문장을 써 주세요.'); return; }
-    try { localStorage.setItem('fishVoice', $('v').value.trim()); } catch(e){}
-    $('go').disabled = true; say('만드는 중…');
-    var t0 = performance.now();
+    if(!list.length){ say('목소리 칸이 없어요.'); return; }
+    $('go').disabled = true; $('log').textContent = '';
     try {
-      var r = await fetch(cfg.SUPABASE_URL + '/functions/v1/fish-tts', {
-        method:'POST',
-        headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+token, 'apikey': cfg.SUPABASE_ANON_KEY },
-        body: JSON.stringify({ text:text, voice:$('v').value.trim(), speed:Number($('sp').value) })
-      });
-      var ms = Math.round(performance.now()-t0);
-      if(!r.ok){
-        var j = {}; try { j = await r.json(); } catch(e){}
-        var why = {no_key:'서버에 FISH_API_KEY가 아직 없어요.', auth:'로그인이 필요해요. 앱에서 다시 로그인해 주세요.', rate:'1분에 8번까지만 돼요. 잠깐 쉬었다가 해 주세요.', fish:'Fish Audio가 거절했어요 ('+(j.status||'')+') '+(j.message||''), network:'Fish Audio에 연결하지 못했어요.'}[j.error];
-        say(why || ('실패했어요 ('+r.status+'). 함수가 아직 올라가지 않았을 수 있어요.'));
-        return;
+      for(var i=0;i<list.length;i++){
+        var it = list[i], name = it.n || ('목소리 '+(i+1)), key = [text,it.v,$('md').value,$('sp').value].join('|');
+        var o = cache[key];
+        if(!o){ say(name+' 만드는 중… ('+(i+1)+'/'+list.length+')'); o = cache[key] = await fetchOne(text, it.v); }
+        say('▶ '+name+' ('+(i+1)+'/'+list.length+')');
+        $('log').textContent += name+': '+(o.ms/1000).toFixed(1)+'초 · '+o.kb+'KB\n';
+        await playUrl(o.url);
       }
-      var blob = await r.blob();
-      if(url) URL.revokeObjectURL(url);
-      url = URL.createObjectURL(blob);
-      $('again').disabled = false;
-      say('완료! 걸린 시간: 전체 '+(ms/1000).toFixed(1)+'초 (Fish 처리 '+((Number(r.headers.get('X-Fish-Ms'))||0)/1000).toFixed(1)+'초)');
-      $('log').textContent = '글자 수 '+text.length+'자 · 파일 '+Math.round(blob.size/1024)+'KB';
-      play();
-    } catch(e){
-      say('연결에 실패했어요. 함수가 올라가 있는지 확인해 주세요.');
-    } finally { $('go').disabled = false; }
-  };
-  $('again').onclick = play;
+      say('끝! 마음에 드는 목소리의 ▶를 눌러 다시 들어 보세요.');
+    } catch(e){ say(e.message || '연결에 실패했어요.'); }
+    finally { $('go').disabled = false; }
+  }
+  $('go').onclick = function(){ run(rows()); };
 
   (async function(){
     if(!sb){ $('login').hidden = false; $('login').firstElementChild.textContent = '이 페이지는 팽팽이와 같은 주소에서 열어야 해요.'; return; }
