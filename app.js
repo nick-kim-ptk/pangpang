@@ -38,7 +38,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v269';
+  var APP_VERSION = 'v270';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -67,6 +67,7 @@
     { id: 'yuxuan', img: 'img/voice-man.webp', name: '陈宇轩', py: 'Chén Yǔxuān', sub: '30대 남자', ready: false },
     { id: 'meiting', img: 'img/voice-woman.webp', name: '张美婷', py: 'Zhāng Měitíng', sub: '20대 여자', ready: false }
   ];
+  var VOICE_PREVIEW = '你好，和我一起练习吧！';   // 안녕하세요, 저와 함께 연습해요!
   var VOICE_IDS = VOICES.map(function (v) { return v.id; });
   var PN_KEYS = ['learn', 'game', 'word'];
   function normPn(o) {
@@ -2720,11 +2721,12 @@
     var cur = state.profile.voice;
     return '<div class="vp-list" role="radiogroup" aria-label="읽어 주는 목소리">' + VOICES.map(function (v) {
       var on = v.ready && cur === v.id;
-      return '<button class="vp' + (on ? ' on' : '') + (v.ready ? '' : ' soon') + '" role="radio" aria-checked="' + on + '" data-act="set-voice" data-v="' + v.id + '">' +
+      return '<div class="vp' + (on ? ' on' : '') + (v.ready ? '' : ' soon') + '" role="radio" tabindex="0" aria-checked="' + on + '" data-act="set-voice" data-v="' + v.id + '">' +
         '<img class="vp-img" src="' + v.img + '" alt="" width="56" height="56" decoding="async">' +
         '<b class="vp-n">' + esc(v.name) + '</b>' + (v.py ? '<span class="vp-py">' + esc(v.py) + '</span>' : '') +
         '<span class="vp-s">' + esc(v.sub) + '</span>' +
-        '<span class="vp-tag' + (on ? ' on' : v.ready ? '' : ' soon') + '">' + (on ? '사용 중' : v.ready ? '선택' : '준비 중') + '</span></button>';
+        '<span class="vp-tag' + (on ? ' on' : v.ready ? '' : ' soon') + '">' + (on ? '사용 중' : v.ready ? '선택' : '준비 중') + '</span>' +
+        '<button class="vp-play" data-act="voice-preview" data-v="' + v.id + '"' + (v.ready ? '' : ' disabled') + ' aria-label="' + esc(v.name) + ' 미리 듣기">' + I.spk + '미리 듣기</button></div>';
     }).join('') + '</div>';
   }
   function viewPrefs() {
@@ -5920,6 +5922,9 @@
       case 'open-aiall': state.aiallHint = false; go('aiall'); break;
       case 'open-prefs': go('prefs'); break;
       case 'zh-guide': askConfirm({ title: '중국어 음성 설치 방법', body: ZH_GUIDE, ok: '알겠어요', cancel: '닫기', m: 'sleep', left: true }); break;
+      case 'voice-preview':
+        if (el.getAttribute('data-v') === 'device') speak(VOICE_PREVIEW, 0.9);
+        break;
       case 'set-voice':
         if (el.getAttribute('data-v') === 'device') { setProfile({ voice: 'device' }); sfx('pop'); }
         else toast('아직 준비 중이에요. 곧 만나요');
