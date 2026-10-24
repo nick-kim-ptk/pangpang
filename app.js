@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v262';
+  var APP_VERSION = 'v263';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -3718,8 +3718,8 @@
     }
     return out.slice(0, n);
   }
-  function startHskDue(n) {
-    var q = hskDue(0).slice(0, n || HSK_STUDY).map(function (x) { return { lv: x.lv, i: x.i }; });
+  function startHskDue(n, onlyLv) {
+    var q = hskDue(onlyLv || 0).slice(0, n || HSK_STUDY).map(function (x) { return { lv: x.lv, i: x.i }; });
     if (!q.length) { toast('지금 복습할 단어가 없어요'); return; }
     state.hc = { lv: 0, mode: 'due', queue: q, i: 0, flip: false, known: 0, before: todayAnswers() };
     go('hskstudy');
@@ -4172,7 +4172,7 @@
   function hskSection() {
     if (!Object.keys(HSKW).length) return '';
     var lv = hskLvSel(), n = hskList(lv).length, k = hskCount(lv), pct = n ? Math.round(k / n * 100) : 0;
-    var wd = hskDue(0).length, locked = hskLocked(lv);
+    var wd = hskDue(lv).length, locked = hskLocked(lv);   // 고른 급의 복습 단어만 세요
     var prep = state.hskPrep || 0, av = hskAvail();
     var chips = '<div class="hsk-chips" role="tablist" aria-label="HSK 급 선택">' + HSK_ALL.map(function (l) {
       var soon = av.indexOf(l) < 0, on = soon ? l === prep : (!prep && l === lv);
@@ -4185,7 +4185,7 @@
     }
     var study = '<div class="hsk-grp">' +
       row('hsk-open', lv + '급 단어 목록', n + '개 중 ' + k + '개 익혔어요', { meter: pct }) +
-      (wd ? row('hsk-due', '오늘 복습할 단어', '<b>' + wd + '개</b>가 기다리고 있어요', { chip: '복습' }) : row('hsk-due', '오늘 복습할 단어', '오늘은 복습할 단어가 없어요', { off: true })) +
+      (wd ? row('hsk-due', '오늘 복습할 단어', '<b>' + wd + '개</b>가 기다리고 있어요', { chip: '복습' }) : row('hsk-due', '오늘 복습할 단어', '이 급은 오늘 복습할 단어가 없어요', { off: true })) +
       row('hsk-study', '카드 학습', '밀어서 외우기') + '</div>';
     var wko = wkAll();
     function wbest(g) { return wkGame(wko, g); }
@@ -6040,7 +6040,7 @@
       case 'practice-lesson': if (state.tdSrc === id) startHomeLesson(id); else startLessonSession('lesson', id); break;
       case 'review-start': startReview(); break;
       case 'today-review': startTodayReview(); break;
-      case 'hsk-due': startHskDue(); break;
+      case 'hsk-due': startHskDue(0, parseInt(id, 10) || 0); break;
       case 'review-weak': startWeak(); break;
       case 'dialog-start': startDialog(id); break;
       case 'open-stats': go('stats'); break;
