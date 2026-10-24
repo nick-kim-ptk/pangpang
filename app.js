@@ -36,7 +36,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v261';
+  var APP_VERSION = 'v262';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -2860,7 +2860,7 @@
     var run = runGet(g.game), ri = run ? runInfo(g.game, run) : null;
     var resume = ri && !hskLocked(ri.key) ? '<div class="gs-resume"><div><b>이어서 하기</b><span>' + ri.text + '</span></div><button class="btn sm" data-act="gs-resume">이어서</button></div>' : '';
     var pyOn0 = gsPyOn(g.game);
-    var py = (g.game === 'rain' || g.game === 'chain') ? '<button class="rn-pytog gs-py' + (pyOn0 ? ' on' : '') + '" data-act="gs-py" aria-pressed="' + (pyOn0 ? 'true' : 'false') + '"><i></i> ' + '병음 힌트 ' + (pyOn0 ? '켜짐' : '꺼짐') + '</button>' : '';
+    var py = (g.game === 'rain' || g.game === 'chain') ? '<button class="rn-pytog gs-py' + (pyOn0 ? ' on' : '') + '" data-act="gs-py" aria-pressed="' + (pyOn0 ? 'true' : 'false') + '"><i></i> ' + '병음 힌트 ' + (pyOn0 ? '켜짐 · 점수 70%' : '꺼짐') + '</button>' : '';
     var chips = hskAvail().map(function (l) {
       var on = g.sel.indexOf(l) >= 0, lk = hskLocked(l), w = o.r[g.game + l] || 0;
       return '<button class="gs-chip' + (on ? ' on' : '') + (lk ? ' lk' : '') + '" data-act="gs-toggle" data-id="' + l + '" aria-pressed="' + on + '">' +
@@ -3761,6 +3761,7 @@
   }
   /* ---------- 공통 점수: 한 문제 100점 + 속도 0~100점 + 연속 +10점(최대 +50점) ---------- */
   var QZ_HEARTS = 3, TN_HEARTS = 5;
+  var HINT_PTS = 0.7;   // 병음 힌트를 켜고 맞히면 점수의 70%만 받아요
   function ptsFor(frac, combo) { return 100 + Math.round(Math.max(0, Math.min(1, frac)) * 100) + Math.min(combo, 5) * 10; }
   function ptKey() { return 'pangpang.score.' + (state.user ? state.user.id : 'x'); }
   function ptAll() { try { return JSON.parse(localStorage.getItem(ptKey()) || '{}'); } catch (e) { return {}; } }
@@ -3975,7 +3976,7 @@
   }
   function hmi(n) { return '<img class="hm-img" src="img/hm-' + n + '.webp" alt="" draggable="false">'; }
   /* ---------- 이번 주 점수와 순위: 4개 게임의 이번 주 최고 점수를 급별 배율로 더해요 ---------- */
-  var WK_MULT = { 1: 0.9, 2: 1, 3: 1.1, 4: 1.2, 5: 1.3, 6: 1.4 }, WK_GAMES = ['quiz', 'chain', 'tone', 'rain'];
+  var WK_MULT = { 1: 0.8, 2: 1, 3: 1.4, 4: 1.9, 5: 2.5, 6: 3.2 }, WK_GAMES = ['quiz', 'chain', 'tone', 'rain'];
   function wkNow() { return new Date(Date.now() + 9 * 3600 * 1000); }
   function wkDow() { return (wkNow().getUTCDay() + 6) % 7; }   // 월요일=0 (한국 시간)
   function wkMonday() {
@@ -4013,7 +4014,7 @@
     var m = 0;
     Object.keys(o.r).forEach(function (k) {
       var key = k.slice(g.length);
-      if (k.indexOf(g) === 0 && /^[1-4]+$/.test(key)) m = Math.max(m, Math.round(o.r[k] * wkMult(key)));
+      if (k.indexOf(g) === 0 && /^[1-6]+$/.test(key)) m = Math.max(m, Math.round(o.r[k] * wkMult(key)));
     });
     return Math.max(m, (o.srv && o.srv[g]) || 0);   // 다른 기기에서 올린 점수도 포함
   }
@@ -4133,7 +4134,7 @@
       '<div class="wk-card"><span class="wk-l">내 토탈 점수</span><b class="wk-n">' + tot + '<small>점</small></b><span class="wk-s">' + games + '</span></div>' +
       (function () { var r = wkRemain(); return '<div class="rk-cd' + (r.ms < 86400000 ? ' hot' : '') + '"><div class="rk-cd-top"><span>⏳ 마감까지</span><b id="rkCd">' + wkCdText(r.ms) + '</b></div>' + (rk.rows && rk.rows.length ? '<span class="rk-cd-n">참가 ' + (+rk.rows[0].cnt || rk.rows.length) + '명 · 월요일 0시에 새로 시작</span>' : '<span class="rk-cd-n">월요일 0시에 새로 시작</span>') + '</div>'; })() + list.replace('%%Q%%', quip ? '<p class="rk-quip">' + esc(quip) + '</p>' : '') +
       '<button class="hsk-row mw-link" data-act="myweeks-open"><span class="hr-t">내 주간 기록</span><span class="hr-s">지난주들의 점수와 순위</span><span class="hr-chev">' + '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg>' + '</span></button>' +
-      '<details class="rk-how"><summary>점수는 어떻게 계산해요?</summary><p>토탈 = 4개 게임의 이번 주 최고 점수 합계예요. 어려운 급일수록 배율이 붙어요 (1급 ×0.9 · 2급 ×1.0 · 3급 ×1.1 · 4급 ×1.2). 여러 급을 함께 고르면 평균 배율이에요.</p></details><div style="height:32px"></div></div></div>';
+      '<details class="rk-how"><summary>점수는 어떻게 계산해요?</summary><p>토탈 = 4개 게임의 이번 주 최고 점수 합계예요. 어려운 급일수록 배율이 붙어요 (1급 ×0.8 · 2급 ×1.0 · 3급 ×1.4 · 4급 ×1.9 · 5급 ×2.5 · 6급 ×3.2, 실제 HSK 단어 수와 시험 난이도 차이를 반영했어요). 여러 급을 함께 고르면 평균 배율이에요. 병음 힌트를 켜고 맞히면 그 문제는 점수의 70%만 받아요.</p></details><div style="height:32px"></div></div></div>';
   }
   /* ---------- 지난주 결과: 새 주의 첫 접속 때 한 번 보여 줘요 ---------- */
   function wkPrevMonday() {
@@ -5114,7 +5115,7 @@
       c.right++; c.stageRight++; c.combo++; c.maxCombo = Math.max(c.maxCombo, c.combo); a.streak++;
       // 빨리 누를수록 높은 점수: 기본 100 + 남은 시간 비율 × 100 + 연속 보너스
       var left = Math.max(0, 1 - (performance.now() - c.t0) / 1000 / c.secs);
-      c.lastPts = ptsFor(left, c.combo);
+      c.lastPts = Math.round(ptsFor(left, c.combo) * (chPyOn() ? HINT_PTS : 1));
       c.score += c.lastPts;
       sfx('right', c.combo);
       if (c.stage >= CH_ACTIVE && a.streak >= CH_GRAD) {
@@ -5406,7 +5407,7 @@
     if (!d || d.dead) return;
     if (d.isT) {
       r.combo++; r.maxCombo = Math.max(r.maxCombo, r.combo); r.right++;
-      r.score += ptsFor(1 - d.y, r.combo);
+      r.score += Math.round(ptsFor(1 - d.y, r.combo) * (rnPyOn() ? HINT_PTS : 1));
       sfx('right', r.combo);
       if (d.el) d.el.classList.add('ok');
       d.dead = true;
@@ -6137,7 +6138,7 @@
         var pyGame = state.gs && state.gs.game === 'chain' ? 'chain' : 'rain';
         var pyOn = !gsPyOn(pyGame); try { localStorage.setItem('pangpang.' + pyGame + '.py', pyOn ? '1' : '0'); } catch (e) { /* 무시 */ }
         el.classList.toggle('on', pyOn); el.setAttribute('aria-pressed', pyOn ? 'true' : 'false');
-        el.lastChild.textContent = ' ' + '병음 힌트 ' + (pyOn ? '켜짐' : '꺼짐'); sfx('tap'); break;
+        el.lastChild.textContent = ' ' + '병음 힌트 ' + (pyOn ? '켜짐 · 점수 70%' : '꺼짐'); sfx('tap'); break;
       case 'gs-toggle':
         if (state.gs) {
           var gl = parseInt(id, 10), gi = state.gs.sel.indexOf(gl);
