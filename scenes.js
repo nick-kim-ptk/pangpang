@@ -82,7 +82,7 @@ window.SCENES = [
     ]
   },
   {
-    id: 'shopping', cat: '여행', lv: '보통', icon: '🛍️', title: '쇼핑하며 가격 묻기', sub: '가격을 묻고 깎아 달라고 해요',
+    id: 'shopping', cat: '여행', lv: '보통', icon: '🛍️', img: 'img/sc-shopping.webp', title: '쇼핑하며 가격 묻기', sub: '가격을 묻고 깎아 달라고 해요',
     mission: '옷 가게에서 가격 묻고 깎아 달라고 하기',
     lines: [
       ['这件衣服多少钱？', 'Zhè jiàn yīfu duōshao qián?', '이 옷 얼마예요?', '多少钱', [["这件", "zhè jiàn", "이(벌)"], ["衣服", "yīfu", "옷"], ["多少钱？", "duōshao qián", "얼마예요"]]],
@@ -94,7 +94,7 @@ window.SCENES = [
     ]
   },
   {
-    id: 'taxi', cat: '여행', lv: '쉬움', icon: '🚕', title: '택시 타기', sub: '목적지를 말하고 내려 달라고 해요',
+    id: 'taxi', cat: '여행', lv: '쉬움', icon: '🚕', img: 'img/sc-taxi.webp', title: '택시 타기', sub: '목적지를 말하고 내려 달라고 해요',
     mission: '택시 기사님께 목적지 말하고 세워 달라고 하기',
     lines: [
       ['去机场，多少钱？', 'Qù jīchǎng, duōshao qián?', '공항 가는데 얼마예요?', '机场', [["去机场，", "qù jīchǎng", "공항에 가는데"], ["多少钱？", "duōshao qián", "얼마예요"]]],
@@ -106,7 +106,7 @@ window.SCENES = [
     ]
   },
   {
-    id: 'hotel', cat: '여행', lv: '보통', icon: '🏨', title: '호텔 체크인', sub: '예약을 확인하고 방을 요청해요',
+    id: 'hotel', cat: '여행', lv: '보통', icon: '🏨', img: 'img/sc-hotel.webp', title: '호텔 체크인', sub: '예약을 확인하고 방을 요청해요',
     mission: '호텔 프런트에서 체크인하고 조식 시간 묻기',
     lines: [
       ['我预订了一个房间。', 'Wǒ yùdìng le yí ge fángjiān.', '방을 하나 예약했어요.', '预订', [["我", "wǒ", "저는"], ["预订了", "yùdìng le", "예약했다"], ["一个", "yí ge", "하나"], ["房间。", "fángjiān", "방"]]],

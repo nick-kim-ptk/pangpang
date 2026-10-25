@@ -999,3 +999,6 @@ select kind, count(*) n, round(avg(in_tokens)) avg_in, round(avg(cache_read)) av
 
 ## v281
 - 대화 상황 레슨 마지막 2개(친구 집 초대·아픈 친구 챙기기)에 달팽이 일러스트 적용
+
+## v282
+- 여행 상황 레슨 3개(쇼핑 가격 묻기·택시·호텔 체크인)에 달팽이 일러스트 적용
