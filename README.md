@@ -1010,3 +1010,6 @@ select kind, count(*) n, round(avg(in_tokens)) avg_in, round(avg(cache_read)) av
 
 ## v284
 - 상황 레슨 카드(이미지형): 완료 표시를 이미지 아래 디바이더 바로 위 가운데로 이동
+
+## v285
+- 상황 레슨 완료 뱃지: 카드 높이는 그대로 두고 이미지 위에 겹쳐 디바이더 바로 위 가운데에 표시

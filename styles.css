@@ -3188,5 +3188,4 @@ html body .sc-head { margin-bottom: 2px; }
 
 /* v284: 이미지 카드의 완료 표시는 디바이더 바로 위 가운데 */
 .sc-card.has-img .sc-cimg { position: relative; }
-.sc-card.has-img .sc-cimg .sc-dn { position: absolute; left: 50%; bottom: 9px; transform: translateX(-50%); white-space: nowrap; }
-.sc-card.has-img.done .sc-cimg { padding-bottom: 40px; }
+.sc-card.has-img .sc-cimg .sc-dn { position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%); white-space: nowrap; }
