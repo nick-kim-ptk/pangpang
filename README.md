@@ -990,3 +990,6 @@ select kind, count(*) n, round(avg(in_tokens)) avg_in, round(avg(cache_read)) av
 
 ## v278
 - 병원·약국 가기 일러스트를 투명 배경 원본으로 교체했어요.
+
+## v279
+- 상황 레슨 6개(날씨·처음 만났을 때·늦어서 사과·생일·길 묻기·오랜만에 만남)에 달팽이 일러스트 적용

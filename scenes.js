@@ -46,7 +46,7 @@ window.SCENES = [
     ]
   },
   {
-    id: 'way', cat: '여행', lv: '보통', icon: '🧭', title: '길 물어보기', sub: '지하철역 가는 길을 물어요',
+    id: 'way', cat: '여행', lv: '보통', icon: '🧭', img: 'img/sc-way.webp', title: '길 물어보기', sub: '지하철역 가는 길을 물어요',
     mission: '지하철역 가는 길 묻고 얼마나 걸리는지 확인하기',
     lines: [
       ['请问，地铁站在哪儿？', 'Qǐngwèn, dìtiězhàn zài nǎr?', '실례지만 지하철역이 어디예요?', '地铁站', [["请问，", "qǐngwèn", "실례지만"], ["地铁站", "dìtiězhàn", "지하철역"], ["在哪儿？", "zài nǎr", "어디예요"]]],
@@ -58,7 +58,7 @@ window.SCENES = [
     ]
   },
   {
-    id: 'hello', cat: '대화', lv: '쉬움', icon: '👋', title: '처음 만났을 때', sub: '자기소개와 취미 이야기',
+    id: 'hello', cat: '대화', lv: '쉬움', icon: '👋', img: 'img/sc-hello.webp', title: '처음 만났을 때', sub: '자기소개와 취미 이야기',
     mission: '처음 만난 중국인 친구에게 자기소개하고 취미 물어보기',
     lines: [
       ['你好，很高兴认识你。', 'Nǐ hǎo, hěn gāoxìng rènshi nǐ.', '안녕하세요, 만나서 반가워요.', '认识', [["你好，", "nǐ hǎo", "안녕하세요"], ["很", "hěn", "매우"], ["高兴", "gāoxìng", "기쁘다"], ["认识你。", "rènshi nǐ", "당신을 알게 되어"]]],
@@ -142,7 +142,7 @@ window.SCENES = [
     ]
   },
   {
-    id: 'weather', cat: '대화', lv: '쉬움', icon: '🌤️', title: '날씨와 주말 계획', sub: '날씨를 말하고 주말 계획을 나눠요',
+    id: 'weather', cat: '대화', lv: '쉬움', icon: '🌤️', img: 'img/sc-weather.webp', title: '날씨와 주말 계획', sub: '날씨를 말하고 주말 계획을 나눠요',
     mission: '친구와 날씨 이야기하고 주말 계획 정하기',
     lines: [
       ['今天天气真好。', 'Jīntiān tiānqì zhēn hǎo.', '오늘 날씨 정말 좋아요.', '天气', [["今天", "jīntiān", "오늘"], ["天气", "tiānqì", "날씨"], ["真好。", "zhēn hǎo", "정말 좋다"]]],
@@ -406,7 +406,7 @@ window.SCENES = [
     ]
   },
   {
-    id: "late", cat: "대화", lv: "쉬움", icon: "🙏", title: "늦어서 사과하기", sub: "지각을 사과하고 받아 줘요",
+    id: "late", cat: "대화", lv: "쉬움", icon: "🙏", img: 'img/sc-late.webp', title: "늦어서 사과하기", sub: "지각을 사과하고 받아 줘요",
     mission: "약속에 늦어서 친구에게 사과하기",
     lines: [
       ["对不起，我迟到了。", "Duìbuqǐ, wǒ chídào le.", "미안해요, 늦었어요.", "迟到", [["对不起，", "duìbuqǐ", "미안해요"], ["我", "wǒ", "저는"], ["迟到了。", "chídào le", "늦었다"]]],
@@ -418,7 +418,7 @@ window.SCENES = [
     ]
   },
   {
-    id: "birthday", cat: "대화", lv: "쉬움", icon: "🎂", title: "생일 축하하기", sub: "축하 인사와 선물을 주고받아요",
+    id: "birthday", cat: "대화", lv: "쉬움", icon: "🎂", img: 'img/sc-birthday.webp', title: "생일 축하하기", sub: "축하 인사와 선물을 주고받아요",
     mission: "친구 생일을 축하하고 선물 건네기",
     lines: [
       ["祝你生日快乐！", "Zhù nǐ shēngrì kuàilè!", "생일 축하해요!", "生日", [["祝你", "zhù nǐ", "당신에게 ~을 기원하다"], ["生日", "shēngrì", "생일"], ["快乐！", "kuàilè", "즐겁다"]]],
@@ -430,7 +430,7 @@ window.SCENES = [
     ]
   },
   {
-    id: "reunion", cat: "대화", lv: "쉬움", icon: "🤝", title: "오랜만에 만나 안부 나누기", sub: "근황과 이직 소식을 이야기해요",
+    id: "reunion", cat: "대화", lv: "쉬움", icon: "🤝", img: 'img/sc-reunion.webp', title: "오랜만에 만나 안부 나누기", sub: "근황과 이직 소식을 이야기해요",
     mission: "오랜만에 만난 친구와 근황 나누기",
     lines: [
       ["好久不见，你最近怎么样？", "Hǎojiǔ bú jiàn, nǐ zuìjìn zěnmeyàng?", "오랜만이에요, 요즘 어때요?", "最近", [["好久不见，", "hǎojiǔ bú jiàn", "오랜만이에요"], ["你", "nǐ", "당신"], ["最近", "zuìjìn", "요즘"], ["怎么样？", "zěnmeyàng", "어때요"]]],
