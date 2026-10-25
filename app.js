@@ -38,7 +38,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v283';
+  var APP_VERSION = 'v284';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -4625,8 +4625,8 @@
   var SC_LVCLS = { '쉬움': 'e', '보통': 'm', '어려움': 'h' };
   function scCardHtml(s, pg) {
     var slk = scLocked(s.id);
-    return '<button class="sc-card' + (s.img ? ' has-img' : '') + (slk ? ' locked' : '') + (scDone(pg, s) ? ' done' : '') + '" data-act="sc-open" data-id="' + s.id + '">' + (slk ? '<span class="chip lockchip sc-pro">' + I.lock + 'PRO</span>' : (scDone(pg, s) ? '<span class="chip green sc-pro">' + I.check + '완료</span>' : '')) +
-      '<em class="sc-lv ' + (SC_LVCLS[s.lv] || 'm') + '">' + esc(s.lv || '보통') + '</em>' + (s.img ? '<span class="sc-cimg"><img src="' + s.img + '" alt="" loading="lazy" decoding="async"></span>' : '<span class="sc-ci">' + s.icon + '</span>') +
+    return '<button class="sc-card' + (s.img ? ' has-img' : '') + (slk ? ' locked' : '') + (scDone(pg, s) ? ' done' : '') + '" data-act="sc-open" data-id="' + s.id + '">' + (slk ? '<span class="chip lockchip sc-pro">' + I.lock + 'PRO</span>' : (scDone(pg, s) && !s.img ? '<span class="chip green sc-pro">' + I.check + '완료</span>' : '')) +
+      '<em class="sc-lv ' + (SC_LVCLS[s.lv] || 'm') + '">' + esc(s.lv || '보통') + '</em>' + (s.img ? '<span class="sc-cimg"><img src="' + s.img + '" alt="" loading="lazy" decoding="async">' + (!slk && scDone(pg, s) ? '<span class="chip green sc-dn">' + I.check + '완료</span>' : '') + '</span>' : '<span class="sc-ci">' + s.icon + '</span>') +
       '<b>' + esc(s.title) + '</b><span class="sc-cs">' + esc(s.sub) + '</span></button>';
   }
   // 레슨 탭: 이어서 할 상황 2개만 보여 주고, 전체는 '전체 보기'에서 분류별로 봐요
