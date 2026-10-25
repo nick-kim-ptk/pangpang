@@ -3180,3 +3180,8 @@ html body .sc-head { margin-bottom: 2px; }
 .sc-card.has-img b { padding: 12px 14px 0; }
 .sc-card.has-img .sc-cs { padding: 4px 14px 14px; }
 .sc-card.locked .sc-cimg { opacity: .55; }
+
+/* v283: 정답 공개 때 병음과 한글 뜻 사이 간격 */
+.ch-h em { margin-top: 4px; }
+.ch-h b + em { margin-top: 5px; }
+.wl-me span:not(.rk-medal) { line-height: 1.5; }

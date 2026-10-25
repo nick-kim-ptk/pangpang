@@ -38,7 +38,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v282';
+  var APP_VERSION = 'v283';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -4191,7 +4191,7 @@
     var n = +L.me.rnk, win = n <= 3;
     var msg = win ? pick(['트로피 획득! 달팽이가 이렇게 빠르다니 반칙 아닌가요', '축하해요! 트로피를 받았어요. 자랑해도 돼요']) : n <= 10 ? pick(['TOP 10! 조금만 더 가면 트로피예요', '트로피가 코앞이에요. 달팽이도 느낌이 와요']) : pick(['이번 주엔 더 높이 올라가 봐요', '순위는 달팽이처럼 천천히 올라가요. 올라가긴 해요', '상위권은 쉬지도 않아요. 그래서 상위권이에요']);
     return '<div class="wl-card"><div class="wl-top"><b>지난주 결과</b><span>' + md(a) + ' ~ ' + md(b) + '</span></div>' +
-      '<div class="wl-me">' + (win ? '<span class="rk-medal m' + n + '">' + icn('trophy') + '</span>' : '') + '<div><b>' + n + '위</b><span>' + (+L.me.total) + '점 · ' + msg + '</span></div></div>' +
+      '<div class="wl-me">' + (win ? '<span class="rk-medal m' + n + '">' + icn('trophy') + '</span>' : '') + '<div><b>' + n + '위</b><span>' + (+L.me.total) + '점 · ' + (/!\s/.test(msg) ? msg.replace(/^([^!]*!)\s+/, '$1<br>') : '<br>' + msg) + '</span></div></div>' +
       (L.top.length ? '<ul class="wl-top3">' + L.top.map(function (r) { return '<li><span class="rk-medal m' + (+r.rnk) + '">' + icn('trophy') + '</span><em>' + esc(r.nick) + (r.me ? ' (나)' : '') + '</em><b>' + (+r.total) + '점</b></li>'; }).join('') + '</ul>' : '') +
       '<button class="btn sm" data-act="wk-last-ok">이번 주도 도전!</button></div>';
   }
@@ -5089,8 +5089,10 @@
   function chGridFor(c, ti) {
     var list = hskList(c.lv), t = list[ti], used = {}, pick = [ti];
     used[chPy(t)] = 1;
+    var tl = Array.from(t[0]).length, strict = true;
     function add(i) {
       if (pick.length >= CH_GRID || pick.indexOf(i) >= 0) return;
+      if (strict && Array.from(list[i][0]).length !== tl) return;
       var k = chPy(list[i]);
       if (used[k]) return;
       used[k] = 1; pick.push(i);
@@ -5103,6 +5105,7 @@
     shuffle(c.active.map(function (a) { return a.i; })).forEach(add);
     shuffle(c.grads.slice()).forEach(add);
     shuffle(list.map(function (_, i) { return i; })).forEach(add);
+    if (pick.length < CH_GRID) { strict = false; shuffle(list.map(function (_, i) { return i; })).forEach(add); }
     return shuffle(pick);
   }
   function chStartAsk() {
@@ -5258,7 +5261,7 @@
         '<button class="ch-card ' + (isNew ? 'new' : 'old') + '" data-act="ch-skip" aria-label="다음으로">' +
         '<span class="ch-tag">' + (isNew ? '✨ 새 카드' : '다시 보기') + '</span>' +
         '<span class="ch-zh" style="font-size:' + chFit(w[0], true) + '">' + esc(w[0]) + '</span>' + (chPyOn() ? '<span class="ch-py">' + esc(w[1]) + '</span>' : '') +
-        (isNew ? '<span class="ch-ko">' + esc(w[2]) + '</span><span class="ch-tap">화면을 누르면 넘어가요</span>' : '<span class="ch-ko ch-ghost">&nbsp;</span>') + '</button>' +
+        '<span class="ch-ko">' + esc(w[2]) + '</span>' + (isNew ? '<span class="ch-tap">화면을 누르면 넘어가요</span>' : '') + '</button>' +
         '<div class="ch-dots">' + dots + '</div></div></div>';
     }
     if (c.phase === 'clear') {
