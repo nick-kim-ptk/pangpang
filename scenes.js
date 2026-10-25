@@ -466,7 +466,7 @@ window.SCENES = [
     ]
   },
   {
-    id: "office", cat: "직장·학교", lv: "쉬움", icon: "💼", title: "첫 출근 인사하기", sub: "동료에게 인사하고 자리를 물어요",
+    id: "office", cat: "직장·학교", lv: "쉬움", icon: "💼", img: 'img/sc-office.webp', title: "첫 출근 인사하기", sub: "동료에게 인사하고 자리를 물어요",
     mission: "첫 출근날 동료들에게 인사하고 소개하기",
     lines: [
       ["大家好，我是新来的同事。", "Dàjiā hǎo, wǒ shì xīn lái de tóngshì.", "여러분 안녕하세요, 새로 온 동료예요.", "同事", [["大家好，", "dàjiā hǎo", "여러분 안녕하세요"], ["我是", "wǒ shì", "저는 ~이다"], ["新来的", "xīn lái de", "새로 온"], ["同事。", "tóngshì", "동료"]]],
@@ -478,7 +478,7 @@ window.SCENES = [
     ]
   },
   {
-    id: "meeting", cat: "직장·학교", lv: "보통", icon: "📅", title: "회의 시간 정하기", sub: "가능한 시간을 맞춰 봐요",
+    id: "meeting", cat: "직장·학교", lv: "보통", icon: "📅", img: 'img/sc-meeting.webp', title: "회의 시간 정하기", sub: "가능한 시간을 맞춰 봐요",
     mission: "동료와 회의 시간 정하기",
     lines: [
       ["我们什么时候开会？", "Wǒmen shénme shíhou kāihuì?", "우리 언제 회의해요?", "开会", [["我们", "wǒmen", "우리"], ["什么时候", "shénme shíhou", "언제"], ["开会？", "kāihuì", "회의하다"]]],
@@ -490,7 +490,7 @@ window.SCENES = [
     ]
   },
   {
-    id: "interview", cat: "직장·학교", lv: "어려움", icon: "🧑‍💼", title: "면접에서 자기소개하기", sub: "경력과 지원 동기를 말해요",
+    id: "interview", cat: "직장·학교", lv: "어려움", icon: "🧑‍💼", img: 'img/sc-interview.webp', title: "면접에서 자기소개하기", sub: "경력과 지원 동기를 말해요",
     mission: "면접관에게 자기소개와 지원 동기 말하기",
     lines: [
       ["您好，我是来面试的。", "Nín hǎo, wǒ shì lái miànshì de.", "안녕하세요, 면접 보러 왔어요.", "面试", [["您好，", "nín hǎo", "안녕하세요"], ["我是来", "wǒ shì lái", "저는 ~하러 왔다"], ["面试的。", "miànshì de", "면접 보러"]]],
@@ -502,7 +502,7 @@ window.SCENES = [
     ]
   },
   {
-    id: "class", cat: "직장·학교", lv: "쉬움", icon: "🎓", title: "수업 중 질문하기", sub: "모르는 것을 선생님께 물어요",
+    id: "class", cat: "직장·학교", lv: "쉬움", icon: "🎓", img: 'img/sc-class.webp', title: "수업 중 질문하기", sub: "모르는 것을 선생님께 물어요",
     mission: "수업 중 모르는 단어를 선생님께 질문하기",
     lines: [
       ["老师，我有一个问题。", "Lǎoshī, wǒ yǒu yí ge wèntí.", "선생님, 질문이 있어요.", "问题", [["老师，", "lǎoshī", "선생님"], ["我有", "wǒ yǒu", "저는 있다"], ["一个", "yí ge", "하나"], ["问题。", "wèntí", "질문"]]],

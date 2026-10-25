@@ -993,3 +993,6 @@ select kind, count(*) n, round(avg(in_tokens)) avg_in, round(avg(cache_read)) av
 
 ## v279
 - 상황 레슨 6개(날씨·처음 만났을 때·늦어서 사과·생일·길 묻기·오랜만에 만남)에 달팽이 일러스트 적용
+
+## v280
+- 직장·학교 상황 레슨 4개(첫 출근·회의 시간·면접·수업 질문)에 달팽이 일러스트 적용
