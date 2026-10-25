@@ -442,7 +442,7 @@ window.SCENES = [
     ]
   },
   {
-    id: "invite", cat: "대화", lv: "보통", icon: "🏠", title: "친구 집에 초대받아 가기", sub: "선물을 건네고 인사를 나눠요",
+    id: "invite", cat: "대화", lv: "보통", icon: "🏠", img: 'img/sc-invite.webp', title: "친구 집에 초대받아 가기", sub: "선물을 건네고 인사를 나눠요",
     mission: "친구 집에 초대받아 인사하고 대화하기",
     lines: [
       ["欢迎欢迎，快请进！", "Huānyíng huānyíng, kuài qǐng jìn!", "어서 오세요, 들어오세요!", "欢迎", [["欢迎欢迎，", "huānyíng huānyíng", "어서 오세요"], ["快", "kuài", "어서"], ["请进！", "qǐng jìn", "들어오세요"]]],
@@ -454,7 +454,7 @@ window.SCENES = [
     ]
   },
   {
-    id: "sick", cat: "대화", lv: "보통", icon: "🤒", title: "아픈 친구 챙기기", sub: "걱정해 주고 쉬라고 말해요",
+    id: "sick", cat: "대화", lv: "보통", icon: "🤒", img: 'img/sc-sick.webp', title: "아픈 친구 챙기기", sub: "걱정해 주고 쉬라고 말해요",
     mission: "아픈 친구를 걱정하며 챙겨 주기",
     lines: [
       ["你脸色不太好，怎么了？", "Nǐ liǎnsè bú tài hǎo, zěnme le?", "안색이 안 좋은데, 무슨 일이에요?", "脸色", [["你", "nǐ", "당신"], ["脸色", "liǎnsè", "안색"], ["不太好，", "bú tài hǎo", "별로 안 좋다"], ["怎么了？", "zěnme le", "무슨 일이에요"]]],
