@@ -38,7 +38,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v289';
+  var APP_VERSION = 'v290';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -5082,6 +5082,32 @@
   /* 발표 화면: 원고 목록이 먼저 나오고, 문장이 하나씩 열리면서 읽어 줘요. 읽는 소리에 맞춰 글자 색이 채워져요 */
   var SP_MS = 215;   // 글자 하나를 읽는 데 걸리는 시간(ms) 추정값. 채워지는 게 느리면 줄이고, 빠르면 늘려요
   var spKK = null;
+  // 병음이 낱말 단위로 띄어 쓰여 있어서, 병음 낱말마다 글자 수만큼 한자를 묶어요 (我 / 叫 / 小明 처럼). 맞지 않으면 글자 하나씩 해요
+  function spSyl(w) {
+    var m = w.toLowerCase().match(/(?:[bpmfdtnlgkhjqxzcsrwy]h?|[zcs]h)?[aeiouüāáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ]+(?:ng|n|r)?(?![aeiouüāáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ])/g);
+    return m ? m.length : 0;
+  }
+  function spChunks(zh, py) {
+    var chars = Array.from(zh), PUN = /[，。？！、,.?!；：“”]/, out = [], pos = 0, ok = true;
+    var toks = py.replace(/[,.?!，。？！]/g, ' ').split(/\s+/).filter(Boolean);
+    toks.forEach(function (t) {
+      if (!ok) return;
+      var k = 0; t.split("'").forEach(function (p) { k += spSyl(p); });
+      var s = pos, got = 0;
+      while (pos < chars.length && got < k) { if (!PUN.test(chars[pos])) got++; pos++; }
+      if (got < k) { ok = false; return; }
+      if (/r$/i.test(t) && chars[pos] === '儿') pos++;
+      while (pos < chars.length && PUN.test(chars[pos])) pos++;
+      out.push(chars.slice(s, pos).join(''));
+    });
+    if (ok && pos < chars.length) { if (chars.slice(pos).every(function (c) { return PUN.test(c); })) out[out.length - 1] += chars.slice(pos).join(''); else ok = false; }
+    return ok && out.length ? out : chars;
+  }
+  function spChunkAt(row, pos) {
+    var ch = row.querySelectorAll('.kk');
+    for (var i = 0; i < ch.length; i++) if (pos < +ch[i].getAttribute('data-e')) return i;
+    return ch.length;
+  }
   function spKkPaint(row, k) {
     var ch = row.querySelectorAll('.kk');
     for (var i = 0; i < ch.length; i++) { ch[i].classList.toggle('on', i < k); ch[i].classList.toggle('cur', i === k); }
@@ -5097,24 +5123,27 @@
     if (!row) return;
     spKkPaint(row, 0);
     setTimeout(function () { if (state.sp === c && c.act === i && row.scrollIntoView) { try { row.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) { /* 무시 */ } } }, 120);
-    var l = s.lines[i], n = Array.from(l[0]).length, st = { t0: performance.now(), seen: false, raf: 0 }, est = n * SP_MS + 150;
+    var l = s.lines[i], n = Array.from(l[0]).length, nk = row.querySelectorAll('.kk').length, st = { t0: performance.now(), seen: false, raf: 0 }, est = n * SP_MS + 150;
     spKK = st;
     function tick() {
       if (spKK !== st) return;
-      if (!st.seen) spKkPaint(row, Math.min(n - 1, Math.floor((performance.now() - st.t0) / est * n)));
+      if (!st.seen) spKkPaint(row, Math.min(nk - 1, spChunkAt(row, Math.floor((performance.now() - st.t0) / est * n))));
       st.raf = requestAnimationFrame(tick);
     }
     st.raf = requestAnimationFrame(tick);
-    speak(l[0], 0.8, function () { if (spKK === st) { spKkPaint(row, n); spKkStop(); } },
+    speak(l[0], 0.8, function () { if (spKK === st) { spKkPaint(row, nk); spKkStop(); } },
       function () { st.t0 = performance.now(); },
-      function (ci) { st.seen = true; spKkPaint(row, Math.min(n, Array.from(l[0].slice(0, ci)).length)); });
+      function (ci) { st.seen = true; spKkPaint(row, Math.min(nk, spChunkAt(row, Array.from(l[0].slice(0, ci)).length))); });
   }
   function viewSpeech() {
     var c = state.sp, s = spById(c.id);
     var rows = s.lines.map(function (x, i) {
       // 쉼표가 나오면 거기서 줄을 바꿔요 (열린 문장에서만)
       var CB = '<br class="cb">';
-      var zh = Array.from(x[0]).map(function (ch) { return '<span class="kk">' + esc(ch) + '</span>' + (ch === '，' || ch === ',' ? CB : ''); }).join('');
+      var off = 0, zh = spChunks(x[0], x[1]).map(function (t) {
+        var e = off + Array.from(t).length, h = '<span class="kk" data-e="' + e + '">' + esc(t) + '</span>' + (/[，,]$/.test(t) ? CB : '');
+        off = e; return h;
+      }).join('');
       var py = esc(x[1]).replace(/,\s*/g, ', ' + CB), ko = esc(x[2]).replace(/,\s*/g, ', ' + CB);
       return '<button class="sp-row' + (c.act === i ? ' act' : '') + '" data-act="sp-row" data-id="' + i + '" role="listitem" aria-label="' + (i + 1) + '번 문장 듣기">' +
         '<b class="sp-n"><span class="sp-num">' + (i + 1) + '</span>' + I.spk + '<i class="sp-nb">' + (i + 1) + '</i></b>' +
