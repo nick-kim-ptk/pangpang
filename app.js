@@ -38,7 +38,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v286';
+  var APP_VERSION = 'v287';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -226,7 +226,7 @@
     askConfirm({ title: '중국어 음성이 필요해요', body: ZH_GUIDE, ok: '알겠어요', cancel: '그래도 들어볼래요', m: 'sleep', left: true }, null, function () { speakForce = true; render(); });
   }
   var speakForce = false;
-  function speak(text, rate, onend, onstart) {
+  function speak(text, rate, onend, onstart, onbound) {
     if (!('speechSynthesis' in window) || !text) { if (onend) onend(); return; }
     if (!speakForce && zhVoiceState() === 'no') {          // 중국어 음성이 없으면 엉뚱한 소리로 읽지 않고 안내해요
       if (!zhGuideShown) showZhGuide();
@@ -242,6 +242,7 @@
     if (v) u.voice = v;
     if (onend) { var fired = false; u.onend = u.onerror = function () { if (!fired) { fired = true; onend(); } }; }
     if (onstart) u.onstart = function () { try { onstart(); } catch (e) { /* 무시 */ } };
+    if (onbound) u.onboundary = function (e) { try { if (typeof e.charIndex === 'number') onbound(e.charIndex); } catch (x) { /* 무시 */ } };
     window.speechSynthesis.speak(u);
   }
   function speakKo(text, onend) {
@@ -4897,7 +4898,6 @@
      문장마다 ① 보고 따라 말하기 → ② 한국어 뜻만 보고 말하기 → ③ 앞 문장부터 이어서 말하기.
      마이크는 하단 가운데 하나. 자동 이어가기를 켜면 다음 문장 마이크가 저절로 켜져요. */
   var SP_LV = ['', '초급', '중급', '고급'], SP_LVCLS = ['', 'e', 'm', 'h'], SP_TRIAL = 2, SP_PASS = 0.7;
-  var SP_STAGE = { learn: '따라 말하기', recall: '뜻 보고 말하기', chain: '이어 말하기' };
   function spKey() { return 'pangpang.speech.' + (state.user ? state.user.id : 'x'); }
   function spProg() { try { return JSON.parse(localStorage.getItem(spKey()) || '{}'); } catch (e) { return {}; } }
   function spMark(id, stars) {
@@ -4951,7 +4951,7 @@
     var s = spById(id);
     if (!s) return;
     if (spLocked(id)) { go('pay', { payWhy: '이 발표 레슨은 멤버십이 필요해요. 앞의 2개는 체험할 수 있어요.' }); return; }
-    state.sp = { id: id, k: 0, ci: 0, phase: 'learn', steps: 0, total: spSteps(s.lines.length), spoke: 0, fails: 0, hints: 0, tok: 0, auto: spAuto() };
+    state.sp = { id: id, act: -1, k: 0, ci: 0, phase: 'learn', steps: 0, total: spSteps(s.lines.length), spoke: 0, fails: 0, hints: 0, tok: 0, auto: spAuto() };
     spReset(state.sp);
     go('speech');
     spBegin();
@@ -4967,16 +4967,8 @@
     var c = state.sp;
     if (!c) return;
     var tok = c.tok;
-    if (c.phase === 'learn') {
-      clearTimeout(spTimer);
-      var go2 = false;
-      var after = function () { if (go2) return; go2 = true; if (spAlive(c, tok)) spAutoListen(300); };
-      spTimer = setTimeout(function () {
-        if (!spAlive(c, tok)) return;
-        speak(spLine(c)[0], 0.8, after);
-        spTimer = setTimeout(after, 7000);
-      }, 450);
-    } else spAutoListen(900);
+    clearTimeout(spTimer);
+    spTimer = setTimeout(function () { if (state.screen === 'speech' && state.sp === c && c.tok === tok) spActivate(0); }, 750);
   }
   function spAutoListen(delay) {
     var c = state.sp;
@@ -5055,7 +5047,7 @@
     if (!c || c.pass || c.phase === 'learn' || c.hint >= 3) return;
     c.hint++; c.hints++;
     if (c.hint === 3) { c.reveal = true; speak(spLine(c)[0], 0.85); }
-    render(); spScroll();
+    render();
   }
   function spAdvance() {
     var c = state.sp;
@@ -5068,7 +5060,7 @@
     else if (c.k + 1 < n) { c.k++; c.phase = 'learn'; }
     else { spFinish(); return; }
     spReset(c);
-    render(); window.scrollTo(0, 0); spScroll();
+    render(); window.scrollTo(0, 0);
     spBegin();
   }
   function spFinish() {
@@ -5084,68 +5076,51 @@
     sfx('done');
     go('spdone');
   }
-  function spQuit() { spStopRec(); stopSpeak(); state.sp = null; go(state.spFrom === 'speeches' ? 'speeches' : 'tab'); }
+  function spQuit() { spKkStop(); spStopRec(); stopSpeak(); state.sp = null; go(state.spFrom === 'speeches' ? 'speeches' : 'tab'); }
 
   /* 화면 */
-  function spTop(c, s) {
-    var pct = Math.round(Math.min(c.steps, c.total) / c.total * 100);
-    return '<div class="topbar"><button class="icon-btn" data-act="sp-quit" aria-label="그만하기">' + I.close + '</button>' +
-      '<div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + pct + '"><i style="width:' + pct + '%"></i></div>' +
-      '<span class="chip" style="min-width:48px;justify-content:center">' + (c.k + 1) + '/' + s.lines.length + '</span></div>';
+  /* 발표 화면: 원고 목록이 먼저 나오고, 문장이 하나씩 열리면서 읽어 줘요. 읽는 소리에 맞춰 글자 색이 채워져요 */
+  var spKK = null;
+  function spKkPaint(row, k) {
+    var ch = row.querySelectorAll('.kk');
+    for (var i = 0; i < ch.length; i++) { ch[i].classList.toggle('on', i < k); ch[i].classList.toggle('cur', i === k); }
   }
-  function spHead(c, s) {
-    var order = ['learn', 'recall', 'chain'], cur = order.indexOf(c.phase);
-    var steps = '<ol class="sc-steps" aria-label="진행 단계">' + order.map(function (k, i) {
-      var st = i < cur ? 'done' : i === cur ? 'on' : '';
-      return '<li class="' + st + '"' + (i === cur ? ' aria-current="step"' : '') + '><b>' + (i < cur ? I.check : i + 1) + '</b><span>' + SP_STAGE[k] + '</span></li>';
-    }).join('') + '</ol>';
-    var tag = c.phase === 'chain' ? '1~' + (c.k + 1) + '번째 문장' : (c.k + 1) + '번째 문장';
-    return '<div class="sc-head2"><div class="sc-ctx"><span>' + s.icon + ' ' + esc(s.title) + '</span><em>' + tag + '</em></div>' + steps + '</div>';
-  }
-  function spZhSize(zh) { var n = Array.from(zh).length; return n <= 10 ? 'min(40px, calc((100vw - 104px) / ' + n + '))' : n <= 16 ? '30px' : '26px'; }
-  function spHintInner(c, l) {
-    var chars = Array.from(l[0].replace(/[，。？！、]/g, ''));
-    if (c.reveal || c.hint >= 3) return '<span class="sp-h-zh">' + esc(l[0]) + '</span><span class="sp-h-py">' + esc(l[1]) + '</span>' + krs(l[1], 'sp-kr');
-    if (c.hint === 2) return '<span class="sp-h-py">' + esc(l[1]) + '</span>' + krs(l[1], 'sp-kr');
-    if (c.hint === 1) return '<span class="sp-h-zh">' + esc(chars.slice(0, 2).join('')) + ' …</span>';
-    return '';
-  }
-  function spHintBox(c, l) {
-    var h = spHintInner(c, l);
-    return '<div class="sp-hint' + (h ? ' on' : '') + '" aria-live="polite">' + (h || '<span class="sp-h-ph">막히면 힌트를 눌러요</span>') + '</div>';
-  }
-  // 이어 말하기에서는 힌트를 지금 말할 문장 안에 보여 줘요 (목록이 길어도 안 가려져요)
-  function spScroll() {
-    var cur = document.querySelector('.sp-li.cur');
-    if (cur && cur.scrollIntoView) { try { cur.scrollIntoView({ block: 'center' }); } catch (e) { /* 무시 */ } }
+  function spKkStop() { if (spKK) { cancelAnimationFrame(spKK.raf); spKK = null; } }
+  function spActivate(i) {
+    var c = state.sp, s = c && spById(c.id);
+    if (!c || !s || i < 0 || i >= s.lines.length) return;
+    stopSpeak(); spKkStop(); clearTimeout(spTimer);
+    c.act = i; c.tok++;
+    var rows = document.querySelectorAll('.sp-row'), row = rows[i];
+    for (var j = 0; j < rows.length; j++) { rows[j].classList.toggle('act', j === i); rows[j].classList.toggle('past', j < i); if (j !== i) spKkPaint(rows[j], j < i ? 99 : -1); }
+    var nx = document.querySelector('[data-act="sp-next"]'); if (nx) nx.disabled = i >= s.lines.length - 1;
+    if (!row) return;
+    spKkPaint(row, 0);
+    setTimeout(function () { if (state.sp === c && c.act === i && row.scrollIntoView) { try { row.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) { /* 무시 */ } } }, 120);
+    var l = s.lines[i], n = Array.from(l[0]).length, st = { t0: performance.now(), seen: false, raf: 0 }, est = n * 300 + 300;
+    spKK = st;
+    function tick() {
+      if (spKK !== st) return;
+      if (!st.seen) spKkPaint(row, Math.min(n - 1, Math.floor((performance.now() - st.t0) / est * n)));
+      st.raf = requestAnimationFrame(tick);
+    }
+    st.raf = requestAnimationFrame(tick);
+    speak(l[0], 0.8, function () { if (spKK === st) { spKkPaint(row, n); spKkStop(); } },
+      function () { st.t0 = performance.now(); },
+      function (ci) { st.seen = true; spKkPaint(row, Math.min(n, Array.from(l[0].slice(0, ci)).length)); });
   }
   function viewSpeech() {
-    var c = state.sp, s = spById(c.id), l = spLine(c), body, live;
-    if (c.phase === 'learn') {
-      body = '<div class="sp-card"><button class="round-btn sp-spk" data-act="say" data-text="' + esc(l[0]) + '" aria-label="듣기">' + I.spk + '</button>' +
-        '<div class="sp-zh" style="font-size:' + spZhSize(l[0]) + '">' + esc(l[0]) + '</div>' +
-        '<div class="sp-py">' + esc(l[1]) + '</div>' + krs(l[1], 'sp-kr') +
-        '<div class="sp-ko">' + esc(l[2]) + '</div></div>' +
-        '<div class="sp-cue">소리를 듣고 따라 말해 보세요</div>';
-    } else if (c.phase === 'recall') {
-      body = '<div class="sp-card sp-q"><div class="sp-qlab">한국어 뜻을 보고 중국어로 말해요</div><div class="sp-ko big">' + esc(l[2]) + '</div></div>' + spHintBox(c, l);
-    } else {
-      body = '<div class="sp-list" role="list">' + s.lines.slice(0, c.k + 1).map(function (x, i) {
-        var st = i < c.ci ? 'done' : i === c.ci ? 'cur' : 'todo';
-        var hi = st === 'cur' ? spHintInner(c, l) : '';
-        return '<div class="sp-li ' + st + '" role="listitem"><b>' + (i < c.ci ? I.check : i + 1) + '</b><span>' + esc(x[2]) + (hi ? '<span class="sp-li-h" aria-live="polite">' + hi + '</span>' : '') + '</span></div>';
-      }).join('') + '</div>';
-    }
-    live = c.pass ? '잘했어요!' : c.msg ? esc(c.msg) : c.listening ? '듣고 있어요…' : c.tries ? '다시 한번 말해 보세요' : (c.auto && !c.autoOff ? '곧 마이크가 켜져요. 바로 말해 보세요' : '마이크를 누르고 말해 보세요');
-    var heard = !c.pass && c.heard ? '<div class="sp-heard">들린 말: ' + esc(c.heard) + '</div>' : '<div class="sp-heard"></div>';
-    var canSkip = !c.pass && (c.tries >= 3 || c.noSR);
-    var canHint = c.phase !== 'learn' && !c.pass && c.hint < 3;
-    var foot = '<div class="mic-area sp-mic"><div id="live" class="live' + (c.pass ? '' : c.listening ? ' wait' : ' hint') + '">' + live + '</div>' +
-      '<div class="sp-mrow"><button class="sp-side" data-act="sp-hint"' + (canHint ? '' : ' disabled') + ' style="visibility:' + (c.phase === 'learn' ? 'hidden' : 'visible') + '">힌트' + (c.hint ? ' ' + c.hint + '/3' : '') + '</button>' +
-      (c.noSR ? '<span></span>' : '<button id="spmic" class="mic' + (c.listening ? ' on' : '') + (c.pass ? ' done' : '') + '" data-act="sp-mic" aria-label="말하기"' + (c.pass ? ' disabled' : '') + '>' + (c.pass ? I.check : I.mic) + '</button>') +
-      '<button class="sp-side sp-autob' + (c.auto ? ' on' : '') + '" data-act="sp-auto" aria-pressed="' + (c.auto ? 'true' : 'false') + '"><i></i><span>자동 이어가기</span></button></div>' +
-      (canSkip ? '<button class="link-btn" data-act="sp-skip">' + (c.noSR ? '말했어요' : '넘어가기') + '</button>' : '<div class="sp-skipgap"></div>') + '</div>';
-    return '<div class="screen qz-fit">' + spTop(c, s) + '<div class="qz-wrap sp-wrap">' + spHead(c, s) + '<div class="sp-main">' + body + heard + '</div></div>' + foot + '</div>';
+    var c = state.sp, s = spById(c.id);
+    var rows = s.lines.map(function (x, i) {
+      var zh = Array.from(x[0]).map(function (ch) { return '<span class="kk">' + esc(ch) + '</span>'; }).join('');
+      return '<button class="sp-row' + (c.act === i ? ' act' : '') + '" data-act="sp-row" data-id="' + i + '" role="listitem"><b class="sp-n">' + (i + 1) + '</b>' +
+        '<span class="sp-rb"><span class="sp-det"><span class="sp-det-in"><span class="sp-rzh" lang="zh">' + zh + '</span><span class="sp-rpy">' + esc(x[1]) + '</span>' + krs(x[1], 'sp-kr') + '</span></span>' +
+        '<span class="sp-rko">' + esc(x[2]) + '</span></span></button>';
+    }).join('');
+    return '<div class="screen sp-scr"><div class="topbar"><button class="icon-btn" data-act="sp-quit" aria-label="그만하기">' + I.close + '</button></div>' +
+      '<div class="scroll sp-scroll"><div class="sp-title"><span class="sp-ti-ic">' + s.icon + '</span><div><h1>' + esc(s.title) + '</h1><p>' + SP_LV[s.lv] + ' · ' + s.lines.length + '문장</p></div></div>' +
+      '<div class="sp-script" role="list">' + rows + '</div><div style="height:24px"></div></div>' +
+      '<div class="footer sp-foot"><button class="btn gray" data-act="sp-replay">' + I.spk + ' 다시 듣기</button><button class="btn" data-act="sp-next">다음 문장</button></div></div>';
   }
   function spFinalLines(s, withKr) {
     return s.lines.map(function (x, i) {
@@ -6557,6 +6532,9 @@
       case 'sp-list': state.spFrom = 'speeches'; go('speeches'); break;
       case 'sp-lv': state.spLv = +id; sfx('tap'); render(); break;
       case 'sp-quit': spQuit(); break;
+      case 'sp-row': spActivate(+id); break;
+      case 'sp-replay': if (state.sp && state.sp.act >= 0) spActivate(state.sp.act); break;
+      case 'sp-next': if (state.sp) spActivate(Math.min(state.sp.act + 1, spById(state.sp.id).lines.length - 1)); break;
       case 'sp-mic': spListen(false); break;
       case 'sp-hint': spHint(); break;
       case 'sp-skip': spSkip(); break;
