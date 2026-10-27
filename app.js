@@ -38,7 +38,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v287';
+  var APP_VERSION = 'v288';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -5080,6 +5080,7 @@
 
   /* 화면 */
   /* 발표 화면: 원고 목록이 먼저 나오고, 문장이 하나씩 열리면서 읽어 줘요. 읽는 소리에 맞춰 글자 색이 채워져요 */
+  var SP_MS = 215;   // 글자 하나를 읽는 데 걸리는 시간(ms) 추정값. 채워지는 게 느리면 줄이고, 빠르면 늘려요
   var spKK = null;
   function spKkPaint(row, k) {
     var ch = row.querySelectorAll('.kk');
@@ -5097,7 +5098,7 @@
     if (!row) return;
     spKkPaint(row, 0);
     setTimeout(function () { if (state.sp === c && c.act === i && row.scrollIntoView) { try { row.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) { /* 무시 */ } } }, 120);
-    var l = s.lines[i], n = Array.from(l[0]).length, st = { t0: performance.now(), seen: false, raf: 0 }, est = n * 300 + 300;
+    var l = s.lines[i], n = Array.from(l[0]).length, st = { t0: performance.now(), seen: false, raf: 0 }, est = n * SP_MS + 150;
     spKK = st;
     function tick() {
       if (spKK !== st) return;
