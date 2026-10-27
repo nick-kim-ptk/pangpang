@@ -38,7 +38,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v285';
+  var APP_VERSION = 'v286';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -647,7 +647,7 @@
 
   /* ---------- 화면 이동 ---------- */
   // 뒤로 가기: 폰의 뒤로 제스처·버튼(기록)과 화면 왼쪽 가장자리에서 오른쪽으로 미는 동작을 같이 처리해요
-  var SUBSCREEN = { pay: 1, privacy: 1, login: 1, intro: 1, practice: 1, quiz: 1, stats: 1, done: 1, hsk: 1, hskstudy: 1, tone: 1, feedback: 1, speed: 1, account: 1, coupon: 1, aicharge: 1, aichat: 1, aiall: 1, aichats: 1, aichatlog: 1, scene: 1, gram: 1, grams: 1, lsall: 1, rank: 1, myweeks: 1, chain: 1, rain: 1, scenes: 1, phrases: 1, prefs: 1, about: 1, advisor: 1 };
+  var SUBSCREEN = { pay: 1, privacy: 1, login: 1, intro: 1, practice: 1, quiz: 1, stats: 1, done: 1, hsk: 1, hskstudy: 1, tone: 1, feedback: 1, speed: 1, account: 1, coupon: 1, aicharge: 1, aichat: 1, aiall: 1, aichats: 1, aichatlog: 1, scene: 1, speech: 1, speeches: 1, spdone: 1, gram: 1, grams: 1, lsall: 1, rank: 1, myweeks: 1, chain: 1, rain: 1, scenes: 1, phrases: 1, prefs: 1, about: 1, advisor: 1 };
   var inSub = false, ignorePop = 0, backAnim = false;
   function syncHistory(screen) {
     try {
@@ -685,6 +685,8 @@
     else if (sc === 'chain') leaveGame('chain', function () { chStop(); go('tab'); });
     else if (sc === 'rain') leaveGame('rain', function () { rnStop(); go('tab'); });
     else if (sc === 'scene') { stopSpeak(); scStopRec(); state.sc = null; go(state.scFrom === 'scenes' ? 'scenes' : 'tab'); }
+    else if (sc === 'speech') spQuit();
+    else if (sc === 'speeches' || sc === 'spdone') go(sc === 'spdone' && state.spFrom === 'speeches' ? 'speeches' : 'tab', { tab: 'lessons' });
     else if (sc === 'gram') { stopSpeak(); go('intro', { lessonId: state.gm.l.id }); }
     else if (sc === 'scenes' || sc === 'grams' || sc === 'lsall') go('tab', { tab: 'lessons' });
     else if (sc === 'rank') go('tab', { tab: 'words' });
@@ -1259,6 +1261,7 @@
       '<h1 class="big-title">전체 레슨</h1>' +
       '<p class="sub-title">' + '배운 내용을 활용해 보며 자연스럽게 익혀가요.' + '</p>' +
       scenesSection() +
+      speechSection() +
       grammarSection() +
       '<div class="sc-head" style="margin-top:24px"><div class="section-title" style="margin:0">말하기 레슨</div>' +
       '<button class="sec-more sc-all" data-act="ls-all">전체 보기<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg></button></div>' +
@@ -2993,6 +2996,9 @@
     else if (state.screen === 'hskstudy') html = viewHskStudy();
     else if (state.screen === 'tone') html = viewTone();
     else if (state.screen === 'scene') html = viewScene();
+    else if (state.screen === 'speech') html = viewSpeech();
+    else if (state.screen === 'speeches') html = viewSpeeches();
+    else if (state.screen === 'spdone') html = viewSpDone();
     else if (state.screen === 'chain') html = viewChain();
     else if (state.screen === 'scenes') html = viewScenes();
     else if (state.screen === 'rain') html = viewRain();
@@ -4887,6 +4893,350 @@
     render();
   }
 
+  /* ---------- 발표 레슨 (v286): 한 문단을 문장씩 쌓아 가며 끝까지 이어서 말해요 ----------
+     문장마다 ① 보고 따라 말하기 → ② 한국어 뜻만 보고 말하기 → ③ 앞 문장부터 이어서 말하기.
+     마이크는 하단 가운데 하나. 자동 이어가기를 켜면 다음 문장 마이크가 저절로 켜져요. */
+  var SP_LV = ['', '초급', '중급', '고급'], SP_LVCLS = ['', 'e', 'm', 'h'], SP_TRIAL = 2, SP_PASS = 0.7;
+  var SP_STAGE = { learn: '따라 말하기', recall: '뜻 보고 말하기', chain: '이어 말하기' };
+  function spKey() { return 'pangpang.speech.' + (state.user ? state.user.id : 'x'); }
+  function spProg() { try { return JSON.parse(localStorage.getItem(spKey()) || '{}'); } catch (e) { return {}; } }
+  function spMark(id, stars) {
+    var m = spProg(), o = m[id] || {};
+    o.done = true; o.at = o.at || new Date().toISOString(); o.stars = Math.max(o.stars || 0, stars); o.n = (o.n || 0) + 1;
+    m[id] = o;
+    try { localStorage.setItem(spKey(), JSON.stringify(m)); } catch (e) { /* 무시 */ }
+  }
+  function spById(id) { return SPEECHES.filter(function (s) { return s.id === id; })[0]; }
+  function spLocked(id) { return (loggedOut() || !isPro()) && SPEECHES.indexOf(spById(id)) >= SP_TRIAL; }
+  function spAvail() { return (loggedOut() || !isPro()) ? SPEECHES.slice(0, SP_TRIAL) : SPEECHES; }
+  function spAuto() { try { return localStorage.getItem('pangpang.speech.auto') !== '0'; } catch (e) { return true; } }
+  function spSteps(n) { var t = n * 2; for (var k = 1; k < n; k++) t += k + 1; return t; }
+  function spStars(n) { return '<span class="sp-stars" aria-label="별 ' + n + '개">' + [1, 2, 3].map(function (i) { return '<i class="' + (i <= n ? 'on' : '') + '">★</i>'; }).join('') + '</span>'; }
+  function spCardHtml(s, pg) {
+    var slk = spLocked(s.id), d = pg[s.id];
+    return '<button class="sc-card sp-lcard' + (slk ? ' locked' : '') + (d && d.done ? ' done' : '') + '" data-act="sp-open" data-id="' + s.id + '">' +
+      (slk ? '<span class="chip lockchip sc-pro">' + I.lock + 'PRO</span>' : (d && d.done ? '<span class="chip green sc-pro">' + I.check + '완료</span>' : '')) +
+      '<em class="sc-lv ' + SP_LVCLS[s.lv] + '">' + SP_LV[s.lv] + '</em><span class="sc-ci">' + s.icon + '</span>' +
+      '<b>' + esc(s.title) + '</b><span class="sc-cs">' + s.lines.length + '문장' + (d && d.stars ? ' · ' + '★'.repeat(d.stars) : '') + '</span></button>';
+  }
+  function speechSection() {
+    if (typeof SPEECHES === 'undefined' || !SPEECHES.length) return '';
+    var pg = spProg(), av = spAvail(), todo = av.filter(function (s) { return !(pg[s.id] && pg[s.id].done); });
+    var show = (todo.length ? todo : av).slice(0, 2);
+    return '<div class="sc-head" style="margin-top:24px"><div class="section-title" style="margin:0">발표 레슨</div><span class="chip y">NEW</span>' +
+      '<button class="sec-more sc-all" data-act="sp-all">전체 보기<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg></button></div>' +
+      '<p class="hsk-note under-title">한 문단을 문장씩 쌓아 가며, 끝까지 이어서 말해요.</p>' +
+      '<div class="sc-grid sc-grid-home">' + show.map(function (s) { return spCardHtml(s, pg); }).join('') + '</div>';
+  }
+  function viewSpeeches() {
+    var pg = spProg(), lv = state.spLv >= 1 && state.spLv <= 3 ? state.spLv : 1;
+    var chips = '<div class="hsk-chips sc-cats" role="tablist" aria-label="발표 급수">' + [1, 2, 3].map(function (v) {
+      var cnt = SPEECHES.filter(function (s) { return s.lv === v; }).length;
+      return '<button role="tab" class="hsk-chip' + (v === lv ? ' on' : '') + '" data-act="sp-lv" data-id="' + v + '" aria-selected="' + (v === lv) + '">' + SP_LV[v] + ' ' + cnt + '</button>';
+    }).join('') + '</div>';
+    var list = SPEECHES.filter(function (s) { return s.lv === lv; });
+    var done = list.filter(function (s) { return pg[s.id] && pg[s.id].done; }).length;
+    return '<div class="screen"><div class="topbar"><button class="icon-btn" data-act="back" aria-label="뒤로">' + I.back + '</button></div>' +
+      '<div class="scroll" style="padding-top:4px"><h1 class="big-title" style="margin-top:0">발표 레슨</h1>' +
+      '<p class="hsk-note under-title" style="margin-top:-4px">문장을 하나씩 쌓아 가며 한 문단을 통째로 말해 봐요.</p>' +
+      chips + '<div class="sc-filt"><span>' + list.length + '개 · ' + done + '개 완료</span></div>' +
+      '<div class="sc-grid">' + list.map(function (s) { return spCardHtml(s, pg); }).join('') + '</div><div style="height:32px"></div></div></div>';
+  }
+
+  /* 진행 */
+  var spRec = null, spTimer = null;
+  function spAlive(c, tok) { return state.screen === 'speech' && state.sp === c && c.tok === tok; }
+  function spReset(c) { c.pass = false; c.tries = 0; c.heard = ''; c.msg = ''; c.hint = 0; c.reveal = false; c.listening = false; c.noSR = c.noSR || false; c.tok++; }
+  function startSpeech(id) {
+    var s = spById(id);
+    if (!s) return;
+    if (spLocked(id)) { go('pay', { payWhy: '이 발표 레슨은 멤버십이 필요해요. 앞의 2개는 체험할 수 있어요.' }); return; }
+    state.sp = { id: id, k: 0, ci: 0, phase: 'learn', steps: 0, total: spSteps(s.lines.length), spoke: 0, fails: 0, hints: 0, tok: 0, auto: spAuto() };
+    spReset(state.sp);
+    go('speech');
+    spBegin();
+  }
+  function spStopRec() {
+    clearTimeout(spTimer);
+    if (spRec) { var r = spRec; spRec = null; try { r.abort(); } catch (e) { /* 이미 멈춤 */ } }
+    if (typeof VFX !== 'undefined' && VFX) VFX.stop();
+  }
+  function spLine(c) { var s = spById(c.id); return s.lines[c.phase === 'chain' ? c.ci : c.k]; }
+  // 새 문장이 시작될 때: ①은 먼저 들려주고, 나머지는 바로 말하게 해요 (자동 이어가기가 켜져 있을 때 마이크도 저절로 켜져요)
+  function spBegin() {
+    var c = state.sp;
+    if (!c) return;
+    var tok = c.tok;
+    if (c.phase === 'learn') {
+      clearTimeout(spTimer);
+      var go2 = false;
+      var after = function () { if (go2) return; go2 = true; if (spAlive(c, tok)) spAutoListen(300); };
+      spTimer = setTimeout(function () {
+        if (!spAlive(c, tok)) return;
+        speak(spLine(c)[0], 0.8, after);
+        spTimer = setTimeout(after, 7000);
+      }, 450);
+    } else spAutoListen(900);
+  }
+  function spAutoListen(delay) {
+    var c = state.sp;
+    if (!c || !c.auto || c.noSR || c.autoOff) return;
+    var tok = c.tok;
+    clearTimeout(spTimer);
+    spTimer = setTimeout(function () { if (spAlive(c, tok) && !c.pass && !spRec && !c.listening) spListen(true); }, delay || 600);
+  }
+  function spListen(fromAuto) {
+    var c = state.sp, SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!c || c.pass) return;
+    if (!SR) { c.noSR = true; render(); toast('이 브라우저는 음성 인식을 지원하지 않아요'); return; }
+    if (spRec) { try { spRec.stop(); } catch (e) { /* noop */ } return; }   // 듣는 중에 누르면 거기서 끝내요
+    clearTimeout(spTimer); stopSpeak();
+    var finals = [], lastInterim = '', err = '', r = new SR(), tok = c.tok;
+    spRec = r;
+    r.lang = 'zh-CN'; r.interimResults = true; r.maxAlternatives = 3; r.continuous = false;
+    if (typeof VFX !== 'undefined' && VFX) VFX.hook(r);
+    r.onstart = function () {
+      if (!spAlive(c, tok)) return;
+      c.listening = true; c.msg = '';
+      var m = document.getElementById('spmic'), lv = document.getElementById('live');
+      if (m) { m.classList.add('on'); m.setAttribute('aria-label', '말하기 끝내기'); }
+      if (lv) { lv.textContent = '듣고 있어요…'; lv.classList.remove('hint'); lv.classList.add('wait'); }
+      VFX.start(true);
+    };
+    r.onresult = function (e) {
+      var res = e.results[e.results.length - 1];
+      lastInterim = res[0].transcript; VFX.bump();
+      if (res.isFinal) { finals = []; for (var i = 0; i < res.length; i++) finals.push(res[i].transcript); }
+    };
+    r.onerror = function (e) { err = e.error || 'error'; };
+    r.onend = function () {
+      if (spRec === r) spRec = null;
+      VFX.stop();
+      if (!spAlive(c, tok)) return;
+      c.listening = false;
+      var list = finals.length ? finals : (lastInterim ? [lastInterim] : []);
+      if (list.length) { spGrade(list); return; }
+      if (err === 'not-allowed' || err === 'service-not-allowed') { c.autoOff = true; c.msg = '마이크 권한을 허용해 주세요'; }
+      else if (err === 'audio-capture') { c.autoOff = true; c.msg = '마이크를 찾지 못했어요'; }
+      else if (err === 'network') { c.autoOff = true; c.msg = '음성 인식 서버에 연결하지 못했어요'; }
+      else if (err === 'aborted') c.msg = '';
+      else c.msg = fromAuto ? '마이크 버튼을 눌러 말해 보세요' : '목소리가 잘 안 들렸어요. 마이크를 누르고 말해 보세요';
+      render();
+    };
+    try { r.start(); } catch (e) { spRec = null; c.autoOff = true; c.msg = '마이크 버튼을 눌러 말해 보세요'; render(); }
+  }
+  function spGrade(list) {
+    var c = state.sp, l = spLine(c), best = 0, tok = c.tok;
+    list.forEach(function (t) { best = Math.max(best, scScore(l[0], t)); });
+    c.heard = list[0];
+    if (best >= SP_PASS) {
+      c.pass = true; c.spoke++; c.steps++; c.msg = '';
+      sfx('right', 1);
+      render();
+      clearTimeout(spTimer);
+      spTimer = setTimeout(function () { if (spAlive(c, tok)) spAdvance(); }, 850);
+    } else {
+      c.tries++; c.fails++; c.msg = '';
+      sfx('wrong');
+      if (c.tries >= 2) { c.reveal = true; setTimeout(function () { if (spAlive(c, tok) && !spRec) speak(l[0], 0.85); }, 350); }
+      render();
+      if (c.tries < 3) spAutoListen(c.tries >= 2 ? 3200 : 1500);
+    }
+  }
+  function spSkip() {
+    var c = state.sp;
+    if (!c || c.pass) return;
+    spStopRec(); stopSpeak();
+    c.steps++; c.pass = true;
+    spAdvance();
+  }
+  function spHint() {
+    var c = state.sp;
+    if (!c || c.pass || c.phase === 'learn' || c.hint >= 3) return;
+    c.hint++; c.hints++;
+    if (c.hint === 3) { c.reveal = true; speak(spLine(c)[0], 0.85); }
+    render(); spScroll();
+  }
+  function spAdvance() {
+    var c = state.sp;
+    if (!c) return;
+    var s = spById(c.id), n = s.lines.length;
+    spStopRec(); stopSpeak();
+    if (c.phase === 'learn') c.phase = 'recall';
+    else if (c.phase === 'recall') { if (c.k >= 1) { c.phase = 'chain'; c.ci = 0; } else { c.k++; c.phase = 'learn'; } }
+    else if (c.ci < c.k) c.ci++;
+    else if (c.k + 1 < n) { c.k++; c.phase = 'learn'; }
+    else { spFinish(); return; }
+    spReset(c);
+    render(); window.scrollTo(0, 0); spScroll();
+    spBegin();
+  }
+  function spFinish() {
+    var c = state.sp, s = spById(c.id);
+    spStopRec(); stopSpeak();
+    var pen = (c.hints + c.fails) / Math.max(1, c.total), stars = pen < 0.12 ? 3 : pen < 0.35 ? 2 : 1;
+    spMark(c.id, stars);
+    var day = dayStr(new Date()), d0 = state.daily[day] || { day: day, lessons: 0, answers: 0 };
+    var d = { day: day, lessons: d0.lessons, answers: d0.answers + c.spoke };
+    state.daily[day] = d; store.saveDaily(d);
+    state.spr = { id: c.id, stars: stars, spoke: c.spoke, hints: c.hints, fails: c.fails, at: new Date() };
+    state.sp = null;
+    sfx('done');
+    go('spdone');
+  }
+  function spQuit() { spStopRec(); stopSpeak(); state.sp = null; go(state.spFrom === 'speeches' ? 'speeches' : 'tab'); }
+
+  /* 화면 */
+  function spTop(c, s) {
+    var pct = Math.round(Math.min(c.steps, c.total) / c.total * 100);
+    return '<div class="topbar"><button class="icon-btn" data-act="sp-quit" aria-label="그만하기">' + I.close + '</button>' +
+      '<div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + pct + '"><i style="width:' + pct + '%"></i></div>' +
+      '<span class="chip" style="min-width:48px;justify-content:center">' + (c.k + 1) + '/' + s.lines.length + '</span></div>';
+  }
+  function spHead(c, s) {
+    var order = ['learn', 'recall', 'chain'], cur = order.indexOf(c.phase);
+    var steps = '<ol class="sc-steps" aria-label="진행 단계">' + order.map(function (k, i) {
+      var st = i < cur ? 'done' : i === cur ? 'on' : '';
+      return '<li class="' + st + '"' + (i === cur ? ' aria-current="step"' : '') + '><b>' + (i < cur ? I.check : i + 1) + '</b><span>' + SP_STAGE[k] + '</span></li>';
+    }).join('') + '</ol>';
+    var tag = c.phase === 'chain' ? '1~' + (c.k + 1) + '번째 문장' : (c.k + 1) + '번째 문장';
+    return '<div class="sc-head2"><div class="sc-ctx"><span>' + s.icon + ' ' + esc(s.title) + '</span><em>' + tag + '</em></div>' + steps + '</div>';
+  }
+  function spZhSize(zh) { var n = Array.from(zh).length; return n <= 10 ? 'min(40px, calc((100vw - 104px) / ' + n + '))' : n <= 16 ? '30px' : '26px'; }
+  function spHintInner(c, l) {
+    var chars = Array.from(l[0].replace(/[，。？！、]/g, ''));
+    if (c.reveal || c.hint >= 3) return '<span class="sp-h-zh">' + esc(l[0]) + '</span><span class="sp-h-py">' + esc(l[1]) + '</span>' + krs(l[1], 'sp-kr');
+    if (c.hint === 2) return '<span class="sp-h-py">' + esc(l[1]) + '</span>' + krs(l[1], 'sp-kr');
+    if (c.hint === 1) return '<span class="sp-h-zh">' + esc(chars.slice(0, 2).join('')) + ' …</span>';
+    return '';
+  }
+  function spHintBox(c, l) {
+    var h = spHintInner(c, l);
+    return '<div class="sp-hint' + (h ? ' on' : '') + '" aria-live="polite">' + (h || '<span class="sp-h-ph">막히면 힌트를 눌러요</span>') + '</div>';
+  }
+  // 이어 말하기에서는 힌트를 지금 말할 문장 안에 보여 줘요 (목록이 길어도 안 가려져요)
+  function spScroll() {
+    var cur = document.querySelector('.sp-li.cur');
+    if (cur && cur.scrollIntoView) { try { cur.scrollIntoView({ block: 'center' }); } catch (e) { /* 무시 */ } }
+  }
+  function viewSpeech() {
+    var c = state.sp, s = spById(c.id), l = spLine(c), body, live;
+    if (c.phase === 'learn') {
+      body = '<div class="sp-card"><button class="round-btn sp-spk" data-act="say" data-text="' + esc(l[0]) + '" aria-label="듣기">' + I.spk + '</button>' +
+        '<div class="sp-zh" style="font-size:' + spZhSize(l[0]) + '">' + esc(l[0]) + '</div>' +
+        '<div class="sp-py">' + esc(l[1]) + '</div>' + krs(l[1], 'sp-kr') +
+        '<div class="sp-ko">' + esc(l[2]) + '</div></div>' +
+        '<div class="sp-cue">소리를 듣고 따라 말해 보세요</div>';
+    } else if (c.phase === 'recall') {
+      body = '<div class="sp-card sp-q"><div class="sp-qlab">한국어 뜻을 보고 중국어로 말해요</div><div class="sp-ko big">' + esc(l[2]) + '</div></div>' + spHintBox(c, l);
+    } else {
+      body = '<div class="sp-list" role="list">' + s.lines.slice(0, c.k + 1).map(function (x, i) {
+        var st = i < c.ci ? 'done' : i === c.ci ? 'cur' : 'todo';
+        var hi = st === 'cur' ? spHintInner(c, l) : '';
+        return '<div class="sp-li ' + st + '" role="listitem"><b>' + (i < c.ci ? I.check : i + 1) + '</b><span>' + esc(x[2]) + (hi ? '<span class="sp-li-h" aria-live="polite">' + hi + '</span>' : '') + '</span></div>';
+      }).join('') + '</div>';
+    }
+    live = c.pass ? '잘했어요!' : c.msg ? esc(c.msg) : c.listening ? '듣고 있어요…' : c.tries ? '다시 한번 말해 보세요' : (c.auto && !c.autoOff ? '곧 마이크가 켜져요. 바로 말해 보세요' : '마이크를 누르고 말해 보세요');
+    var heard = !c.pass && c.heard ? '<div class="sp-heard">들린 말: ' + esc(c.heard) + '</div>' : '<div class="sp-heard"></div>';
+    var canSkip = !c.pass && (c.tries >= 3 || c.noSR);
+    var canHint = c.phase !== 'learn' && !c.pass && c.hint < 3;
+    var foot = '<div class="mic-area sp-mic"><div id="live" class="live' + (c.pass ? '' : c.listening ? ' wait' : ' hint') + '">' + live + '</div>' +
+      '<div class="sp-mrow"><button class="sp-side" data-act="sp-hint"' + (canHint ? '' : ' disabled') + ' style="visibility:' + (c.phase === 'learn' ? 'hidden' : 'visible') + '">힌트' + (c.hint ? ' ' + c.hint + '/3' : '') + '</button>' +
+      (c.noSR ? '<span></span>' : '<button id="spmic" class="mic' + (c.listening ? ' on' : '') + (c.pass ? ' done' : '') + '" data-act="sp-mic" aria-label="말하기"' + (c.pass ? ' disabled' : '') + '>' + (c.pass ? I.check : I.mic) + '</button>') +
+      '<button class="sp-side sp-autob' + (c.auto ? ' on' : '') + '" data-act="sp-auto" aria-pressed="' + (c.auto ? 'true' : 'false') + '"><i></i><span>자동 이어가기</span></button></div>' +
+      (canSkip ? '<button class="link-btn" data-act="sp-skip">' + (c.noSR ? '말했어요' : '넘어가기') + '</button>' : '<div class="sp-skipgap"></div>') + '</div>';
+    return '<div class="screen qz-fit">' + spTop(c, s) + '<div class="qz-wrap sp-wrap">' + spHead(c, s) + '<div class="sp-main">' + body + heard + '</div></div>' + foot + '</div>';
+  }
+  function spFinalLines(s, withKr) {
+    return s.lines.map(function (x, i) {
+      return '<div class="sp-fl"><b>' + (i + 1) + '</b><div><div class="sp-fl-py">' + esc(x[1]) + '</div><div class="sp-fl-zh">' + esc(x[0]) + '</div>' + (withKr ? krs(x[1], 'sp-kr') : '') + '<div class="sp-fl-ko">' + esc(x[2]) + '</div></div></div>';
+    }).join('');
+  }
+  function viewSpDone() {
+    var r = state.spr;
+    if (!r) return '<div class="screen"></div>';
+    var s = spById(r.id), d = r.at, ds = d.getFullYear() + '.' + pad(d.getMonth() + 1) + '.' + pad(d.getDate());
+    var nx = SPEECHES[SPEECHES.indexOf(s) + 1];
+    return '<div class="screen sp-done">' + confetti() + '<div class="scroll sp-done-scroll">' +
+      '<div class="sp-hero"><img class="sp-hero-img" src="img/sc-done.webp" alt="" draggable="false"><h1>발표 완성!</h1>' +
+      '<p>한 문단을 끝까지 이어서 말했어요</p>' + spStars(r.stars) + '</div>' +
+      '<div class="sp-fcard"><div class="sp-fc-top"><span class="sp-fc-ic">' + s.icon + '</span><div><b>' + esc(s.title) + '</b><em>' + SP_LV[s.lv] + ' · ' + s.lines.length + '문장 · ' + ds + '</em></div></div>' +
+      '<div class="sp-fc-body">' + spFinalLines(s, true) + '</div><div class="sp-fc-foot">팽팽이 · 중국어 말하기 연습</div></div>' +
+      '<div style="height:24px"></div></div>' +
+      '<div class="footer sp-done-foot"><button class="btn" data-act="sp-save">이미지로 저장</button>' +
+      '<div class="sp-done-row"><button class="btn gray" data-act="sp-open" data-id="' + s.id + '">한 번 더</button>' +
+      (nx && !spLocked(nx.id) ? '<button class="btn gray" data-act="sp-open" data-id="' + nx.id + '">다음 주제</button>' : '<button class="btn gray" data-act="sp-list">목록으로</button>') + '</div></div></div>';
+  }
+
+  // 완성 카드를 이미지로 저장 (캔버스로 직접 그려요)
+  function spWrap(ctx, text, maxW, byWord) {
+    var out = [], cur = '', parts = byWord ? text.split(' ') : Array.from(text), sep = byWord ? ' ' : '';
+    parts.forEach(function (p) {
+      var t = cur ? cur + sep + p : p;
+      if (ctx.measureText(t).width > maxW && cur) { out.push(cur); cur = p; } else cur = t;
+    });
+    if (cur) out.push(cur);
+    return out;
+  }
+  function spSaveImage() {
+    var r = state.spr;
+    if (!r) return;
+    var s = spById(r.id), W = 1080, P = 84, IW = W - P * 2 - 70, d = r.at;
+    var ds = d.getFullYear() + '.' + pad(d.getMonth() + 1) + '.' + pad(d.getDate());
+    var FZ = '700 50px "Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif', FP = '500 27px "Pretendard Variable",Pretendard,"Noto Sans SC",sans-serif', FK = '500 29px "Pretendard Variable",Pretendard,sans-serif';
+    var img = new Image(); img.src = 'img/pp-cheer.webp';
+    var ready = (document.fonts && document.fonts.ready) ? document.fonts.ready : Promise.resolve();
+    Promise.all([ready, new Promise(function (ok) { img.onload = img.onerror = ok; })]).then(function () {
+      var cv = document.createElement('canvas'), ctx = cv.getContext('2d');
+      cv.width = W; cv.height = 4000; ctx = cv.getContext('2d');
+      var blocks = s.lines.map(function (x) {
+        ctx.font = FP; var py = spWrap(ctx, x[1], IW, true);
+        ctx.font = FZ; var zh = spWrap(ctx, x[0], IW, false);
+        ctx.font = FK; var ko = spWrap(ctx, x[2], IW, true);
+        return { py: py, zh: zh, ko: ko, h: py.length * 38 + zh.length * 66 + ko.length * 42 + 14 + 48 };
+      });
+      var H = 100 + 250 + 30 + blocks.reduce(function (a, b) { return a + b.h; }, 0) + 190;
+      cv.height = H; ctx = cv.getContext('2d');
+      var g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#FFF3C4'); g.addColorStop(1, '#FFFAE8');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = '#ffffff'; ctx.shadowColor = 'rgba(26,33,57,.12)'; ctx.shadowBlur = 40; ctx.shadowOffsetY = 12;
+      rr(ctx, 40, 40, W - 80, H - 80, 56); ctx.fill(); ctx.shadowColor = 'transparent';
+      var y = 40 + 76;
+      ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
+      ctx.fillStyle = '#1a2139'; ctx.font = '800 62px "Pretendard Variable",Pretendard,"Noto Sans SC",sans-serif';
+      ctx.fillText(s.icon + ' ' + s.title, P, y + 62);
+      ctx.fillStyle = '#7b83a0'; ctx.font = '600 30px "Pretendard Variable",Pretendard,sans-serif';
+      ctx.fillText(SP_LV[s.lv] + ' · ' + s.lines.length + '문장 · ' + ds, P, y + 62 + 52);
+      ctx.fillStyle = '#e0a800'; ctx.font = '800 40px sans-serif';
+      ctx.fillText('★'.repeat(r.stars) + '☆'.repeat(3 - r.stars), P, y + 62 + 52 + 56);
+      if (img.naturalWidth) { var iw = 200, ih = iw * img.naturalHeight / img.naturalWidth; ctx.drawImage(img, W - P - iw, y - 6, iw, ih); }
+      y += 250;
+      ctx.strokeStyle = '#eceef3'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(P, y); ctx.lineTo(W - P, y); ctx.stroke();
+      y += 30;
+      blocks.forEach(function (b, i) {
+        ctx.fillStyle = '#ECCD4C'; ctx.beginPath(); ctx.arc(P + 22, y + 34, 22, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#1a2139'; ctx.font = '800 26px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(String(i + 1), P + 22, y + 44); ctx.textAlign = 'left';
+        var x = P + 70, yy = y + 30;
+        ctx.fillStyle = '#8a91ab'; ctx.font = FP; b.py.forEach(function (t) { ctx.fillText(t, x, yy); yy += 38; });
+        yy += 8; ctx.fillStyle = '#1a2139'; ctx.font = FZ; b.zh.forEach(function (t) { ctx.fillText(t, x, yy + 30); yy += 66; });
+        yy += 4; ctx.fillStyle = '#5b6482'; ctx.font = FK; b.ko.forEach(function (t) { ctx.fillText(t, x, yy + 22); yy += 42; });
+        y += b.h;
+      });
+      ctx.fillStyle = '#a3a9bf'; ctx.font = '700 30px "Pretendard Variable",Pretendard,sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText('팽팽이 · 중국어 말하기 연습', W / 2, H - 40 - 60);
+      cv.toBlob(function (blob) {
+        if (!blob) { toast('이미지를 만들지 못했어요'); return; }
+        var url = URL.createObjectURL(blob), a = document.createElement('a');
+        a.href = url; a.download = '팽팽이-발표-' + s.id + '.png';
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+        state.spLastImg = { w: cv.width, h: cv.height, bytes: blob.size };
+        toast('이미지를 저장했어요');
+      }, 'image/png');
+    });
+    function rr(c, x, y, w, h, rad) { c.beginPath(); c.moveTo(x + rad, y); c.arcTo(x + w, y, x + w, y + h, rad); c.arcTo(x + w, y + h, x, y + h, rad); c.arcTo(x, y + h, x, y, rad); c.arcTo(x, y, x + w, y, rad); c.closePath(); }
+  }
+
   /* ---------- 음성 물결 (v256): 마이크를 누르고 있는 동안 화면 아래를 살짝 어둡게 하고 물결이 일어요.
      폰에서는 마이크를 앱과 음성 인식이 함께 쓰면 인식이 안 되므로, 마이크는 음성 인식만 쓰고
      물결은 음성 인식이 알려 주는 '말하는 중이에요' 신호에 맞춰 움직여요 ---------- */
@@ -6202,6 +6552,16 @@
       case 'myweeks-open': openMyWeeks(); break;
       case 'sc-open': state.scFrom = state.screen === 'scenes' ? 'scenes' : ''; startScene(id); break;
       case 'sc-all': go('scenes'); break;
+      case 'sp-open': state.spFrom = state.screen === 'speeches' || state.screen === 'spdone' && state.spFrom === 'speeches' ? 'speeches' : ''; startSpeech(id); break;
+      case 'sp-all': state.spFrom = 'speeches'; go('speeches'); break;
+      case 'sp-list': state.spFrom = 'speeches'; go('speeches'); break;
+      case 'sp-lv': state.spLv = +id; sfx('tap'); render(); break;
+      case 'sp-quit': spQuit(); break;
+      case 'sp-mic': spListen(false); break;
+      case 'sp-hint': spHint(); break;
+      case 'sp-skip': spSkip(); break;
+      case 'sp-auto': if (state.sp) { state.sp.auto = !state.sp.auto; state.sp.autoOff = false; try { localStorage.setItem('pangpang.speech.auto', state.sp.auto ? '1' : '0'); } catch (e) { /* 무시 */ } sfx('tap'); render(); if (state.sp.auto && !state.sp.pass && !spRec) spAutoListen(500); } break;
+      case 'sp-save': spSaveImage(); break;
       case 'sc-lv': state.scLv = state.scLv === id ? '' : id; sfx('tap'); render(); break;
       case 'sc-cat': state.scCat = id; sfx('tap'); render(); break;
       case 'sc-next': scAdvance(); break;
