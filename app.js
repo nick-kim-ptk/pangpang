@@ -38,7 +38,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v288';
+  var APP_VERSION = 'v289';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -5094,7 +5094,6 @@
     c.act = i; c.tok++;
     var rows = document.querySelectorAll('.sp-row'), row = rows[i];
     for (var j = 0; j < rows.length; j++) { rows[j].classList.toggle('act', j === i); rows[j].classList.toggle('past', j < i); if (j !== i) spKkPaint(rows[j], j < i ? 99 : -1); }
-    var nx = document.querySelector('[data-act="sp-next"]'); if (nx) nx.disabled = i >= s.lines.length - 1;
     if (!row) return;
     spKkPaint(row, 0);
     setTimeout(function () { if (state.sp === c && c.act === i && row.scrollIntoView) { try { row.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) { /* 무시 */ } } }, 120);
@@ -5113,15 +5112,19 @@
   function viewSpeech() {
     var c = state.sp, s = spById(c.id);
     var rows = s.lines.map(function (x, i) {
-      var zh = Array.from(x[0]).map(function (ch) { return '<span class="kk">' + esc(ch) + '</span>'; }).join('');
-      return '<button class="sp-row' + (c.act === i ? ' act' : '') + '" data-act="sp-row" data-id="' + i + '" role="listitem"><b class="sp-n">' + (i + 1) + '</b>' +
-        '<span class="sp-rb"><span class="sp-det"><span class="sp-det-in"><span class="sp-rzh" lang="zh">' + zh + '</span><span class="sp-rpy">' + esc(x[1]) + '</span>' + krs(x[1], 'sp-kr') + '</span></span>' +
-        '<span class="sp-rko">' + esc(x[2]) + '</span></span></button>';
+      // 쉼표가 나오면 거기서 줄을 바꿔요 (열린 문장에서만)
+      var CB = '<br class="cb">';
+      var zh = Array.from(x[0]).map(function (ch) { return '<span class="kk">' + esc(ch) + '</span>' + (ch === '，' || ch === ',' ? CB : ''); }).join('');
+      var py = esc(x[1]).replace(/,\s*/g, ', ' + CB), ko = esc(x[2]).replace(/,\s*/g, ', ' + CB);
+      return '<button class="sp-row' + (c.act === i ? ' act' : '') + '" data-act="sp-row" data-id="' + i + '" role="listitem" aria-label="' + (i + 1) + '번 문장 듣기">' +
+        '<b class="sp-n"><span class="sp-num">' + (i + 1) + '</span>' + I.spk + '<i class="sp-nb">' + (i + 1) + '</i></b>' +
+        '<span class="sp-rb"><span class="sp-det"><span class="sp-det-in"><span class="sp-rzh" lang="zh">' + zh + '</span><span class="sp-rpy">' + py + '</span>' + krs(x[1], 'sp-kr') + '</span></span>' +
+        '<span class="sp-rko">' + ko + '</span></span></button>';
     }).join('');
     return '<div class="screen sp-scr"><div class="topbar"><button class="icon-btn" data-act="sp-quit" aria-label="그만하기">' + I.close + '</button></div>' +
       '<div class="scroll sp-scroll"><div class="sp-title"><span class="sp-ti-ic">' + s.icon + '</span><div><h1>' + esc(s.title) + '</h1><p>' + SP_LV[s.lv] + ' · ' + s.lines.length + '문장</p></div></div>' +
       '<div class="sp-script" role="list">' + rows + '</div><div style="height:24px"></div></div>' +
-      '<div class="footer sp-foot"><button class="btn gray" data-act="sp-replay">' + I.spk + ' 다시 듣기</button><button class="btn" data-act="sp-next">다음 문장</button></div></div>';
+      '<div class="footer sp-foot"><button class="btn" data-act="sp-practice">연습하기</button></div></div>';
   }
   function spFinalLines(s, withKr) {
     return s.lines.map(function (x, i) {
@@ -6534,8 +6537,7 @@
       case 'sp-lv': state.spLv = +id; sfx('tap'); render(); break;
       case 'sp-quit': spQuit(); break;
       case 'sp-row': spActivate(+id); break;
-      case 'sp-replay': if (state.sp && state.sp.act >= 0) spActivate(state.sp.act); break;
-      case 'sp-next': if (state.sp) spActivate(Math.min(state.sp.act + 1, spById(state.sp.id).lines.length - 1)); break;
+      case 'sp-practice': toast('연습하기는 곧 만나요'); break;   // 다음 화면은 아직 준비 중
       case 'sp-mic': spListen(false); break;
       case 'sp-hint': spHint(); break;
       case 'sp-skip': spSkip(); break;
