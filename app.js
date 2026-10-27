@@ -38,7 +38,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v290';
+  var APP_VERSION = 'v291';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -5141,12 +5141,12 @@
       // 쉼표가 나오면 거기서 줄을 바꿔요 (열린 문장에서만)
       var CB = '<br class="cb">';
       var off = 0, zh = spChunks(x[0], x[1]).map(function (t) {
-        var e = off + Array.from(t).length, h = '<span class="kk" data-e="' + e + '">' + esc(t) + '</span>' + (/[，,]$/.test(t) ? CB : '');
+        var e = off + Array.from(t).length, h = '<span class="kk" data-e="' + e + '">' + t.replace(/^([^，。？！、,.?!；：“”]*)([\s\S]*)$/, function (m, w, p) { return '<span class="kt">' + esc(w) + '</span>' + esc(p); }) + '</span>' + (/[，,]$/.test(t) ? CB : '');
         off = e; return h;
       }).join('');
       var py = esc(x[1]).replace(/,\s*/g, ', ' + CB), ko = esc(x[2]).replace(/,\s*/g, ', ' + CB);
       return '<button class="sp-row' + (c.act === i ? ' act' : '') + '" data-act="sp-row" data-id="' + i + '" role="listitem" aria-label="' + (i + 1) + '번 문장 듣기">' +
-        '<b class="sp-n"><span class="sp-num">' + (i + 1) + '</span>' + I.spk + '<i class="sp-nb">' + (i + 1) + '</i></b>' +
+        '<b class="sp-n"><span class="sp-num">' + (i + 1) + '</span>' + I.spk + '</b>' +
         '<span class="sp-rb"><span class="sp-det"><span class="sp-det-in"><span class="sp-rzh" lang="zh">' + zh + '</span><span class="sp-rpy">' + py + '</span>' + krs(x[1], 'sp-kr') + '</span></span>' +
         '<span class="sp-rko">' + ko + '</span></span></button>';
     }).join('');
