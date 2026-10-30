@@ -3257,7 +3257,7 @@ html body .sc-head { margin-bottom: 2px; }
 .kk.sh { color: var(--navy); }
 .sp-row.kar .kk.sh { color: color-mix(in srgb, var(--ink) 24%, var(--card)); }
 .sp-row.kar .kk.sh.on, .sp-row.kar .kk.sh.cur { color: var(--navy); }
-.kk.bl .kt { color: transparent; background: color-mix(in srgb, var(--ink) 11%, var(--card)); border-radius: 7px; box-shadow: inset 0 -3px 0 color-mix(in srgb, var(--ink) 22%, transparent); padding: 0 1px; }
+.kk.blk .kt { display: inline-block; min-width: calc(var(--n, 1) * 1em); height: 1.12em; vertical-align: -.2em; color: transparent; user-select: none; background: color-mix(in srgb, var(--ink) 11%, var(--card)); border-radius: 8px; box-shadow: inset 0 -3px 0 color-mix(in srgb, var(--ink) 24%, transparent); }
 .kk.hit .kt { animation: ppPop .5s ease; background: color-mix(in srgb, var(--green) 16%, transparent); border-radius: 7px; }
 .kk.miss { color: var(--red); }
 .kk.miss .kt { background: var(--red-soft); border-radius: 7px; }
@@ -3308,3 +3308,9 @@ html body .sc-head { margin-bottom: 2px; }
 .pp-hko { font-size: 13px; color: var(--ink-2); line-height: 1.5; word-break: keep-all; }
 @media (prefers-reduced-motion: reduce) { .kk.hit .kt, .pp-hbar i { animation: none; } }
 .sp-hero h1 { text-wrap: balance; word-break: keep-all; }
+.sp-lead { margin: -4px 4px 14px; font-size: 15px; font-weight: 600; line-height: 1.55; color: var(--ink-2); word-break: keep-all; }
+.sp-script.all .sp-det { grid-template-rows: 1fr; }
+.sp-script.all .sp-det-in { opacity: 1; padding-bottom: 8px; }
+.sp-script.all .sp-row .cb { display: inline; }
+.sp-script.all .sp-rko { color: var(--ink-2); font-size: 15px; }
+.sp-script.all .sp-row.act .sp-rko { font-size: 16px; font-weight: 600; }

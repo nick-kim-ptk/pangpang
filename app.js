@@ -38,7 +38,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v292';
+  var APP_VERSION = 'v293';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -4957,7 +4957,6 @@
     state.sp = { id: id, act: -1, k: 0, ci: 0, phase: 'learn', steps: 0, total: spSteps(s.lines.length), spoke: 0, fails: 0, hints: 0, tok: 0, auto: spAuto() };
     spReset(state.sp);
     go('speech');
-    spBegin();
   }
   function spStopRec() {
     clearTimeout(spTimer);
@@ -5124,7 +5123,7 @@
     stopSpeak(); spKkStop(); clearTimeout(spTimer);
     c.act = i; c.tok++;
     var rows = document.querySelectorAll('.sp-row'), row = rows[i];
-    for (var j = 0; j < rows.length; j++) { rows[j].classList.toggle('act', j === i); rows[j].classList.toggle('past', j < i); if (j !== i) spKkPaint(rows[j], j < i ? 99 : -1); }
+    for (var j = 0; j < rows.length; j++) { rows[j].classList.toggle('act', j === i); rows[j].classList.remove('kar'); if (j !== i) spKkPaint(rows[j], -1); }
     if (!row) return;
     spKkPaint(row, 0);
     setTimeout(function () { if (state.sp === c && c.act === i && row.scrollIntoView) { try { row.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) { /* 무시 */ } } }, 120);
@@ -5150,7 +5149,7 @@
       // 쉼표가 나오면 거기서 줄을 바꿔요 (열린 문장에서만)
       var CB = '<br class="cb">';
       var off = 0, zh = spChunks(x[0], x[1]).map(function (t) {
-        var e = off + Array.from(t).length, h = '<span class="kk" data-e="' + e + '">' + t.replace(/^([^，。？！、,.?!；：“”]*)([\s\S]*)$/, function (m, w, p) { return '<span class="kt">' + esc(w) + '</span>' + esc(p); }) + '</span>' + (/[，,]$/.test(t) ? CB : '');
+        var e = off + Array.from(t).length, h = '<span class="kk sh" data-e="' + e + '">' + t.replace(/^([^，。？！、,.?!；：“”]*)([\s\S]*)$/, function (m, w, p) { return '<span class="kt">' + esc(w) + '</span>' + esc(p); }) + '</span>' + (/[，,]$/.test(t) ? CB : '');
         off = e; return h;
       }).join('');
       var py = esc(x[1]).replace(/,\s*/g, ', ' + CB), ko = esc(x[2]).replace(/,\s*/g, ', ' + CB);
@@ -5161,8 +5160,9 @@
     }).join('');
     return '<div class="screen sp-scr"><div class="topbar"><button class="icon-btn" data-act="sp-quit" aria-label="그만하기">' + I.close + '</button></div>' +
       '<div class="scroll sp-scroll"><div class="sp-title"><span class="sp-ti-ic">' + s.icon + '</span><div><h1>' + esc(s.title) + '</h1><p>' + SP_LV[s.lv] + ' · ' + s.lines.length + '문장</p></div></div>' +
-      '<div class="sp-script" role="list">' + rows + '</div><div style="height:24px"></div></div>' +
-      '<div class="footer sp-foot"><button class="btn" data-act="sp-practice">연습하기</button></div></div>';
+      '<p class="sp-lead">이 문장들을 외우고 말해볼 거예요.<br>문장을 누르면 소리가 나와요.</p>' +
+      '<div class="sp-script all" role="list">' + rows + '</div><div style="height:24px"></div></div>' +
+      '<div class="footer sp-foot"><button class="btn" data-act="sp-practice">시작하기</button></div></div>';
   }
   function spFinalLines(s, withKr) {
     return s.lines.map(function (x, i) {
@@ -5553,9 +5553,9 @@
     var x = s.lines[i], ck = c.ck[i], off = 0, CB = '<br class="cb">', fill = c.stage === 3 ? ppChunkFill(c, i) : null, done = c.stage === 3 && c.fin && c.fin.done[i];
     var zh = ck.z.map(function (t, k) {
       var e = off + Array.from(t).length, cls = 'kk sh';
-      if (c.stage === 2 && act && !c.pass && !c.reveal && c.bl[c.rnd][i][k]) cls = 'kk bl';
-      else if (c.stage === 3) cls = fill[k] ? 'kk sh hit' : (done || !act ? 'kk sh miss' : 'kk bl');
-      var h = '<span class="' + cls + '" data-e="' + e + '">' + t.replace(/^([^，。？！、,.?!；：“”]*)([\s\S]*)$/, function (m, w, p) { return '<span class="kt">' + esc(w) + '</span>' + esc(p); }) + '</span>' + (/[，,]$/.test(t) ? CB : '');
+      if (c.stage === 2 && act && !c.pass && !c.reveal && c.bl[c.rnd][i][k]) cls = 'kk blk';
+      else if (c.stage === 3) cls = fill[k] ? 'kk sh hit' : (done || !act ? 'kk sh miss' : 'kk blk');
+      var h = '<span class="' + cls + '" data-e="' + e + '">' + t.replace(/^([^，。？！、,.?!；：“”]*)([\s\S]*)$/, function (m, w, p) { return '<span class="kt" style="--n:' + Array.from(w).length + '">' + esc(w) + '</span>' + esc(p); }) + '</span>' + (/[，,]$/.test(t) ? CB : '');
       off = e; return h;
     }).join('');
     var py = '';
