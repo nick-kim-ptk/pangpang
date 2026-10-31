@@ -3314,3 +3314,6 @@ html body .sc-head { margin-bottom: 2px; }
 .sp-script.all .sp-row .cb { display: inline; }
 .sp-script.all .sp-rko { color: var(--ink-2); font-size: 15px; }
 .sp-script.all .sp-row.act .sp-rko { font-size: 16px; font-weight: 600; }
+
+/* 한어병음 표기 끄기 (마이페이지 > 학습 설정) */
+html.no-py .py, html.no-py .q-py, html.no-py .sp-fl-py, html.no-py .ws-py, html.no-py .p-py, html.no-py .fc-py, html.no-py .ch-py, html.no-py .sc-py, html.no-py .sq-opy, html.no-py .sp-rpy, html.no-py .pp-hpy { display: none !important; }

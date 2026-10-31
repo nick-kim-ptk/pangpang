@@ -38,7 +38,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v294';
+  var APP_VERSION = 'v295';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -100,6 +100,7 @@
       speedUsed: Math.max(0, parseInt(p.speedUsed, 10) || 0),
       sound: p.sound !== false,
       kr: p.kr === true,
+      py: p.py !== false,
       input: p.input === 'type' ? 'type' : 'voice',
       voice: VOICE_IDS.indexOf(p.voice) >= 0 ? p.voice : 'device',
       hsk3: normHsk(p.hsk3),
@@ -113,6 +114,7 @@
     try {
       var root = document.documentElement;
       if (t === 'light' || t === 'dark') root.setAttribute('data-theme', t); else root.removeAttribute('data-theme');
+      root.classList.toggle('no-py', state.profile.py === false);
       var dark = t === 'dark' || (t === 'auto' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
       var m = document.querySelector('meta[name="theme-color"]');
       if (m) m.setAttribute('content', dark ? '#0d111f' : '#f2f3f5');
@@ -283,7 +285,7 @@
     state.progress = {}; state.done = {}; state.daily = {};
     if (!keepProfile) {
       var meta = (state.user && state.user.user_metadata) || {};
-      state.profile = normProfile({ nickname: meta.nickname, rankPub: meta.rankPub, rankAnon: meta.rankAnon, goal: meta.goal, theme: meta.theme, remind: meta.remind, remindOn: meta.remindOn, pn: meta.pn, wordLv: meta.wordLv, speedUsed: meta.speedUsed, sound: meta.sound, kr: meta.kr, input: meta.input, voice: meta.voice, favs: meta.favs, dlg: meta.dlg, hsk3: meta.hsk3 });
+      state.profile = normProfile({ nickname: meta.nickname, rankPub: meta.rankPub, rankAnon: meta.rankAnon, goal: meta.goal, theme: meta.theme, remind: meta.remind, remindOn: meta.remindOn, pn: meta.pn, wordLv: meta.wordLv, speedUsed: meta.speedUsed, sound: meta.sound, kr: meta.kr, py: meta.py, input: meta.input, voice: meta.voice, favs: meta.favs, dlg: meta.dlg, hsk3: meta.hsk3 });
       applyTheme();
     }
     (res[0].data || []).forEach(function (r) { state.progress[r.qid] = r; });
@@ -360,7 +362,7 @@
       persistLocal();
       if (!sb || isGuest()) return;
       var p = state.profile;
-      var res = await sb.auth.updateUser({ data: { nickname: p.nickname, rankPub: p.rankPub, rankAnon: p.rankAnon, goal: p.goal, theme: p.theme, remind: p.remind, remindOn: p.remindOn, pn: p.pn, wordLv: p.wordLv, speedUsed: p.speedUsed, sound: p.sound, kr: p.kr, input: p.input, voice: p.voice, favs: p.favs, dlg: p.dlg, hsk3: state.hskSynced ? null : p.hsk3 } });
+      var res = await sb.auth.updateUser({ data: { nickname: p.nickname, rankPub: p.rankPub, rankAnon: p.rankAnon, goal: p.goal, theme: p.theme, remind: p.remind, remindOn: p.remindOn, pn: p.pn, wordLv: p.wordLv, speedUsed: p.speedUsed, sound: p.sound, kr: p.kr, py: p.py, input: p.input, voice: p.voice, favs: p.favs, dlg: p.dlg, hsk3: state.hskSynced ? null : p.hsk3 } });
       if (res.error) saveFailed(res.error); else if (res.data && res.data.user) state.user = res.data.user;
     }),
     saveDaily: tracked(async function (row) {
@@ -2693,7 +2695,8 @@
       '<div class="set-row col"><div class="set-t">답하는 방법</div><div class="radio-list" role="radiogroup" aria-label="답하는 방법">' +
         inputOpt('voice', '말로 답하기', '마이크에 대고 말해요 · 기본') + inputOpt('type', '키보드로 답하기 · 야외 모드', '소리 내기 어려운 곳에서 글자로 입력해요') + '</div></div>' +
       '<div class="set-row col"><div class="set-t">읽어 주는 목소리</div>' + voiceCards() + '</div>' +
-      '<div class="set-row"><div class="set-t">한국어 발음 표기</div>' + seg('set-kr', p.kr ? 'on' : 'off', [['on', '켜짐'], ['off', '꺼짐']]) + '</div>' +
+      '<div class="set-row"><div class="set-t">한어병음 표기</div>' + seg('set-py', p.py ? 'on' : 'off', [['on', '켜짐'], ['off', '꺼짐']]) + '</div>' +
+      '<div class="set-row"><div class="set-t">한글 발음 표기</div>' + seg('set-kr', p.kr ? 'on' : 'off', [['on', '켜짐'], ['off', '꺼짐']]) + '</div>' +
       '</div>';
   }
   // 마이페이지 메뉴 영역: 팽팽이 소개 · 자문위원 소개 · 환경 설정
@@ -3009,6 +3012,7 @@
     $app.innerHTML = html + modalHtml() + gsheetHtml();
     if (state.screen === 'rain') rnAttach();
     if (state.screen === 'sppr') ppPost();
+    document.documentElement.classList.toggle('no-py', !!(state.profile && state.profile.py === false));
     fitGreet();
     fitChips();
     if (state.screen === 'aiall' && !state.aiallHint) {   // 처음 들어오면 첫 카드가 살짝 밀렸다 돌아와서 삭제 방법을 알려 줘요
@@ -7121,6 +7125,7 @@
       case 'quiz-quit': leaveGame('quiz', function () { stopSpeak(); go('tab'); }); break;
       case 'fav': toggleFav(el.getAttribute('data-text')); break;
       case 'set-kr': setProfile({ kr: el.getAttribute('data-v') === 'on' }); break;
+      case 'set-py': setProfile({ py: el.getAttribute('data-v') === 'on' }); break;
       case 'set-rank':
         var rpub = el.getAttribute('data-v') === 'on', ranon = state.profile.rankAnon;
         if (!rpub && !ranon) ranon = String(Math.floor(10000 + Math.random() * 90000));
