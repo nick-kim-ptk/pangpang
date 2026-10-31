@@ -38,7 +38,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v296';
+  var APP_VERSION = 'v297';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -703,7 +703,7 @@
   window.addEventListener('popstate', function () {
     if (ignorePop > 0) { ignorePop--; return; }
     if (!inSub) return;
-    if (state.modal || state.screen === 'practice' || state.screen === 'quiz' || state.screen === 'hskstudy' || (state.screen === 'aichat' && state.ac && state.ac.mode === 'chat')) {
+    if (state.modal || (state.screen === 'sppr' && ppAtStake(state.pp)) || state.screen === 'practice' || state.screen === 'quiz' || state.screen === 'hskstudy' || (state.screen === 'aichat' && state.ac && state.ac.mode === 'chat')) {
       try { history.pushState({ pp: 1 }, ''); } catch (e) { /* 무시 */ }   // 그 자리에 머물며 확인 창만 보여요
       goBack();
       return;
@@ -5303,8 +5303,37 @@
       tok: 0, auto: spAuto(), heardOnce: {}, spoke: 0, fails: 0, hintsLeft: 3, hintsUsed: 0, hintOpen: false, hintT: 0,
       fin: null, todo: null, res: null };
     ppReset(state.pp);
+    var c = state.pp, snap = ppLoad(sp.id);
+    state.pp = null;
+    if (snap) {
+      askConfirm({ title: '이어서 할까요?', body: PP_STAGE[snap.stage] + ' 단계까지 했어요. 이어서 하거나 처음부터 다시 할 수 있어요.', ok: '이어서 하기', cancel: '처음부터' },
+        function () { ppApply(c, snap); state.pp = c; go('sppr'); ppEnter(); },
+        function () { ppClear(sp.id); state.pp = c; go('sppr'); ppEnter(); });
+      return;
+    }
+    state.pp = c;
     go('sppr');
     ppEnter();
+  }
+  /* 중간에 나가도 이어서 하기 (이 기기에 보관) */
+  var PP_KEY = 'pangpang.sppr';
+  function ppSKey(id) { return (state.user ? state.user.id : 'x') + '|' + id; }
+  function ppAll() { try { return JSON.parse(localStorage.getItem(PP_KEY) || '{}'); } catch (e) { return {}; } }
+  function ppLoad(id) { var s = ppAll()[ppSKey(id)]; return s && (s.turn > 0 || s.stage > 1) && Date.now() - (s.at || 0) < 7 * 864e5 ? s : null; }
+  function ppClear(id) { var m = ppAll(); if (m[ppSKey(id)]) { delete m[ppSKey(id)]; try { localStorage.setItem(PP_KEY, JSON.stringify(m)); } catch (e) { /* 무시 */ } } }
+  function ppSave() {
+    var c = state.pp;
+    if (!c || c.view === 'result' || !(c.turn > 0 || c.stage > 1)) return;
+    var m = ppAll();
+    m[ppSKey(c.id)] = { stage: c.stage, si: c.si, pi: c.pi, rnd: c.rnd, turn: c.turn, view: c.view, fin: c.fin, todo: c.todo, hintsLeft: c.hintsLeft, hintsUsed: c.hintsUsed, heardOnce: c.heardOnce, at: Date.now() };
+    try { localStorage.setItem(PP_KEY, JSON.stringify(m)); } catch (e) { /* 무시 */ }
+  }
+  function ppApply(c, s) {
+    c.stage = s.stage; c.si = s.si; c.pi = s.pi; c.rnd = s.rnd; c.turn = s.turn; c.view = s.view === 'intro' ? 'intro' : 'say';
+    c.fin = s.fin || null; c.todo = s.todo || null; c.hintsLeft = s.hintsLeft; c.hintsUsed = s.hintsUsed; c.heardOnce = s.heardOnce || {};
+    if (c.stage === 3 && !c.fin) c.fin = { hit: {}, done: {} };
+    if (c.stage === 1 && (c.si >= c.steps.length)) { c.si = 0; c.pi = 0; }
+    ppReset(c);
   }
   function ppReset(c) { c.silent = 0; c.pass = false; c.tries = 0; c.heard = ''; c.msg = ''; c.reveal = false; c.listening = false; c.tok++; }
   function ppTurn(c) { return c.stage === 1 ? c.steps[c.si][c.pi] : [ppCur(c)]; }
@@ -5489,6 +5518,7 @@
       if (c.pi >= (c.todo ? c.todo.length : c.n)) { ppFinish(); return; }
     }
     ppReset(c);
+    ppSave();
     render();
     ppEnter();
   }
@@ -5497,6 +5527,7 @@
     c.stage = stage; c.view = 'intro'; c.pi = 0; c.si = 0; c.rnd = 0;
     if (stage === 3) { c.todo = null; c.fin = { hit: {}, done: {} }; c.hintsLeft = 3; c.hintsUsed = 0; }
     ppReset(c);
+    ppSave();
     sfx('tap');
     render(); window.scrollTo(0, 0);
   }
@@ -5517,7 +5548,7 @@
     state.daily[day] = d; store.saveDaily(d);
     c.spoke = 0;
     c.res = { pct: pct, stars: stars, at: new Date() };
-    c.view = 'result'; ppReset(c);
+    c.view = 'result'; ppReset(c); ppClear(c.id);
     state.pp = c;
     sfx('done');
     render(); window.scrollTo(0, 0);
@@ -5535,8 +5566,19 @@
     c.view = 'intro'; c.res = null; ppReset(c);
     render(); window.scrollTo(0, 0);
   }
+  function ppAtStake(c) { return !!c && c.view !== 'result' && (c.turn > 0 || c.stage > 1); }
+  // 나가기: 힌트가 열려 있으면 먼저 닫고, 진행한 게 있으면 한 번 물어봐요 (진행은 저장돼요)
   function ppQuit() {
     var c = state.pp;
+    if (c && c.hintOpen) { ppHintClose(); return; }
+    if (!ppAtStake(c)) { ppExit(); return; }
+    spStopRec(); stopSpeak(); spKkStop(); clearTimeout(spTimer); c.tok++; c.listening = false;
+    askConfirm({ title: '지금 나갈까요?', body: '나가면 여기까지 저장돼요. 다음에 이어서 할 수 있어요.', ok: '계속하기', cancel: '나가기', left: true },
+      function () { render(); ppEnter(); }, function () { ppExit(); });
+  }
+  function ppExit() {
+    var c = state.pp;
+    ppSave();
     if (c) clearInterval(c.hintIv);
     spKkStop(); spStopRec(); stopSpeak(); clearTimeout(spTimer);
     state.pp = null;
