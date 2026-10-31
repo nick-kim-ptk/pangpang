@@ -38,7 +38,7 @@
     }, wait);
   }
 
-  var APP_VERSION = 'v295';
+  var APP_VERSION = 'v296';
 
   var QMAP = {};
   LESSONS.concat(GRAMMAR).forEach(function (l) { l.qs.forEach(function (q) { QMAP[q.id] = q; }); });
@@ -5137,13 +5137,22 @@
   function spKkRun(row, text, onend) {
     var l = [text], n = Array.from(text).length, nk = row.querySelectorAll('.kk').length, st = { t0: performance.now(), seen: false, raf: 0 }, est = n * SP_MS + 150;
     spKkStop(); spKK = st; row.classList.add('kar');
+    // 폰에 따라 읽기가 끝났다는 신호(onend)가 안 오기도 해서, 예상 시간 + 3초 뒤에는 끝난 걸로 보고 다음으로 가요
+    var closed = false, ft = 0;
+    function fin() {
+      if (closed) return; closed = true; clearTimeout(ft);
+      if (spKK === st) { spKkPaint(row, nk); spKkStop(); }
+      row.classList.remove('kar');
+      if (onend) onend();
+    }
+    if (onend) ft = setTimeout(fin, est + 3000);
     function tick() {
       if (spKK !== st) return;
       if (!st.seen) spKkPaint(row, Math.min(nk - 1, spChunkAt(row, Math.floor((performance.now() - st.t0) / est * n))));
       st.raf = requestAnimationFrame(tick);
     }
     st.raf = requestAnimationFrame(tick);
-    speak(l[0], 0.8, function () { if (spKK === st) { spKkPaint(row, nk); spKkStop(); } row.classList.remove('kar'); if (onend) onend(); },
+    speak(l[0], 0.8, function () { if (onend) fin(); else { if (spKK === st) { spKkPaint(row, nk); spKkStop(); } row.classList.remove('kar'); } },
       function () { st.t0 = performance.now(); },
       function (ci) { st.seen = true; spKkPaint(row, Math.min(nk, spChunkAt(row, Array.from(l[0].slice(0, ci)).length))); });
   }
@@ -5297,7 +5306,7 @@
     go('sppr');
     ppEnter();
   }
-  function ppReset(c) { c.pass = false; c.tries = 0; c.heard = ''; c.msg = ''; c.reveal = false; c.listening = false; c.tok++; }
+  function ppReset(c) { c.silent = 0; c.pass = false; c.tries = 0; c.heard = ''; c.msg = ''; c.reveal = false; c.listening = false; c.tok++; }
   function ppTurn(c) { return c.stage === 1 ? c.steps[c.si][c.pi] : [ppCur(c)]; }
   function ppCur(c) {
     if (c.stage === 1) return c.steps[c.si][c.pi][0];
@@ -5376,7 +5385,7 @@
     if (!c || c.pass || c.view !== 'say' || c.hintOpen) return;
     if (!SR) { c.noSR = true; render(); toast('이 브라우저는 음성 인식을 지원하지 않아요'); return; }
     if (spRec) { try { spRec.stop(); } catch (e) { /* noop */ } return; }   // 듣는 중에 누르면 거기서 끝내요
-    clearTimeout(spTimer); stopSpeak(); spKkStop();
+    clearTimeout(spTimer); c.tok++; stopSpeak(); spKkStop();
     var row = document.querySelector('.sp-row.act'); if (row) row.classList.remove('kar');
     var finals = [], lastInterim = '', err = '', r = new SR(), tok = c.tok;
     spRec = r;
@@ -5407,6 +5416,7 @@
       else if (err === 'audio-capture') { c.autoOff = true; c.msg = '마이크를 찾지 못했어요'; }
       else if (err === 'network') { c.autoOff = true; c.msg = '음성 인식 서버에 연결하지 못했어요'; }
       else if (err === 'aborted') c.msg = '';
+      else if (fromAuto && (c.silent = (c.silent || 0) + 1) <= 2) { c.msg = ''; render(); ppAutoListen(700); return; }
       else c.msg = fromAuto ? '마이크 버튼을 눌러 말해 보세요' : '목소리가 잘 안 들렸어요. 마이크를 누르고 말해 보세요';
       render();
     };
