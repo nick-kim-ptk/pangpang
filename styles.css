@@ -3317,3 +3317,17 @@ html body .sc-head { margin-bottom: 2px; }
 
 /* 한어병음 표기 끄기 (마이페이지 > 학습 설정) */
 html.no-py .py, html.no-py .q-py, html.no-py .sp-fl-py, html.no-py .ws-py, html.no-py .p-py, html.no-py .fc-py, html.no-py .ch-py, html.no-py .sc-py, html.no-py .sc-cp, html.no-py .sq-opy, html.no-py .sp-rpy, html.no-py .pp-hpy { display: none !important; }
+
+/* v298 게임 결과 화면: 메시지가 두 줄일 때 아래가 잘리지 않게 위쪽 여백과 달팽이를 조금 줄이고 메시지 칸을 확보 */
+@media (min-height: 681px) {
+  .gd > .hero, .gd.rd-big > .hero { padding-top: clamp(28px, 8dvh, 88px); padding-bottom: 20px; }
+  .gd.rd-big .stage.rd-stage { width: clamp(168px, 24dvh, 220px); }
+  .gd.rd-big .rd-stage .mascot { width: clamp(156px, 22dvh, 204px); }
+}
+.gd .rd-msgbox { flex: 0 0 auto; min-height: 60px; padding: 6px 0 10px; }
+.gd .rd-msg { line-height: 1.5; }
+@media (min-height: 681px) and (max-height: 820px) {
+  .gd > .hero, .gd.rd-big > .hero { padding-top: 18px; gap: 8px; }
+  .gd.rd-big .stage.rd-stage { width: clamp(124px, 18dvh, 150px); }
+  .gd.rd-big .rd-stage .mascot { width: clamp(116px, 17dvh, 140px); }
+}
